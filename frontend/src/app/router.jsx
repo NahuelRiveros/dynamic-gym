@@ -4,7 +4,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 
 import HomePage from "../components/HomePage.jsx";
 import KioskPage from "../pages/KioskPage";
-import LoginPage from "../pages/loginPage.jsx";
+import LoginPage from "../pages/LoginPage.jsx";
 import RegisterAlumnoPage from "../pages/registerPage.jsx";
 import RecaudacionMensual from "../pages/estadisticas/RecaudacionesMensualPage.jsx";
 import RecaudacionMesPage from "../pages/estadisticas/RecaudacionMesPage.jsx";
