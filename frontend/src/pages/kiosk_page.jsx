@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { kioskIngreso } from "../api/kiosk_api.js";
 import KioskResultModal from "../components/modal/KioskResultModal.jsx";
 import KioskErrorModal from "../components/modal/KioskErrorModal.jsx";
-import SubmitButton from "../components/form/SubmitButton.jsx";
+import SubmitButton from "../components/form/submit_button.jsx";
 import { BadgeCheck, TriangleAlert } from "lucide-react";
 
 export default function KioskPage() {

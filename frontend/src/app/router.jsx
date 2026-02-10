@@ -1,15 +1,15 @@
 import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "../components/layout/AppLayout";
-import ProtectedRoute from "../components/ProtectedRoute";
+import ProtectedRoute from "../components/protected_route.jsx";
 
 
-import HomePage from "../components/HomePage.jsx";
-import KioskPage from "../pages/KioskPage.jsx";
-import LoginPage from "../pages/LoginPage.jsx";
-import RegisterAlumnoPage from "../pages/RegisterPage.jsx";
+import HomePage from "../components/home_page.jsx";
+import KioskPage from "../pages/kiosk_page.jsx";
+import LoginPage from "../pages/login_page.jsx";
+import RegisterAlumnoPage from "../pages/register_page.jsx";
 
-import RecaudacionMensual from "../pages/Estadisticas/RecaudacionesMensualPage.jsx";
-import RecaudacionMesPage from "../pages/Estadisticas/RecaudacionMesPage.jsx";
+import RecaudacionMensual from "../pages/estadisticas/recaudaciones_mensual_page.jsx";
+import RecaudacionMesPage from "../pages/estadisticas/recaudacion_mes_page.jsx";
 
 
 export const router = createBrowserRouter([

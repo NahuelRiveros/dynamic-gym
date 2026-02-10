@@ -1,4 +1,4 @@
-import SubmitButton from "../form/SubmitButton";
+import SubmitButton from "../form/submit_button";
 import { Users, IdCard, Clock9, FileCheck , Calendar1 , CalendarX} from "lucide-react";
   
 

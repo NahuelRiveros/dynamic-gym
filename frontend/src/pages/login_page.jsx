@@ -4,13 +4,13 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 
-import FormCard from "../components/form/FormCard";
-import InputField from "../components/form/InputField";
-import SubmitButton from "../components/form/SubmitButton";
-import FormError from "../components/form/FormError";
+import FormCard from "../components/form/form_card.jsx";
+import InputField from "../components/form/input_field.jsx";
+import SubmitButton from "../components/form/submit_button.jsx";
+import FormError from "../components/form/form_error.jsx";
 import WelcomeModal from "../components/modal/WelcomeModal.jsx";
 
-import { useAuth } from "../auth/AuthContext";
+import { useAuth } from "../auth/auth_context.jsx";
 import { authConfig } from "../config/auth_config.js";
 
 export default function LoginPage() {

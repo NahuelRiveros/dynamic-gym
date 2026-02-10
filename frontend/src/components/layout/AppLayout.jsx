@@ -1,6 +1,6 @@
 import Navbar from "./Navbar";
 import Footer from "./Footer";
-import { useAuth } from "../../auth/AuthContext";
+import { useAuth } from "../../auth/auth_context";
 export default function AppLayout({ children }) {
     const { usuario , logout} = useAuth();
     return (

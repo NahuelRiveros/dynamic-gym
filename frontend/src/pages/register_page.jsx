@@ -5,13 +5,13 @@ import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import RegisterSuccessModal from "../components/modal/RegisterSuccessModal.jsx";
 
-import FormCard from "../components/form/FormCard";
-import InputField from "../components/form/InputField";
-import SelectField from "../components/form/SelectField";
-import SubmitButton from "../components/form/SubmitButton";
-import FormError from "../components/form/FormError";
+import FormCard from "../components/form/form_card.jsx";
+import InputField from "../components/form/input_field.jsx";
+import SelectField from "../components/form/select_field.jsx";
+import SubmitButton from "../components/form/submit_button.jsx";
+import FormError from "../components/form/form_error.jsx";
 
-import { useCatalogos } from "../hook/useCatalogos.js";
+import { useCatalogos } from "../hook/use_catalogos.js";
 import { registrarAlumno } from "../api/alumnos_api.js";
 
 export default function RegisterAlumnoPage() {
