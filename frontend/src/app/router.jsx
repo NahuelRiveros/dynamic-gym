@@ -3,11 +3,11 @@ import AppLayout from "../components/layout/AppLayout";
 import ProtectedRoute from "../components/ProtectedRoute";
 
 import HomePage from "../components/HomePage.jsx";
-import KioskPage from "../pages/KioskPage";
+import KioskPage from "../pages/KioskPage.jsx";
 import LoginPage from "../pages/LoginPage.jsx";
-import RegisterAlumnoPage from "../pages/registerPage.jsx";
-import RecaudacionMensual from "../pages/estadisticas/RecaudacionesMensualPage.jsx";
-import RecaudacionMesPage from "../pages/estadisticas/RecaudacionMesPage.jsx";
+import RegisterAlumnoPage from "../pages/RegisterPage.jsx";
+import RecaudacionMensual from "../pages/Estadisticas/RecaudacionesMensualPage.jsx";
+import RecaudacionMesPage from "../pages/Estadisticas/RecaudacionMesPage.jsx";
 
 export const router = createBrowserRouter([
   {
