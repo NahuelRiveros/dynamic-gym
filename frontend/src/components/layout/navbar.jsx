@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { navConfig } from "./navbar_config.js";
+import { navbar_config  } from "./navbar_config.js";
 
 function tieneRol(usuario, rolesPermitidos) {
   if (!rolesPermitidos || rolesPermitidos.length === 0) return true;
@@ -11,7 +11,7 @@ function tieneRol(usuario, rolesPermitidos) {
 export default function Navbar({ usuario = null, onLogout }) {
   const { pathname } = useLocation();
 
-  const cfg = navConfig;
+  const cfg = navbar_config ;
   const t = cfg.theme;
   const l = cfg.layout;
   const labels = cfg.labels;

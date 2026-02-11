@@ -1,4 +1,4 @@
-export const navConfig = {
+export const navbar_config  = {
   // =========================
   // Branding / textos
   // =========================
