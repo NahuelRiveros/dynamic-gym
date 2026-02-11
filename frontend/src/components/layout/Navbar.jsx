@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { navConfig } from "./navbar_config";
+import { navConfig } from "./navbar_config.js";
 
 function tieneRol(usuario, rolesPermitidos) {
   if (!rolesPermitidos || rolesPermitidos.length === 0) return true;
