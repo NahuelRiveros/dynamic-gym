@@ -235,3 +235,96 @@ export async function registrarPagoPorDni({
     };
   });
 }
+
+export async function previewPagoPorDni({ documento }) {
+  const dni = normalizarDocumento(documento);
+  const dniNum = Number(dni);
+
+  if (!Number.isFinite(dniNum) || dniNum <= 0) {
+    return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
+  }
+
+  // Buscamos alumno + plan vigente (si hay)
+  const sql = `
+    SELECT
+      a.gym_alumno_id,
+      a.gym_alumno_rela_estadoalumno AS estado_id,
+      ea.gym_cat_estadoalumno_descripcion AS estado_desc,
+
+      p.gym_persona_id,
+      p.gym_persona_nombre,
+      p.gym_persona_apellido,
+      p.gym_persona_documento,
+      p.gym_persona_email,
+      p.gym_persona_celular,
+
+      fvig.gym_fecha_id AS plan_id,
+      fvig.gym_fecha_inicio AS plan_inicio,
+      fvig.gym_fecha_fin AS plan_fin,
+      fvig.gym_fecha_ingresosdisponibles AS ingresos_disponibles,
+      tp.gym_cat_tipoplan_descripcion AS plan_tipo_desc
+    FROM gym_persona p
+    LEFT JOIN gym_alumno a
+      ON a.gym_alumno_rela_persona = p.gym_persona_id
+    LEFT JOIN gym_cat_estado_alumno ea
+      ON ea.gym_cat_estadoalumno_id = a.gym_alumno_rela_estadoalumno
+
+    LEFT JOIN LATERAL (
+      SELECT
+        f.gym_fecha_id,
+        f.gym_fecha_inicio,
+        f.gym_fecha_fin,
+        f.gym_fecha_ingresosdisponibles,
+        f.gym_fecha_rela_tipoplan
+      FROM gym_fecha_disponible f
+      WHERE f.gym_fecha_rela_alumno = a.gym_alumno_id
+        AND f.gym_fecha_inicio <= CURRENT_DATE
+        AND f.gym_fecha_fin >= CURRENT_DATE
+      ORDER BY f.gym_fecha_fin DESC, f.gym_fecha_id DESC
+      LIMIT 1
+    ) fvig ON TRUE
+
+    LEFT JOIN gym_cat_tipoplan tp
+      ON tp.gym_cat_tipoplan_id = fvig.gym_fecha_rela_tipoplan
+
+    WHERE p.gym_persona_documento = :dniNum
+    LIMIT 1;
+  `;
+
+  const rows = await sequelize.query(sql, {
+    type: QueryTypes.SELECT,
+    replacements: { dniNum },
+  });
+
+  const it = rows?.[0];
+  if (!it) {
+    return { ok: false, codigo: "NO_EXISTE", mensaje: "No existe una persona con ese documento" };
+  }
+  if (!it.gym_alumno_id) {
+    return { ok: false, codigo: "NO_ES_ALUMNO", mensaje: "La persona existe pero no es alumno" };
+  }
+
+  return {
+    ok: true,
+    alumno: {
+      alumno_id: it.gym_alumno_id,
+      persona_id: it.gym_persona_id,
+      nombre: it.gym_persona_nombre,
+      apellido: it.gym_persona_apellido,
+      documento: it.gym_persona_documento,
+      email: it.gym_persona_email,
+      celular: it.gym_persona_celular,
+      estado_id: it.estado_id,
+      estado_desc: it.estado_desc,
+    },
+    plan_vigente: it.plan_id
+      ? {
+          plan_id: it.plan_id,
+          inicio: String(it.plan_inicio).slice(0, 10),
+          fin: String(it.plan_fin).slice(0, 10),
+          ingresos_disponibles: it.ingresos_disponibles,
+          tipo_desc: it.plan_tipo_desc,
+        }
+      : null,
+  };
+}

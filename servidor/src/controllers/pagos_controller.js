@@ -1,9 +1,32 @@
 // src/controllers/pagos_controller.js
-import { registrarPagoPorDni } from "../services/pagos_service.js";
+import { registrarPagoPorDni, previewPagoPorDni } from "../services/pagos_service.js";
 
 function esNumeroPositivo(n) {
   const x = Number(n);
   return Number.isFinite(x) && x > 0;
+}
+export async function previewPago(req, res, next) {
+  try {
+    const documento = String(req.query.documento ?? "").trim();
+
+    if (!documento) {
+      return res.status(400).json({ ok: false, codigo: "VALIDACION", mensaje: "documento es obligatorio" });
+    }
+    if (!/^\d+$/.test(documento.replace(/[.\s]/g, ""))) {
+      return res.status(400).json({ ok: false, codigo: "VALIDACION", mensaje: "documento inválido (solo números)" });
+    }
+
+    const r = await previewPagoPorDni({ documento });
+
+    if (!r.ok) {
+      if (r.codigo === "NO_EXISTE" || r.codigo === "NO_ES_ALUMNO") return res.status(404).json(r);
+      return res.status(409).json(r);
+    }
+
+    return res.json(r);
+  } catch (err) {
+    next(err);
+  }
 }
 
 export async function registrarPago(req, res, next) {

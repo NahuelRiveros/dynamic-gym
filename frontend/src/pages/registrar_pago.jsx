@@ -1,29 +1,71 @@
 import { useEffect, useState } from "react";
-import { registrarPago } from "../../api/pagos_api";
-import { Search, CreditCard, RefreshCw, CheckCircle2, XCircle } from "lucide-react";
-import { getCatalogoTipoPlanes } from "../../api/catalogos_api"; // si no existe, abajo te dejo fallback
+import { useForm } from "react-hook-form";
+import PagoSuccessModal from "../components/modal/pago_success_modal.jsx";
+import { getCatalogos } from "../api/catalogos_api";
+import { registrarPago, previewPago } from "../api/pagos_api";
+
+// ✅ tus componentes reutilizables
+import FormCard from "../components/form/form_card";
+import FormError from "../components/form/form_error";
+import InputField from "../components/form/input_field";
+import SelectField from "../components/form/select_field";
+import SubmitButton from "../components/form/submit_button";
 
 export default function RegistrarPagoPage() {
-  const [documento, setDocumento] = useState("");
-  const [tipoPlanId, setTipoPlanId] = useState("");
-  const [montoPagado, setMontoPagado] = useState("");
-  const [metodoPago, setMetodoPago] = useState("efectivo");
-
   const [planes, setPlanes] = useState([]);
   const [cargandoPlanes, setCargandoPlanes] = useState(false);
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState(null);
   const [okMsg, setOkMsg] = useState(null);
-  const [resultado, setResultado] = useState(null);
+
+  const [alumno, setAlumno] = useState(null);
+  const [planVigente, setPlanVigente] = useState(null);
+
+  // ✅ modal
+  const [modalOpen, setModalOpen] = useState(false);
+  const [ultimoPago, setUltimoPago] = useState(null);
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    setValue,
+    formState: { errors },
+  } = useForm({
+    defaultValues: {
+      documento: "",
+      tipo_plan_id: "",
+      monto_pagado: "",
+      metodo_pago: "efectivo",
+    },
+  });
+
+  const documento = watch("documento");
+
+  function limpiarMensajes() {
+    setError(null);
+    setOkMsg(null);
+  }
+
+  function limpiarFormularioCompleto() {
+    setAlumno(null);
+    setPlanVigente(null);
+    setValue("documento", "");
+    setValue("tipo_plan_id", "");
+    setValue("monto_pagado", "");
+    setValue("metodo_pago", "efectivo");
+  }
 
   async function cargarPlanes() {
     setCargandoPlanes(true);
     try {
-      // ✅ Ideal: endpoint de catálogo
-      const r = await getCatalogoTipoPlanes();
-      if (r?.ok) setPlanes(r.items || []);
-      else setPlanes([]);
+      const r = await getCatalogos();
+      if (r?.ok) {
+        setPlanes(Array.isArray(r.tiposPlan) ? r.tiposPlan : []);
+      } else {
+        setPlanes([]);
+      }
     } catch {
       setPlanes([]);
     } finally {
@@ -35,31 +77,64 @@ export default function RegistrarPagoPage() {
     cargarPlanes();
   }, []);
 
-  function limpiarMensajes() {
-    setError(null);
-    setOkMsg(null);
-  }
-
-  async function onSubmit(e) {
-    e.preventDefault();
+  // ✅ Buscar alumno primero
+  async function buscarAlumno() {
     limpiarMensajes();
-    setResultado(null);
+    setAlumno(null);
+    setPlanVigente(null);
 
-    const doc = documento.replace(/[.\s]/g, "").trim();
+    const doc = String(documento ?? "").replace(/[.\s]/g, "").trim();
     if (!doc || !/^\d+$/.test(doc)) {
       setError("DNI inválido (solo números)");
       return;
     }
-    if (!tipoPlanId) {
+
+    setCargando(true);
+    try {
+      const r = await previewPago(doc);
+      if (!r?.ok) {
+        setError(r?.mensaje || "No se pudo buscar el alumno");
+        return;
+      }
+
+      setAlumno(r.alumno);
+      setPlanVigente(r.plan_vigente || null);
+      setOkMsg("Alumno encontrado. Verificá y registrá el pago.");
+      setValue("documento", doc);
+    } catch (e) {
+      setError(
+        e?.response?.data?.mensaje || e?.message || "Error buscando alumno"
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  // ✅ Registrar pago (solo si hay alumno confirmado)
+  async function onSubmit(values) {
+    limpiarMensajes();
+
+    if (!alumno?.alumno_id) {
+      setError("Primero buscá y confirmá el alumno por DNI.");
+      return;
+    }
+
+    const doc = String(values.documento ?? "").replace(/[.\s]/g, "").trim();
+    const monto = Number(values.monto_pagado);
+
+    if (!doc || !/^\d+$/.test(doc)) {
+      setError("DNI inválido (solo números)");
+      return;
+    }
+    if (!values.tipo_plan_id) {
       setError("Seleccioná un plan");
       return;
     }
-    const monto = Number(montoPagado);
     if (!Number.isFinite(monto) || monto <= 0) {
       setError("Monto inválido");
       return;
     }
-    if (!metodoPago?.trim()) {
+    if (!String(values.metodo_pago ?? "").trim()) {
       setError("Método de pago obligatorio");
       return;
     }
@@ -68,9 +143,9 @@ export default function RegistrarPagoPage() {
     try {
       const r = await registrarPago({
         documento: doc,
-        tipo_plan_id: Number(tipoPlanId),
+        tipo_plan_id: Number(values.tipo_plan_id),
         monto_pagado: monto,
-        metodo_pago: metodoPago.trim(),
+        metodo_pago: String(values.metodo_pago).trim(),
       });
 
       if (!r?.ok) {
@@ -78,186 +153,177 @@ export default function RegistrarPagoPage() {
         return;
       }
 
-      setOkMsg(r.mensaje || "Pago registrado");
-      setResultado(r);
+      // ✅ guardar resultado y abrir modal
+      setUltimoPago(r);
+      setModalOpen(true);
 
-      // opcional: limpiar monto para siguiente
-      // setMontoPagado("");
-    } catch (e2) {
-      setError(e2?.response?.data?.mensaje || e2?.message || "Error inesperado");
+      // ✅ limpiar formulario (modo seguro: limpiar TODO)
+      limpiarFormularioCompleto();
+      setOkMsg(null);
+    } catch (e) {
+      setError(e?.response?.data?.mensaje || e?.message || "Error inesperado");
     } finally {
       setCargando(false);
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="mx-auto w-full max-w-4xl">
-        <div className="rounded-3xl border bg-white shadow-sm p-5 md:p-6">
-          {/* Header */}
-          <div className="flex flex-col gap-2">
-            <div className="inline-flex items-center gap-2 rounded-full bg-green-600/10 px-4 py-1 text-sm font-semibold text-green-700 w-fit">
-              <CreditCard size={16} />
-              Pagos
-            </div>
-            <h1 className="text-2xl md:text-3xl font-extrabold">Registrar pago</h1>
-            <p className="text-sm text-gray-600">
-              Registrá un pago y generá el plan en <code className="px-1 rounded bg-gray-100">gym_fecha_disponible</code>.
-            </p>
+    <>
+      <div className="min-h-screen bg-gray-50 p-4 flex justify-center items-start">
+        <FormCard
+          titulo="Registrar pago"
+          subtitulo="Primero buscá al alumno por DNI. Luego registrá el pago."
+        >
+          <div className="space-y-3">
+            <FormError message={error} />
+            {okMsg ? (
+              <div className="rounded-xl bg-green-50 p-3 text-sm text-green-700 text-center">
+                {okMsg}
+              </div>
+            ) : null}
           </div>
 
-          {/* Mensajes */}
-          {error && (
-            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-700 flex items-start gap-2">
-              <XCircle size={18} className="mt-0.5" />
-              <div>{error}</div>
-            </div>
-          )}
-          {okMsg && (
-            <div className="mt-4 rounded-2xl border border-green-200 bg-green-50 p-4 text-sm text-green-700 flex items-start gap-2">
-              <CheckCircle2 size={18} className="mt-0.5" />
-              <div>{okMsg}</div>
-            </div>
-          )}
+          {/* ✅ BUSQUEDA ALUMNO */}
+          <div className="mt-5 flex flex-col gap-3 justify-center items-center">
+            <InputField
+              label="DNI"
+              name="documento"
+              register={register}
+              error={errors.documento?.message}
+              placeholder="Ej: 35123456"
+              inputMode="numeric"
+              autoComplete="off"
+              className="font-bold text-2xl tracking-wide text-gray-800 text-center"
+            />
 
-          {/* Form */}
-          <form onSubmit={onSubmit} className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Field label="DNI">
-              <div className="flex items-center gap-2 rounded-2xl border px-3 py-2">
-                <Search size={18} className="text-gray-500" />
-                <input
-                  value={documento}
-                  onChange={(e) => setDocumento(e.target.value)}
-                  placeholder="Ej: 35123456"
-                  className="w-full outline-none"
-                  inputMode="numeric"
-                />
+            <SubmitButton
+              type="button"
+              onClick={buscarAlumno}
+              loading={cargando}
+              label="Buscar alumno"
+              loadingLabel="Buscando..."
+              className="w-40 "
+            />
+          </div>
+
+          {/* ✅ Preview alumno */}
+          {alumno && (
+            <div className="mt-5 rounded-2xl border bg-white p-4">
+              <div className="text-sm font-semibold text-gray-700">Alumno</div>
+              <div className="mt-1 text-lg font-extrabold">
+                {alumno.apellido} {alumno.nombre}
               </div>
-            </Field>
+              <div className="mt-1 text-sm text-gray-600">
+                DNI: {alumno.documento} · Estado:{" "}
+                <b>{alumno.estado_desc || alumno.estado_id}</b>
+              </div>
 
-            <Field label="Plan">
-              <div className="flex gap-2">
-                <select
-                  value={tipoPlanId}
-                  onChange={(e) => setTipoPlanId(e.target.value)}
-                  className="w-full rounded-2xl border px-3 py-2"
-                >
-                  <option value="">Seleccionar plan...</option>
-                  {planes.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.descripcion}
-                    </option>
-                  ))}
-                </select>
+              <div className="mt-3 text-sm">
+                {planVigente ? (
+                  <div className="rounded-xl border p-3">
+                    <div>
+                      <b>Plan vigente:</b> {planVigente.tipo_desc || "—"}
+                    </div>
+                    <div>
+                      <b>Vence:</b> {planVigente.fin}
+                    </div>
+                    <div>
+                      <b>Ingresos:</b> {planVigente.ingresos_disponibles ?? "—"}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-gray-600">Sin plan vigente.</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ✅ FORM PAGO */}
+          <form
+            onSubmit={handleSubmit(onSubmit)}
+            className="mt-5 flex flex-col  grid-cols-1 gap-3 " 
+          >
+            <SelectField
+              label="Plan"
+              name="tipo_plan_id"
+              register={register}
+              error={errors.tipo_plan_id?.message}
+              options={planes} // [{value,label,...}]
+              placeholder="Seleccionar plan..."
+              disabledVisual={!alumno}
+            />
+
+            {!planes.length && (
+              <p className="text-xs text-gray-500">
+                No hay planes cargados (revisá /catalogos -&gt; tiposPlan).
+              </p>
+            )}
+
+            <InputField
+              label="Monto pagado (ARS)"
+              name="monto_pagado"
+              register={register}
+              error={errors.monto_pagado?.message}
+              placeholder="Ej: 15000"
+              inputMode="decimal"
+            />
+
+            <SelectField
+              label="Método de pago"
+              name="metodo_pago"
+              register={register}
+              options={[
+                { value: "efectivo", label: "Efectivo" },
+                { value: "transferencia", label: "Transferencia" },
+                { value: "debito", label: "Débito" },
+                { value: "credito", label: "Crédito" },
+                { value: "mercadopago", label: "MercadoPago" },
+              ]}
+              disabledVisual={!alumno}
+            />
+            <div className="flex flex-col gap-3 justify-center items-center">
+                <SubmitButton
+                  label={alumno ? "Registrar pago" : "Buscá un alumno primero"}
+                  loading={cargando}
+                  loadingLabel="Registrando..."
+                  disabled={!alumno}
+                  className="w-40"
+                />
 
                 <button
-                  type="button"
-                  onClick={cargarPlanes}
-                  disabled={cargandoPlanes}
-                  className="rounded-2xl border px-4 py-2 font-semibold disabled:opacity-50"
-                  title="Recargar planes"
+                  type="button "
+                  className="w-24 rounded-xl border px-4 py-3 font-semibold"
+                  onClick={() => {
+                    limpiarMensajes();
+                    limpiarFormularioCompleto();
+                  }}
                 >
-                  <RefreshCw size={16} className={cargandoPlanes ? "animate-spin" : ""} />
+                  Limpiar
                 </button>
-              </div>
 
-              {!planes.length && (
-                <p className="mt-2 text-xs text-gray-500">
-                  No hay planes cargados (revisar endpoint de catálogo).
-                </p>
-              )}
-            </Field>
-
-            <Field label="Monto pagado (ARS)">
-              <input
-                value={montoPagado}
-                onChange={(e) => setMontoPagado(e.target.value)}
-                placeholder="Ej: 15000"
-                className="w-full rounded-2xl border px-3 py-2 outline-none"
-                inputMode="decimal"
-              />
-            </Field>
-
-            <Field label="Método de pago">
-              <select
-                value={metodoPago}
-                onChange={(e) => setMetodoPago(e.target.value)}
-                className="w-full rounded-2xl border px-3 py-2"
-              >
-                <option value="efectivo">Efectivo</option>
-                <option value="transferencia">Transferencia</option>
-                <option value="debito">Débito</option>
-                <option value="credito">Crédito</option>
-                <option value="mercadopago">MercadoPago</option>
-              </select>
-            </Field>
-
-            <div className="md:col-span-2">
-              <button
-                type="submit"
-                disabled={cargando}
-                className="w-full rounded-2xl bg-black text-white px-4 py-3 font-extrabold disabled:opacity-50"
-              >
-                {cargando ? "Registrando..." : "Registrar pago"}
-              </button>
             </div>
+
+            
           </form>
-
-          {/* Resultado */}
-          {resultado?.ok && (
-            <div className="mt-6 rounded-3xl border bg-white p-5">
-              <h2 className="text-lg font-extrabold">Detalle</h2>
-
-              <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-3">
-                <MiniStat label="Alumno" value={`${resultado.alumno.apellido} ${resultado.alumno.nombre}`} />
-                <MiniStat label="DNI" value={String(resultado.alumno.documento)} />
-                <MiniStat label="Estado" value="Habilitado" />
-              </div>
-
-              <div className="mt-4 rounded-2xl border p-4">
-                <div className="text-sm font-semibold">Plan generado</div>
-                <div className="mt-2 text-sm text-gray-700">
-                  <div><b>Plan:</b> {resultado.plan.tipo_plan_descripcion}</div>
-                  <div><b>Inicio:</b> {resultado.plan.inicio}</div>
-                  <div><b>Fin:</b> {resultado.plan.fin}</div>
-                  <div><b>Ingresos disponibles:</b> {resultado.plan.ingresos_disponibles}</div>
-                  <div><b>Monto:</b> {money(resultado.pago.monto_pagado)}</div>
-                  <div><b>Método:</b> {resultado.pago.metodo_pago}</div>
-                </div>
-              </div>
-
-              {resultado.info?.tenia_plan_vigente && (
-                <p className="mt-3 text-xs text-gray-500">
-                  Nota: el alumno ya tenía un plan vigente. Este pago se programó desde el día siguiente al fin del plan vigente.
-                </p>
-              )}
-            </div>
-          )}
-        </div>
+        </FormCard>
       </div>
-    </div>
-  );
-}
 
-function Field({ label, children }) {
-  return (
-    <div>
-      <div className="text-xs text-gray-500 mb-1">{label}</div>
-      {children}
-    </div>
+      {/* ✅ MODAL ÉXITO */}
+      <PagoSuccessModal
+        open={modalOpen}
+        persona={{
+          nombre: ultimoPago?.alumno?.nombre,
+          apellido: ultimoPago?.alumno?.apellido,
+          documento: ultimoPago?.alumno?.documento,
+        }}
+        alumno={{ alumno_id: ultimoPago?.alumno?.alumno_id }}
+        delayMs={4500}
+        onFinish={() => {
+          setModalOpen(false);
+          setUltimoPago(null);
+          limpiarMensajes();
+        }}
+      />
+    </>
   );
-}
-
-function MiniStat({ label, value }) {
-  return (
-    <div className="rounded-2xl border bg-white p-4">
-      <div className="text-xs text-gray-500">{label}</div>
-      <div className="mt-1 text-lg font-extrabold">{value}</div>
-    </div>
-  );
-}
-
-function money(v) {
-  const n = Number(v || 0);
-  return n.toLocaleString("es-AR", { style: "currency", currency: "ARS" });
 }

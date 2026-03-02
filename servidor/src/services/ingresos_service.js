@@ -1,36 +1,31 @@
-import { Op } from "sequelize";
+import { Op, QueryTypes } from "sequelize";
 import { sequelize } from "../database/sequelize.js";
 import {
   GymPersona,
   GymAlumno,
   GymFechaDisponible,
-  GymDiaIngreso,
   GymCatTipoPlan,
 } from "../models/index.js";
 
-const ESTADO_HABILITADO = 1;
 const ESTADO_RESTRINGIDO = 2;
 
 const normalizarDocumento = (doc) => String(doc).replace(/[.\s]/g, "").trim();
-const hoyISO = () => new Date().toISOString().slice(0, 10);
 
-function inicioDelDia(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-function inicioManiana(d) {
-  const x = inicioDelDia(d);
-  x.setDate(x.getDate() + 1);
-  return x;
+/**
+ * YYYY-MM-DD en Argentina (para comparar con gym_fecha_inicio/fin)
+ */
+function hoyArgentinaISO() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Argentina/Buenos_Aires",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
 }
 
 export async function registrarIngresoPorDni({ dni }) {
-  
   const dniNormalizado = normalizarDocumento(dni);
-  const hoy = hoyISO();
-  const ahora = new Date();
-  console.log("Dni Normalizado:", dniNormalizado)
+  const hoy = hoyArgentinaISO();
 
   return sequelize.transaction(async (t) => {
     // 1) Persona
@@ -54,7 +49,7 @@ export async function registrarIngresoPorDni({ dni }) {
       return { ok: false, codigo: "NO_ES_ALUMNO", mensaje: "La persona existe pero no es alumno" };
     }
 
-    // 2.1 Restringido
+    // Restringido
     if (alumno.gym_alumno_rela_estadoalumno === ESTADO_RESTRINGIDO) {
       return {
         ok: false,
@@ -64,7 +59,7 @@ export async function registrarIngresoPorDni({ dni }) {
       };
     }
 
-    // 3) Plan vigente (SIN include, porque rompe con FOR UPDATE)
+    // 3) Plan vigente (lock)
     const planVigente = await GymFechaDisponible.findOne({
       where: {
         gym_fecha_rela_alumno: alumno.gym_alumno_id,
@@ -88,35 +83,10 @@ export async function registrarIngresoPorDni({ dni }) {
       };
     }
 
-    // // 3.1 Evitar doble ingreso en el día para ese plan
-    // const desde = inicioDelDia(ahora);
-    // const hasta = inicioManiana(ahora);
-
-    // const yaIngreso = await GymDiaIngreso.findOne({
-    //   where: {
-    //     gym_dia_rela_fecha: planVigente.gym_fecha_id,
-    //     gym_dia_fechaingreso: { [Op.gte]: desde, [Op.lt]: hasta },
-    //   },
-    //   transaction: t,
-    //   lock: t.LOCK.UPDATE,
-    // });
-
-    // if (yaIngreso) {
-    //   return {
-    //     ok: false,
-    //     codigo: "YA_INGRESO_HOY",
-    //     mensaje: "El alumno ya registró ingreso hoy",
-    //     alumno: { alumno_id: alumno.gym_alumno_id },
-    //     plan: { fecha_id: planVigente.gym_fecha_id },
-    //   };
-    // }
-
-    // 4) Validar ingresos (se descuenta siempre)
-    const ingresosDisp = planVigente.gym_fecha_ingresosdisponibles;
-    const ingresosActuales = Number.isFinite(ingresosDisp) ? ingresosDisp : 0;
+    // 4) Validar ingresos
+    const ingresosActuales = Number(planVigente.gym_fecha_ingresosdisponibles || 0);
 
     if (ingresosActuales <= 0) {
-      // restringimos al alumno y rechazamos
       await alumno.update(
         { gym_alumno_rela_estadoalumno: ESTADO_RESTRINGIDO },
         { transaction: t }
@@ -131,25 +101,55 @@ export async function registrarIngresoPorDni({ dni }) {
       };
     }
 
-    // 5) Insert ingreso
-    await GymDiaIngreso.create(
+    // ✅ 5) Insert ingreso: LA HORA LA PONE POSTGRES (Argentina)
+    const [rows] = await sequelize.query(
+      `
+      INSERT INTO gym_dia_ingreso (
+        gym_dia_rela_fecha,
+        gym_dia_fechaingreso,
+        gym_dia_horaingreso,
+        gym_dia_fechacambio
+      )
+      VALUES (
+        :fecha_id,
+        CURRENT_DATE,
+        (now() AT TIME ZONE 'America/Argentina/Buenos_Aires'),
+        (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')
+      )
+      RETURNING
+        gym_dia_id,
+        gym_dia_fechaingreso,
+        gym_dia_horaingreso,
+        gym_dia_fechacambio
+      `,
       {
-        gym_dia_rela_fecha: planVigente.gym_fecha_id,
-        gym_dia_fechaingreso: ahora,
-        gym_dia_fechacambio: ahora,
-      },
-      { transaction: t }
+        replacements: { fecha_id: planVigente.gym_fecha_id },
+        type: QueryTypes.INSERT,
+        transaction: t,
+      }
     );
 
-    // 6) Descontar
+    // En postgres con sequelize suele venir: rows[0] = objeto
+    const ingresoDB = Array.isArray(rows) ? rows[0] : rows;
+
+    // 6) Descontar ingresos (y fecha cambio con PG también)
     const ingresosRestantes = ingresosActuales - 1;
 
-    await planVigente.update(
+    await sequelize.query(
+      `
+      UPDATE gym_fecha_disponible
+      SET gym_fecha_ingresosdisponibles = :restantes,
+          gym_fecha_fechacambio = (now() AT TIME ZONE 'America/Argentina/Buenos_Aires')
+      WHERE gym_fecha_id = :fecha_id
+      `,
       {
-        gym_fecha_ingresosdisponibles: ingresosRestantes,
-        gym_fecha_fechacambio: ahora,
-      },
-      { transaction: t }
+        replacements: {
+          restantes: ingresosRestantes,
+          fecha_id: planVigente.gym_fecha_id,
+        },
+        type: QueryTypes.UPDATE,
+        transaction: t,
+      }
     );
 
     // 7) Si quedó 0 => restringido
@@ -163,7 +163,7 @@ export async function registrarIngresoPorDni({ dni }) {
       estadoFinal = ESTADO_RESTRINGIDO;
     }
 
-    // 8) Traer tipo plan (sin lock)
+    // 8) Tipo plan (sin lock)
     let tipoPlanDesc = null;
     if (planVigente.gym_fecha_rela_tipoplan) {
       const tipoPlan = await GymCatTipoPlan.findByPk(planVigente.gym_fecha_rela_tipoplan, {
@@ -193,7 +193,8 @@ export async function registrarIngresoPorDni({ dni }) {
         tipo_plan: tipoPlanDesc,
         ingresos_restantes: ingresosRestantes,
       },
-      fecha_ingreso: ahora.toISOString(),
+      // ✅ devolvemos lo que guardó PG
+      fecha_ingreso: ingresoDB?.gym_dia_horaingreso ?? null,
     };
   });
 }
