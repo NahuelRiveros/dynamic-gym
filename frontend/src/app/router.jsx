@@ -7,8 +7,9 @@ import HomePage from "../components/home_page.jsx";
 import KioskPage from "../pages/kiosk_page.jsx";
 import LoginPage from "../pages/login_page.jsx";
 import RegisterAlumnoPage from "../pages/register_page.jsx";
-import RecaudacionCalendario from "../pages/estadisticas/Recaudaciones_mensual_page.jsx";
-import RecaudacionCalendarioDia from "../pages/estadisticas/Recaudacion_mes_page.jsx";
+import RecaudacionCalendario from "../pages/estadisticas/recaudaciones_mensual_page.jsx";
+import RecaudacionCalendarioDia from "../pages/estadisticas/recaudacion_mes_page.jsx";
+import AlumnosNuevosPage from "../pages/estadisticas/alumnos_nuevos.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -43,6 +44,8 @@ export const router = createBrowserRouter([
       </AppLayout>
     ),
   },
+
+  //ESTADISTICAS
   {
     path: "/estadisticas/recaudaciones-mensual",
     element: (
@@ -59,6 +62,16 @@ export const router = createBrowserRouter([
       <AppLayout>
         <ProtectedRoute>
           <RecaudacionCalendarioDia />
+        </ProtectedRoute>
+      </AppLayout>
+    ),
+  },
+    {
+    path: "/admin/estadisticas/alumnos-nuevos",
+    element: (
+      <AppLayout>
+        <ProtectedRoute roles={["admin"]}>
+          <AlumnosNuevosPage />
         </ProtectedRoute>
       </AppLayout>
     ),
