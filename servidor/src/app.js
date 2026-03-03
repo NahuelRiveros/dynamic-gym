@@ -24,7 +24,19 @@ export function createApp() {
   // ✅ PONER ANTES DE routes
   app.get("/", (_req, res) => res.send("API Dynamic Gym OK"));
   app.get("/health", (_req, res) => res.json({ ok: true, status: "up" }));
+  app.get("/debug/db", async (_req, res) => {
+    const [r] = await sequelize.query("select now() as ahora");
+    res.json({ ok: true, r });
+  });
 
+  app.get("/debug/personas", async (_req, res) => {
+      try {
+        const [rows] = await sequelize.query("SELECT COUNT(*) FROM gym_persona");
+        res.json({ ok: true, total_personas: rows[0].count });
+      } catch (error) {
+        res.status(500).json({ ok: false, error: error.message });
+      }
+    });
   // Rutas API
   app.use(routes);
 
