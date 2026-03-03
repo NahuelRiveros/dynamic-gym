@@ -11,7 +11,7 @@ export async function getAlumnosListado(params = {}) {
 }
 
 export async function getAlumnoDetalle(id) {
-  const r = await http.get(`/alumnos/${id}`);
+  const r = await http.get(`/alumnos/detalle/${id}`);
   return r.data;
 }
 

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getAlumnosListado , actualizarEstadosAlumnos} from "../../api/alumnos_api";
 import { Search, RefreshCw, Users, ChevronLeft, ChevronRight } from "lucide-react";
 import { formatearFechaAR } from "../../components/form/formatear_fecha";
+import SubmitButton from "../../components/form/submit_button";
 export default function ListaAlumnosPage() {
   const nav = useNavigate();
 
@@ -83,7 +84,7 @@ export default function ListaAlumnosPage() {
   }, [pag, items]);
 
   function irDetalle(alumnoId) {
-    nav(`/admin/alumnos/${alumnoId}`);
+    nav(`/admin/estadisticas/alumnos/${alumnoId}`);
   }
 
   function estadoBadge(estadoDesc) {
@@ -137,15 +138,16 @@ export default function ListaAlumnosPage() {
               </p>
             </div>
 
-            <button
+            <SubmitButton
               type="button"
               onClick={() => actualizarYRecargar()}
               disabled={cargando}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-black text-white px-4 py-2 font-semibold disabled:opacity-50"
+              className="bg-green-800"
+              
             >
               <RefreshCw size={16} className={cargando ? "animate-spin" : ""} />
               {cargando ? "Cargando..." : "Actualizar"}
-            </button>
+            </SubmitButton>
           </div>
 
           {/* Filtros */}
@@ -270,13 +272,13 @@ export default function ListaAlumnosPage() {
                         {it.ingresos_disponibles ?? "—"}
                       </td>
                       <td className="py-4 pr-3 text-right">
-                        <button
+                        <SubmitButton
                           type="button"
                           onClick={() => irDetalle(it.gym_alumno_id)}
-                          className="rounded-2xl bg-black text-white px-4 py-2 font-semibold"
+                          className="bg-green-800"
                         >
                           Ver
-                        </button>
+                        </SubmitButton>
                       </td>
                     </tr>
                   ))
@@ -298,25 +300,25 @@ export default function ListaAlumnosPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <button
+              <SubmitButton
                 type="button"
                 onClick={() => setPage((x) => Math.max(1, x - 1))}
                 disabled={pag.page <= 1}
-                className="inline-flex items-center gap-2 rounded-2xl border px-4 py-2 font-semibold disabled:opacity-40"
+                className="bg-green-800"
               >
                 <ChevronLeft size={16} />
                 Anterior
-              </button>
+              </SubmitButton>
 
-              <button
+              <SubmitButton
                 type="button"
                 onClick={() => setPage((x) => Math.min(pag.totalPages || x + 1, x + 1))}
                 disabled={pag.page >= (pag.totalPages || 1)}
-                className="inline-flex items-center gap-2 rounded-2xl border px-4 py-2 font-semibold disabled:opacity-40"
+                className="bg-green-800"
               >
                 Siguiente
                 <ChevronRight size={16} />
-              </button>
+              </SubmitButton>
             </div>
           </div>
 

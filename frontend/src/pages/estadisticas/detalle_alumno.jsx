@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { getAlumnoDetalle } from "../../api/alumnos_api";
 import { ArrowLeft, BadgeCheck, Ban, CreditCard, RefreshCw } from "lucide-react";
+import SubmitButton from "../../components/form/submit_button";
+import Card from "../../components/form/card"; // ✅ tu Card nueva
+import { formatearFechaAR } from "../../components/form/formatear_fecha";
 
 export default function DetalleAlumnoPage() {
   const { id } = useParams();
@@ -16,6 +19,7 @@ export default function DetalleAlumnoPage() {
     setError(null);
     try {
       const r = await getAlumnoDetalle(id);
+
       if (!r?.ok) {
         setError(r?.mensaje || "No se pudo cargar el alumno");
         setData(null);
@@ -45,6 +49,8 @@ export default function DetalleAlumnoPage() {
     return t.includes("restring") || t.includes("bloq") || t.includes("inactiv");
   }, [alumno]);
 
+  const loadingCards = cargando && !data;
+
   return (
     <div className="min-h-screen bg-gray-50 p-4">
       <div className="mx-auto w-full max-w-6xl">
@@ -52,16 +58,16 @@ export default function DetalleAlumnoPage() {
           {/* Header */}
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <div className="flex items-start gap-3">
-              <button
+              <SubmitButton
                 type="button"
                 onClick={() => nav(-1)}
-                className="rounded-2xl border px-4 py-2 font-semibold"
+                className="bg-green-800"
               >
                 <span className="inline-flex items-center gap-2">
                   <ArrowLeft size={16} />
                   Volver
                 </span>
-              </button>
+              </SubmitButton>
 
               <div>
                 <h1 className="text-2xl md:text-3xl font-extrabold">
@@ -69,22 +75,22 @@ export default function DetalleAlumnoPage() {
                     ? `${alumno.gym_persona_apellido} ${alumno.gym_persona_nombre}`
                     : "Detalle de alumno"}
                 </h1>
-                <p className="mt-1 text-sm text-gray-600">
+                <p className="mt-1 text-sm text-gray-600 font-bold">
                   DNI: {alumno?.gym_persona_documento || "—"} · Email:{" "}
                   {alumno?.gym_persona_email || "—"}
                 </p>
               </div>
             </div>
 
-            <button
+            <SubmitButton
               type="button"
               onClick={cargar}
               disabled={cargando}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-black text-white px-4 py-2 font-semibold disabled:opacity-50"
+              className="bg-green-800"
             >
               <RefreshCw size={16} className={cargando ? "animate-spin" : ""} />
               {cargando ? "Cargando..." : "Actualizar"}
-            </button>
+            </SubmitButton>
           </div>
 
           {/* Error */}
@@ -97,49 +103,68 @@ export default function DetalleAlumnoPage() {
           {/* Cards principales */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
             <Card
-              titulo="Estado"
-              icono={restringido ? <Ban size={18} /> : <BadgeCheck size={18} />}
-              valor={alumno?.estado_desc || "—"}
-              subtitulo={restringido ? "Restringido" : "Habilitado"}
-              tono={restringido ? "danger" : "ok"}
+              title="Estado"
+              icon={restringido ? <Ban size={18} /> : <BadgeCheck size={18} />}
+              value={alumno?.estado_desc || "—"}
+              subtitle={restringido ? "Restringido" : "Habilitado"}
+              tone={restringido ? "danger" : "ok"}
+              loading={loadingCards}
             />
 
             <Card
-              titulo="Plan actual"
-              icono={<CreditCard size={18} />}
-              valor={planActual?.tipoplan_desc || "—"}
-              subtitulo={
+              title="Plan actual"
+              icon={<CreditCard size={18} />}
+              value={planActual?.tipoplan_desc || "—"}
+              subtitle={
                 planActual?.fin
-                  ? `Vence: ${String(planActual.fin).slice(0, 10)}`
+                  ? `Vence: ${formatearFechaAR(String(planActual.fin).slice(0, 10))}`
                   : "Sin plan"
               }
+              tone={planActual?.vigente_hoy ? "info" : "default"}
+              loading={loadingCards}
             />
 
             <Card
-              titulo="Ingresos disponibles"
-              icono={<CreditCard size={18} />}
-              valor={
+              title="Ingresos disponibles"
+              icon={<CreditCard size={18} />}
+              value={
                 planActual?.ingresos_disponibles != null
                   ? String(planActual.ingresos_disponibles)
                   : "—"
               }
-              subtitulo={planActual?.vigente_hoy ? "Plan vigente hoy" : "No vigente hoy"}
+              subtitle={planActual?.vigente_hoy ? "Plan vigente hoy" : "No vigente hoy"}
+              tone={
+                planActual?.vigente_hoy && Number(planActual?.ingresos_disponibles ?? 0) > 0
+                  ? "ok"
+                  : "danger"
+              }
+              loading={loadingCards}
             />
           </div>
 
           {/* Resumen pagos */}
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-3">
-            <MiniStat label="Cantidad de planes/pagos" value={String(resumen?.total_pagos ?? planes.length)} />
-            <MiniStat label="Total recaudado" value={money(resumen?.total_recaudado ?? 0)} />
-            <MiniStat label="Último pago (aprox)" value={resumen?.ultimo_pago_fecha || (planes?.[0]?.inicio ? String(planes[0].inicio).slice(0,10) : "—")} />
+            <MiniStat
+              label="Cantidad de planes/pagos"
+              value={String(resumen?.total_pagos ?? planes.length)}
+            />
+            <MiniStat
+              label="Total recaudado"
+              value={money(resumen?.total_recaudado ?? 0)}
+            />
+            <MiniStat
+              label="Último pago (aprox)"
+              value={
+                resumen?.ultimo_pago_fecha ||
+                (planes?.[0]?.inicio ? String(planes[0].inicio).slice(0, 10) : "—")
+              }
+            />
           </div>
 
           {/* Historial de planes/pagos */}
           <div className="mt-6">
             <h2 className="text-lg font-extrabold">Historial de planes / pagos</h2>
-            <p className="text-sm text-gray-600 mt-1">
-              Cada registro sale de <code className="px-1 rounded bg-gray-100">gym_fecha_disponible</code>.
-            </p>
+            <p className="text-sm text-gray-600 mt-1">Pagos hechos por el alumno</p>
 
             <div className="mt-4 overflow-x-auto">
               <table className="w-full text-sm">
@@ -208,29 +233,6 @@ export default function DetalleAlumnoPage() {
 
         </div>
       </div>
-    </div>
-  );
-}
-
-/* UI helpers */
-function Card({ titulo, valor, subtitulo, icono, tono }) {
-  const toneClass =
-    tono === "danger"
-      ? "bg-red-50 border-red-200 text-red-700"
-      : tono === "ok"
-      ? "bg-green-50 border-green-200 text-green-700"
-      : "bg-white border-gray-200 text-gray-700";
-
-  return (
-    <div className="rounded-2xl border p-4 bg-white">
-      <div className="flex items-center justify-between">
-        <div className="text-xs text-gray-500">{titulo}</div>
-        <div className={`h-9 w-9 rounded-2xl border flex items-center justify-center ${toneClass}`}>
-          {icono}
-        </div>
-      </div>
-      <div className="mt-2 text-lg font-extrabold">{valor}</div>
-      <div className="mt-1 text-xs text-gray-500">{subtitulo}</div>
     </div>
   );
 }
