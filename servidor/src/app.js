@@ -30,14 +30,11 @@ export function createApp() {
     res.json({ ok: true, r });
   });
 
-  app.get("/debug/personas", async (_req, res) => {
-      try {
-        const [rows] = await sequelize.query("SELECT COUNT(*) FROM gym_persona");
-        res.json({ ok: true, total_personas: rows[0].count });
-      } catch (error) {
-        res.status(500).json({ ok: false, error: error.message });
-      }
-    });
+  app.get("/debug/usuario-admin", async (_req, res) => {
+    const persona = await GymPersona.findOne({ where: { gym_persona_email: "admin@gym.com" } });
+    const usuario = await GymUsuario.findOne({ where: { gym_usuario_rela_persona: persona?.gym_persona_id } });
+    res.json({ persona_id: persona?.gym_persona_id, usuario });
+  });
   // Rutas API
   app.use(routes);
 

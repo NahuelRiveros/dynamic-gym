@@ -32,41 +32,44 @@ export async function login({ email, password }) {
   const emailNorm = safeStr(email).toLowerCase();
   const pass = safeStr(password);
 
-  if (!emailNorm || !pass) {
-    return { ok: false, codigo: "FALTAN_DATOS", mensaje: "Email y contraseña son obligatorios" };
-  }
+  console.log("🔐 Intento login:", emailNorm);
 
-  // 1) Persona por email
   const persona = await GymPersona.findOne({
     where: { gym_persona_email: emailNorm },
   });
+
+  console.log("👤 Persona encontrada:", persona ? persona.gym_persona_id : null);
 
   if (!persona) {
     return { ok: false, codigo: "CREDENCIALES_INVALIDAS", mensaje: "Email o contraseña incorrectos" };
   }
 
-  // 2) Usuario asociado a esa persona
   const usuario = await GymUsuario.findOne({
     where: { gym_usuario_rela_persona: persona.gym_persona_id },
   });
+
+  console.log("🧑 Usuario encontrado:", usuario ? usuario.gym_usuario_id : null);
 
   if (!usuario) {
     return { ok: false, codigo: "SIN_USUARIO", mensaje: "La persona no tiene usuario habilitado" };
   }
 
-  // 3) Activo
+  console.log("🟢 Usuario activo:", usuario.gym_usuario_activo);
+
   if (usuario.gym_usuario_activo === false) {
     return { ok: false, codigo: "USUARIO_INACTIVO", mensaje: "Usuario inactivo" };
   }
 
-  // 4) Validar bcrypt
   const hash = usuario.gym_usuario_contrasena ?? "";
   const valido = await bcrypt.compare(pass, hash);
+
+  console.log("🔑 Password válido:", valido);
 
   if (!valido) {
     return { ok: false, codigo: "CREDENCIALES_INVALIDAS", mensaje: "Email o contraseña incorrectos" };
   }
 
+  console.log("✅ LOGIN OK para:", emailNorm);
   // 5) Roles
   const rolesRows = await usuario.getGymRols({
     attributes: ["gym_rol_codigo"],
