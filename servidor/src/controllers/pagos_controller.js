@@ -33,6 +33,7 @@ export async function registrarPago(req, res, next) {
   try {
     const { documento, tipo_plan_id, monto_pagado, metodo_pago } = req.body;
 
+    console.log(req.body)
     // ✅ Validaciones básicas
     if (!documento || typeof documento !== "string") {
       return res.status(400).json({

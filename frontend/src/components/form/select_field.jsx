@@ -7,6 +7,7 @@ export default function SelectField({
   placeholder = "Seleccionar...",
   fijoValue,
   disabledVisual = false,
+  asNumber = false, // ✅ nuevo: si true => number, si false => string
 }) {
   return (
     <div>
@@ -17,7 +18,12 @@ export default function SelectField({
       )}
 
       <select
-        {...register(name, { valueAsNumber: true })}
+        {...register(
+          name,
+          asNumber
+            ? { valueAsNumber: true }
+            : { setValueAs: (v) => String(v ?? "").trim() } // ✅ fuerza string
+        )}
         defaultValue={fijoValue ?? ""}
         className={[
           "text-black mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring",

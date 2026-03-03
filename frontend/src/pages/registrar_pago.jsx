@@ -10,6 +10,7 @@ import FormError from "../components/form/form_error";
 import InputField from "../components/form/input_field";
 import SelectField from "../components/form/select_field";
 import SubmitButton from "../components/form/submit_button";
+import { formatearFechaAR } from "../components/form/formatear_fecha.js";
 
 export default function RegistrarPagoPage() {
   const [planes, setPlanes] = useState([]);
@@ -37,7 +38,7 @@ export default function RegistrarPagoPage() {
       documento: "",
       tipo_plan_id: "",
       monto_pagado: "",
-      metodo_pago: "efectivo",
+      metodo_pago: "EFECTIVO",
     },
   });
 
@@ -54,7 +55,7 @@ export default function RegistrarPagoPage() {
     setValue("documento", "");
     setValue("tipo_plan_id", "");
     setValue("monto_pagado", "");
-    setValue("metodo_pago", "efectivo");
+    setValue("metodo_pago", "EFECTIVO");
   }
 
   async function cargarPlanes() {
@@ -96,9 +97,10 @@ export default function RegistrarPagoPage() {
         setError(r?.mensaje || "No se pudo buscar el alumno");
         return;
       }
+      console.log(r)
 
       setAlumno(r.alumno);
-      setPlanVigente(r.plan_vigente || null);
+      setPlanVigente(r.ultimo_pago || null);
       setOkMsg("Alumno encontrado. Verificá y registrá el pago.");
       setValue("documento", doc);
     } catch (e) {
@@ -113,6 +115,8 @@ export default function RegistrarPagoPage() {
   // ✅ Registrar pago (solo si hay alumno confirmado)
   async function onSubmit(values) {
     limpiarMensajes();
+    console.log("metodo_pago raw:", values.metodo_pago, typeof values.metodo_pago);
+
 
     if (!alumno?.alumno_id) {
       setError("Primero buscá y confirmá el alumno por DNI.");
@@ -225,7 +229,7 @@ export default function RegistrarPagoPage() {
                       <b>Plan vigente:</b> {planVigente.tipo_desc || "—"}
                     </div>
                     <div>
-                      <b>Vence:</b> {planVigente.fin}
+                      <b>Vence:</b> {formatearFechaAR(planVigente.fin)}
                     </div>
                     <div>
                       <b>Ingresos:</b> {planVigente.ingresos_disponibles ?? "—"}
@@ -273,13 +277,14 @@ export default function RegistrarPagoPage() {
               name="metodo_pago"
               register={register}
               options={[
-                { value: "efectivo", label: "Efectivo" },
-                { value: "transferencia", label: "Transferencia" },
-                { value: "debito", label: "Débito" },
-                { value: "credito", label: "Crédito" },
-                { value: "mercadopago", label: "MercadoPago" },
+                { value: "EFECTIVO", label: "Efectivo" },
+                { value: "TRANSFERENCIA", label: "Transferencia" },
+                { value: "DÉBITO", label: "Débito" },
+                { value: "CRÉDITO", label: "Crédito" },
+                { value: "MERCADO PAGO", label: "Mercado Pago" },
               ]}
               disabledVisual={!alumno}
+              asNumber={false} // ✅ queda string sí o sí
             />
             <div className="flex flex-col gap-3 justify-center items-center">
                 <SubmitButton
@@ -287,7 +292,7 @@ export default function RegistrarPagoPage() {
                   loading={cargando}
                   loadingLabel="Registrando..."
                   disabled={!alumno}
-                  className="w-40"
+                  className="w-42"
                 />
 
                 <button

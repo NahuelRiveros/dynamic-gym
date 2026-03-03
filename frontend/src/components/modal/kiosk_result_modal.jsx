@@ -1,6 +1,6 @@
 import SubmitButton from "../form/submit_button";
 import { Users, IdCard, Clock9, FileCheck , Calendar1 , CalendarX} from "lucide-react";
-  
+import { formatearFechaAR } from "../form/formatear_fecha";
 
 export default function KioskResultModal({ resp, onClose }) {
   if (!resp) return null;
@@ -37,7 +37,7 @@ export default function KioskResultModal({ resp, onClose }) {
               <FileCheck className={iconClass + "text-blue-600"}/> Plan: <b className="text-xl">{plan.tipo_plan}</b>
             </div>
             <div className="">
-              <Calendar1 className={iconClass + "text-green-600"}/> Vigencia: (<b className="text-xl">{plan.inicio})</b> Hasta→ <b className="text-xl">({plan.fin})</b>
+              <Calendar1 className={iconClass + "text-green-600"}/> Vigencia: (<b className="text-xl">{formatearFechaAR(plan.inicio)})</b> Hasta→ <b className="text-xl">({formatearFechaAR(plan.fin)})</b>
             </div>
             {plan.ingresos_restantes != null && ( 
               <div>

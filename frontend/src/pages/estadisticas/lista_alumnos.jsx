@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAlumnosListado , actualizarEstadosAlumnos} from "../../api/alumnos_api";
 import { Search, RefreshCw, Users, ChevronLeft, ChevronRight } from "lucide-react";
-
+import { formatearFechaAR } from "../../components/form/formatear_fecha";
 export default function ListaAlumnosPage() {
   const nav = useNavigate();
 
@@ -264,7 +264,7 @@ export default function ListaAlumnosPage() {
                         </div>
                       </td>
                       <td className="py-4 pr-3">
-                        {it.plan_fin ? String(it.plan_fin).slice(0, 10) : "—"}
+                        {formatearFechaAR(it.plan_fin) ? formatearFechaAR(String(it.plan_fin).slice(0, 10)) : "—"}
                       </td>
                       <td className="py-4 pr-3">
                         {it.ingresos_disponibles ?? "—"}

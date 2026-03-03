@@ -1,5 +1,8 @@
+// src/services/estado_alumno_auto_service.js
 import { sequelize } from "../database/sequelize.js";
 import { QueryTypes } from "sequelize";
+
+const TZ_BA = "America/Argentina/Buenos_Aires";
 
 const ESTADO = {
   HABILITADO: 1,
@@ -7,42 +10,30 @@ const ESTADO = {
   PENDIENTE: 3,
 };
 
-// Reglas (MVP):
-// - Si NO tiene plan vigente hoy => RESTRINGIDO
-// - Si tiene plan vigente hoy pero ingresos_disponibles <= 0 => RESTRINGIDO
-// - Si tiene plan vigente hoy y (ingresos_disponibles es null o > 0) => HABILITADO
-//
-// Nota: ingresos_disponibles NULL lo tratamos como "ilimitado" (mensual por fecha).
-function calcularNuevoEstado({ tiene_plan_vigente, ingresos_disponibles }) {
-  if (!tiene_plan_vigente) return ESTADO.RESTRINGIDO;
+// ✅ Regla:
+// - HABILITADO: tiene plan ACTIVO (según tu query: fin >= hoy BA) y ingresos_disponibles > 0
+// - RESTRINGIDO: caso contrario
+function calcularNuevoEstado({ tiene_plan_activo, ingresos_disponibles }) {
+  if (!tiene_plan_activo) return ESTADO.RESTRINGIDO;
 
-  // Si el plan usa ingresos y llegó a 0 => restringido
-  if (ingresos_disponibles != null && Number(ingresos_disponibles) <= 0) {
-    return ESTADO.RESTRINGIDO;
-  }
+  const ing = Number(ingresos_disponibles ?? 0);
+  if (!Number.isFinite(ing)) return ESTADO.RESTRINGIDO;
 
-  return ESTADO.HABILITADO;
+  return ing > 0 ? ESTADO.HABILITADO : ESTADO.RESTRINGIDO;
 }
 
-function motivoCambio({ tiene_plan_vigente, ingresos_disponibles, nuevoEstado }) {
+function motivoCambio({ tiene_plan_activo, ingresos_disponibles, nuevoEstado }) {
+  const ing = Number(ingresos_disponibles ?? 0);
+
   if (nuevoEstado === ESTADO.HABILITADO) {
-    return "Cambio automático: plan vigente (habilitado)";
+    return `Cambio automático: plan activo e ingresos disponibles (${ing})`;
   }
-  // restringido
-  if (!tiene_plan_vigente) return "Cambio automático: plan vencido";
-  if (ingresos_disponibles != null && Number(ingresos_disponibles) <= 0) {
-    return "Cambio automático: sin ingresos disponibles";
-  }
-  return "Cambio automático: restricción por reglas";
+
+  if (!tiene_plan_activo) return "Cambio automático: sin plan activo (fin vencido)";
+  if (!Number.isFinite(ing)) return "Cambio automático: ingresos inválidos";
+  return "Cambio automático: sin ingresos disponibles";
 }
 
-/**
- * Actualiza estados según reglas y registra log.
- * @param {object} opts
- * @param {string} opts.fuente  ejemplo: "AUTO_CRON" | "AUTO_KIOSK" | "ADMIN_PANEL"
- * @param {string} opts.modificado_por ejemplo: "SYSTEM" o email del admin
- * @param {number} opts.limit opcional para procesar en lotes
- */
 export async function actualizarEstadosAlumnosAutomatico({
   fuente = "AUTO_CRON",
   modificado_por = "SYSTEM",
@@ -51,27 +42,32 @@ export async function actualizarEstadosAlumnosAutomatico({
   const t = await sequelize.transaction();
 
   try {
-    // Traemos alumnos + estado actual + plan vigente hoy (si existe)
-    // Usamos LATERAL para plan vigente y sus ingresos.
+    // ✅ Plan ACTIVO por tu regla actual: fin >= hoy BA
+    // Elegimos el más reciente por ID DESC
     const sql = `
       SELECT
         a.gym_alumno_id AS alumno_id,
         a.gym_alumno_rela_estadoalumno AS estado_actual,
 
-        fvig.gym_fecha_id AS plan_vigente_id,
-        fvig.gym_fecha_ingresosdisponibles AS ingresos_disponibles
+        fact.gym_fecha_id AS plan_activo_id,
+        fact.gym_fecha_inicio AS plan_inicio,
+        fact.gym_fecha_fin AS plan_fin,
+        fact.gym_fecha_ingresosdisponibles AS ingresos_disponibles
       FROM gym_alumno a
+
       LEFT JOIN LATERAL (
         SELECT
           f.gym_fecha_id,
+          f.gym_fecha_inicio,
+          f.gym_fecha_fin,
           f.gym_fecha_ingresosdisponibles
         FROM gym_fecha_disponible f
         WHERE f.gym_fecha_rela_alumno = a.gym_alumno_id
-          AND f.gym_fecha_inicio <= CURRENT_DATE
-          AND f.gym_fecha_fin >= CURRENT_DATE
-        ORDER BY f.gym_fecha_fin DESC, f.gym_fecha_id DESC
+          AND f.gym_fecha_fin >= ((now() AT TIME ZONE '${TZ_BA}')::date)
+        ORDER BY f.gym_fecha_id DESC
         LIMIT 1
-      ) fvig ON TRUE
+      ) fact ON TRUE
+
       LIMIT :limit;
     `;
 
@@ -84,29 +80,29 @@ export async function actualizarEstadosAlumnosAutomatico({
     const cambios = [];
 
     for (const row of alumnos) {
-      const tiene_plan_vigente = row.plan_vigente_id != null;
+      // ✅ OJO: ahora el campo correcto es plan_activo_id
+      const tiene_plan_activo = row.plan_activo_id != null;
+
       const nuevo = calcularNuevoEstado({
-        tiene_plan_vigente,
+        tiene_plan_activo,
         ingresos_disponibles: row.ingresos_disponibles,
       });
 
       const anterior = Number(row.estado_actual);
-
-      // Si no cambia, no hacemos nada
       if (anterior === nuevo) continue;
 
       const motivo = motivoCambio({
-        tiene_plan_vigente,
+        tiene_plan_activo,
         ingresos_disponibles: row.ingresos_disponibles,
         nuevoEstado: nuevo,
       });
 
-      // Update alumno
+      // ✅ Update alumno (AR timezone)
       await sequelize.query(
         `
         UPDATE gym_alumno
         SET gym_alumno_rela_estadoalumno = :nuevo,
-            gym_alumno_fechacambio = NOW()
+            gym_alumno_fechacambio = (now() AT TIME ZONE '${TZ_BA}')
         WHERE gym_alumno_id = :alumno_id;
         `,
         {
@@ -116,13 +112,14 @@ export async function actualizarEstadosAlumnosAutomatico({
         }
       );
 
-      // Insert log
+      // ✅ Log
       await sequelize.query(
         `
         INSERT INTO gym_log_estado_alumno (
           gym_log_estadoalumno_rela_alumno,
           gym_log_estadoalumno_estado_anterior,
           gym_log_estadoalumno_estado_nuevo,
+          gym_log_estadoalumno_fechacambio,
           gym_log_estadoalumno_motivo,
           gym_log_estadoalumno_fuente,
           gym_log_estadoalumno_modificado_por
@@ -130,6 +127,7 @@ export async function actualizarEstadosAlumnosAutomatico({
           :alumno_id,
           :anterior,
           :nuevo,
+          (now() AT TIME ZONE '${TZ_BA}'),
           :motivo,
           :fuente,
           :modificado_por
@@ -154,6 +152,10 @@ export async function actualizarEstadosAlumnosAutomatico({
         estado_anterior: anterior,
         estado_nuevo: nuevo,
         motivo,
+        plan_activo_id: row.plan_activo_id,
+        plan_inicio: row.plan_inicio,
+        plan_fin: row.plan_fin,
+        ingresos_disponibles: row.ingresos_disponibles,
       });
     }
 
