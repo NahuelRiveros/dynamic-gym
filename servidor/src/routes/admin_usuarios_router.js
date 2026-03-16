@@ -5,7 +5,7 @@ import { requireAuth, requireRole } from "../middleware/auth_middleware.js";
 export const adminUsuariosRouter = Router();
 
 //  solo admin
-adminUsuariosRouter.use(requireAuth, requireRole("admin"));
+adminUsuariosRouter.use(requireAuth, requireRole("staff","admin"));
 
 adminUsuariosRouter.post("/", crearUsuarioController);
 adminUsuariosRouter.get("/", listarUsuariosController);

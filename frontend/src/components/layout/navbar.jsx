@@ -224,6 +224,18 @@ export default function Navbar({ usuario = null, onLogout }) {
                     </Link>
                   ))}
 
+                  {usuario && dd.id === "staff" ? (
+                    <button
+                      onClick={() => {
+                        cerrarTodo();
+                        onLogout?.();
+                      }}
+                      className={`w-full text-left px-3 py-2 ${l.radioItem} text-sm font-semibold
+                        ${t.logout.text} ${t.logout.hoverBg}`}
+                    >
+                      {labels?.botonSalir || "Logout"}
+                    </button>
+                  ) : null}
                   {usuario && dd.id === "admin" ? (
                     <button
                       onClick={() => {

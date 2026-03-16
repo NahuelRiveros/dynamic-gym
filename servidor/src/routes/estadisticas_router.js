@@ -11,7 +11,7 @@ import {
 import { requireAuth , requireRole} from "../middleware/auth_middleware.js";
 
 export const estadisticasRouter = Router();
-estadisticasRouter.use(requireAuth,requireRole("admin"))
+estadisticasRouter.use(requireAuth,requireRole("staff"))
 estadisticasRouter.get("/recaudaciones", RecaudacionMensual);
 estadisticasRouter.get("/recaudaciones_diaria", RecaudacionDiariaMes);
 estadisticasRouter.get("/alumnos_Nuevos", AlumnosNuevos);

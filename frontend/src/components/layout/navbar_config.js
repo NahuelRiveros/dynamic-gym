@@ -29,14 +29,14 @@ export const navbar_config  = {
 dropdowns: [
   {
     id: "admin",
-    labelNoAuth: "Admin",
+    labelNoAuth: "admin",
     labelAuth: "Estadisicas", 
     items: [
-      { label: "Recaudación mensual", to: "/estadisticas/recaudaciones-mensual", requiereAuth: true, roles: ["admin"] },
-      { label: "Alumnos nuevos", to: "/admin/estadisticas/alumnos-nuevos", requiereAuth: true, roles: ["admin"] },
-      { label: "Vencimientos próximos", to: "/admin/estadisticas/vencimientos", requiereAuth: true, roles: ["admin"] },
-      { label: "Frecuencia Horaria", to: "/admin/estadisticas/heatmap", requiereAuth: true, roles: ["admin"] },
-      { label: "Listado de Alumnos", to: "/admin/estadisticas/alumnos", requiereAuth: true, roles: ["admin"] },
+      { label: "Recaudación mensual", to: "/estadisticas/recaudaciones-mensual", requiereAuth: true, roles: ["staff"] },
+      { label: "Alumnos nuevos", to: "/admin/estadisticas/alumnos-nuevos", requiereAuth: true, roles: ["staff"] },
+      { label: "Vencimientos próximos", to: "/admin/estadisticas/vencimientos", requiereAuth: true, roles: ["staff"] },
+      { label: "Frecuencia Horaria", to: "/admin/estadisticas/heatmap", requiereAuth: true, roles: ["staff"] },
+      { label: "Listado de Alumnos", to: "/admin/estadisticas/alumnos", requiereAuth: true, roles: ["staff","admin"] },
     ],
   },
   //{
