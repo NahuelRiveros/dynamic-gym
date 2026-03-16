@@ -7,27 +7,41 @@ export default function SelectField({
   placeholder = "Seleccionar...",
   fijoValue,
   disabledVisual = false,
-  asNumber = false, // ✅ nuevo: si true => number, si false => string
+  asNumber = false,
 }) {
+  const registerOptions = asNumber
+    ? {
+        setValueAs: (v) => {
+          if (v === "" || v === null || v === undefined) return undefined;
+          const n = Number(v);
+          return Number.isNaN(n) ? undefined : n;
+        },
+      }
+    : {
+        setValueAs: (v) => String(v ?? "").trim(),
+      };
+
   return (
     <div>
       {label && (
-        <label className="block text-sm font-semibold text-gray-700">
+        <label
+          htmlFor={name}
+          className="block text-sm font-semibold text-gray-700"
+        >
           {label}
         </label>
       )}
 
       <select
-        {...register(
-          name,
-          asNumber
-            ? { valueAsNumber: true }
-            : { setValueAs: (v) => String(v ?? "").trim() } // ✅ fuerza string
-        )}
+        id={name}
+        disabled={disabledVisual}
+        {...register(name, registerOptions)}
         defaultValue={fijoValue ?? ""}
         className={[
-          "text-black mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring",
-          disabledVisual ? "bg-gray-200 opacity-70 pointer-events-none" : "",
+          "mt-1 w-full rounded-xl border px-3 py-2 outline-none focus:ring",
+          disabledVisual
+            ? "bg-gray-300 text-gray-800 border-gray-700 cursor-not-allowed"
+            : "bg-white text-black border-gray-300",
         ].join(" ")}
       >
         <option value="">{placeholder}</option>

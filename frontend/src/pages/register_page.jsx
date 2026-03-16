@@ -20,28 +20,60 @@ export default function RegisterAlumnoPage() {
   const [mostrarOk, setMostrarOk] = useState(false);
   const [dataOk, setDataOk] = useState(null);
 
-
   const hookCatalogos = useCatalogos();
-  const { data: catalogos, loading: loadingCatalogos, error: errorCatalogos } =
-    hookCatalogos;
+  const {
+    data: catalogos,
+    loading: loadingCatalogos,
+    error: errorCatalogos,
+  } = hookCatalogos;
 
- 
   const TIPO_DOCUMENTO_FIJO = 1;
   const TIPO_PERSONA_FIJO = 1;
 
   const schema = z.object({
-    documento: z.string().min(6, "DNI inválido").max(12, "DNI inválido"),
-    nombre: z.string().min(2, "Nombre muy corto"),
-    apellido: z.string().min(2, "Apellido muy corto"),
-    fecha_nacimiento: z.string().min(1, "Fecha de nacimiento requerida"),
+    documento: z
+      .string()
+      .trim()
+      .min(6, "DNI inválido")
+      .max(12, "DNI inválido"),
 
-    tipo_documento_id: z.number().int().positive("Elegí tipo documento"),
-    tipo_persona_id: z.number().int().positive("Elegí tipo persona"),
+    nombre: z
+      .string()
+      .trim()
+      .min(2, "Nombre muy corto"),
 
-    sexo_id: z.preprocess(
-      (v) => (Number.isNaN(v) ? undefined : v),
-      z.number().int().positive().optional()
-    ),
+    apellido: z
+      .string()
+      .trim()
+      .min(2, "Apellido muy corto"),
+
+    fecha_nacimiento: z
+      .string()
+      .min(1, "Fecha de nacimiento requerida"),
+
+    tipo_documento_id: z
+      .number({
+        invalid_type_error: "Elegí tipo documento",
+        required_error: "Elegí tipo documento",
+      })
+      .int()
+      .positive("Elegí tipo documento"),
+
+    tipo_persona_id: z
+      .number({
+        invalid_type_error: "Elegí tipo persona",
+        required_error: "Elegí tipo persona",
+      })
+      .int()
+      .positive("Elegí tipo persona"),
+
+    sexo_id: z
+      .number({
+        invalid_type_error: "Sexo inválido",
+      })
+      .int()
+      .positive("Sexo inválido")
+      .optional(),
 
     email: z.string().email("Email inválido").optional().or(z.literal("")),
     celular: z.string().optional().or(z.literal("")),
@@ -60,19 +92,15 @@ export default function RegisterAlumnoPage() {
       nombre: "",
       apellido: "",
       fecha_nacimiento: "",
-
-      // ✅ NUMEROS (no strings vacíos)
       tipo_documento_id: TIPO_DOCUMENTO_FIJO,
       tipo_persona_id: TIPO_PERSONA_FIJO,
       sexo_id: undefined,
-
       email: "",
       celular: "",
       celular_emergencia: "",
     },
   });
 
-  // ✅ cuando terminan de cargar catálogos, fijamos valores
   useEffect(() => {
     if (!loadingCatalogos) {
       setValue("tipo_documento_id", TIPO_DOCUMENTO_FIJO);
@@ -82,7 +110,8 @@ export default function RegisterAlumnoPage() {
 
   async function onSubmit(values) {
     setError(null);
-    console.log("submit",values);
+    console.log("submit", values);
+
     try {
       const payload = {
         tipo_documento_id: values.tipo_documento_id,
@@ -100,24 +129,23 @@ export default function RegisterAlumnoPage() {
       };
 
       const r = await registrarAlumno(payload);
-      console.log(r)
+      console.log(r);
+
       if (!r?.ok) {
         setError(r?.mensaje || "No se pudo registrar");
         return;
       }
+
       setDataOk(r);
       setMostrarOk(true);
-      // (opcional) limpiar error
       setError(null);
-
-      
     } catch (err) {
-        const mensaje =
-            err?.response?.data?.mensaje ||
-            err?.message ||
-            "Error inesperado al registrar";
+      const mensaje =
+        err?.response?.data?.mensaje ||
+        err?.message ||
+        "Error inesperado al registrar";
 
-        setError(mensaje);
+      setError(mensaje);
     }
   }
 
@@ -155,6 +183,7 @@ export default function RegisterAlumnoPage() {
               error={errors?.nombre?.message}
               placeholder="Juan"
             />
+
             <InputField
               label="Apellido"
               name="apellido"
@@ -181,6 +210,7 @@ export default function RegisterAlumnoPage() {
               options={catalogos?.tiposDocumento || []}
               fijoValue={TIPO_DOCUMENTO_FIJO}
               disabledVisual={true}
+              asNumber={true}
             />
 
             <SelectField
@@ -190,6 +220,7 @@ export default function RegisterAlumnoPage() {
               error={errors?.sexo_id?.message}
               options={catalogos?.sexos || []}
               placeholder="(Opcional)"
+              asNumber={true}
             />
           </div>
 
@@ -201,6 +232,7 @@ export default function RegisterAlumnoPage() {
             options={catalogos?.tiposPersona || []}
             fijoValue={TIPO_PERSONA_FIJO}
             disabledVisual={true}
+            asNumber={true}
           />
 
           <InputField
@@ -221,6 +253,7 @@ export default function RegisterAlumnoPage() {
               placeholder="3705..."
               inputMode="numeric"
             />
+
             <InputField
               label="Celular emergencia (opcional)"
               name="celular_emergencia"
@@ -231,7 +264,7 @@ export default function RegisterAlumnoPage() {
             />
           </div>
 
-          <FormError  message={error} />
+          <FormError message={error} />
 
           <div className="flex justify-center">
             <SubmitButton
@@ -242,6 +275,7 @@ export default function RegisterAlumnoPage() {
           </div>
         </form>
       </FormCard>
+
       <RegisterSuccessModal
         open={mostrarOk}
         persona={dataOk?.persona}
@@ -250,11 +284,9 @@ export default function RegisterAlumnoPage() {
         onFinish={() => {
           setMostrarOk(false);
           setDataOk(null);
-          nav("/kiosk"); // o "/home" o "/admin"
+          nav("/kiosk");
         }}
       />
-
     </div>
-    
   );
 }
