@@ -18,7 +18,7 @@ function crearToken({ usuario_id, persona_id, roles }) {
   };
 
   return jwt.sign(payload, secret, {
-    expiresIn: env.JWT_EXPIRES_IN ?? "12h",
+    expiresIn: env.JWT_EXPIRES_IN ?? "24h",
   });
 }
 
