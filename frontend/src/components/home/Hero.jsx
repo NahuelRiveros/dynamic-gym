@@ -11,14 +11,14 @@ export default function Hero() {
         
         {/* Texto */}
         <div>
-          <span className="inline-block mb-4 rounded-full bg-green-600/20 px-4 py-1 text-sm font-semibold text-green-400">
+          <span className="inline-block mb-4 rounded-full bg-blue-600/20 px-4 py-1 text-sm font-semibold text-blue-400">
             Entrenamiento de alto rendimiento
           </span>
 
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold leading-tight">
             Superá tus límites.
             <br />
-            <span className="text-green-500">Entrená como un profesional.</span>
+            <span className="text-blue-500">Entrená como un profesional.</span>
           </h1>
 
           <p className="mt-6 text-lg text-gray-300 max-w-xl">
@@ -66,7 +66,7 @@ export default function Hero() {
 function HeroFeature({ icon, title, text }) {
   return (
     <div className="flex items-start gap-3">
-      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-green-600/20 text-green-400">
+      <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-600/20 text-blue-400">
         {icon}
       </div>
       <div>

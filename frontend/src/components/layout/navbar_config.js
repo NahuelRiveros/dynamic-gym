@@ -1,63 +1,37 @@
-export const navbar_config  = {
-  // =========================
-  // Branding / textos
-  // =========================
+export const navbar_config = {
   brand: {
-    titulo: "Dynamic Gym",         // texto principal
-    subtitulo: "Dynamic",    // opcional (si querés mostrarlo)
-    logoUrl: "",                  // ej: "/logo.png" (en /public/logo.png)
+    titulo: "Dynamic",
+    subtitulo: "Dynamic",
+    logoUrl: "/src/assets/dynamicLogo.png",
     mostrarTitulo: true,
     mostrarSubtitulo: false,
-    linkTo: "/",                  // a dónde navega al tocar el logo
-    fallbackLetter: "D",           // si no hay logo
+    linkTo: "/",
+    fallbackLetter: "D",
   },
 
-  // =========================
-  // Links principales
-  // =========================
- links: [
-  { label: "Home", to: "/" },
-  { label: "Ingreso", to: "/kiosk" },
-  { label: "Login", to: "/login", ocultarSiAuth: true }, // ✅
-  { label: "Registro", to: "/register" , requiereAuth: true },
-  { label: "Registrar pago", to: "/admin/pagos/registrar", requiereAuth: true, roles: ["admin","staff"] }
-],
+  links: [
+    { label: "Home", to: "/" },
+    { label: "Ingreso", to: "/kiosk" },
+    { label: "Login", to: "/login", ocultarSiAuth: true },
+    { label: "Registro", to: "/register", requiereAuth: true },
+    { label: "Registrar pago", to: "/admin/pagos/registrar", requiereAuth: true, roles: ["admin", "staff"] }
+  ],
 
-// =========================
-// Dropdown (ej: Admin / Usuario)
-// =========================
-dropdowns: [
-  {
-    id: "admin",
-    labelNoAuth: "admin",
-    labelAuth: "Estadisicas", 
-    items: [
-      { label: "Recaudación mensual", to: "/estadisticas/recaudaciones-mensual", requiereAuth: true, roles: ["admin"] },
-      { label: "Alumnos nuevos", to: "/admin/estadisticas/alumnos-nuevos", requiereAuth: true, roles: ["admin"] },
-      { label: "Vencimientos próximos", to: "/admin/estadisticas/vencimientos", requiereAuth: true, roles: ["admin"] },
-      { label: "Frecuencia Horaria", to: "/admin/estadisticas/heatmap", requiereAuth: true, roles: ["admin"] },
-      { label: "Listado de Alumnos", to: "/admin/estadisticas/alumnos", requiereAuth: true, roles: ["staff","admin"] },
-    ],
-  },
-  //{
-    //   id: "reportes",
-    //   label: "Reportes",
-    //   items: [
-    //     { label: "Login", to: "/login" },
-    //     { label: "Ingresos", to: "/admin/ingresos", requiereAuth: true, roles: ["admin"] },
-    //   ],
-    // },
-],
+  dropdowns: [
+    {
+      id: "admin",
+      labelNoAuth: "admin",
+      labelAuth: "Estadisticas",
+      items: [
+        { label: "Recaudación mensual", to: "/estadisticas/recaudaciones-mensual", requiereAuth: true, roles: ["admin"] },
+        { label: "Alumnos nuevos", to: "/admin/estadisticas/alumnos-nuevos", requiereAuth: true, roles: ["admin"] },
+        { label: "Vencimientos próximos", to: "/admin/estadisticas/vencimientos", requiereAuth: true, roles: ["admin"] },
+        { label: "Frecuencia Horaria", to: "/admin/estadisticas/heatmap", requiereAuth: true, roles: ["admin"] },
+        { label: "Listado de Alumnos", to: "/admin/estadisticas/alumnos", requiereAuth: true, roles: ["staff", "admin"] },
+      ],
+    },
+  ],
 
-
-
-
-  
-  
-
-  // =========================
-  // Textos (labels del UI)
-  // =========================
   labels: {
     menuAbrir: "Abrir menú",
     dropdownAbrir: "Abrir menú admin",
@@ -65,63 +39,72 @@ dropdowns: [
     botonSalir: "Logout",
   },
 
-  // =========================
-  // Layout / tamaños / look
-  // =========================
   layout: {
     container: "max-w-6xl mx-auto px-4",
-    altoBarra: "py-3",           // altura vertical del navbar
+    altoBarra: "py-3",
     gapLinks: "gap-2",
     anchoDropdown: "w-52",
     paddingDropdown: "p-2",
     radio: "rounded-xl",
     radioItem: "rounded-lg",
-    sombra: "shadow-lg",
+    sombra: "shadow-lg shadow-cyan-500/10",
   },
 
-  // =========================
-  // Tema visual (colores y estados)
-  // =========================
   theme: {
-    navbar: { bg: "bg-emerald-700", border: "border-b border-emerald-800" },
+    navbar: { bg: "bg-[#0B0F1A]", border: "border-b border-cyan-400/20" },
 
     brand: {
-    fallbackBg: "bg-white/20",
-    fallbackText: "text-white",
-    titleText: "text-white",
-    subtitleText: "text-emerald-200",
+      fallbackBg: "bg-cyan-400/20",
+      fallbackText: "text-cyan-300",
+      titleText: "text-white",
+      subtitleText: "text-cyan-300",
     },
 
-    // botón hamburguesa (mobile)
     hamburger: {
-    bg: "bg-emerald-700",
-    border: "border border-emerald-600",
-    text: "text-white",
-    hoverBg: "hover:bg-emerald-600",
+      bg: "bg-[#111827]",
+      border: "border border-cyan-400/30",
+      text: "text-cyan-300",
+      hoverBg: "hover:bg-cyan-400/10",
     },
 
-    // link normal (desktop + mobile)
-    link: { text: "text-white", hoverBg: "hover:bg-emerald-600", hoverText: "" },
+    link: {
+      text: "text-slate-100",
+      hoverBg: "hover:bg-cyan-400/10",
+      hoverText: "hover:text-cyan-300",
+    },
 
-    // link activo (ruta actual)
-    linkActive: { bg: "bg-white/20", text: "text-white" },
+    linkActive: {
+      bg: "bg-cyan-400/15",
+      text: "text-cyan-300",
+    },
 
-    // botón del dropdown (desktop)
-    dropdownButton: { text: "text-white", hoverBg: "hover:bg-emerald-600", bg: "", border: "" },
+    dropdownButton: {
+      text: "text-slate-100",
+      hoverBg: "hover:bg-cyan-400/10",
+      bg: "",
+      border: "border border-transparent hover:border-cyan-400/20",
+    },
 
-    // panel dropdown
-    dropdownPanel: { bg: "bg-emerald-700", border: "border border-emerald-600" },
+    dropdownPanel: {
+      bg: "bg-[#111827]",
+      border: "border border-cyan-400/20",
+    },
 
-    // item dropdown
-    dropdownItem: { text: "text-white", hoverBg: "hover:bg-emerald-600" },
+    dropdownItem: {
+      text: "text-slate-100",
+      hoverBg: "hover:bg-cyan-400/10",
+    },
 
-    // menú mobile desplegable
-    mobileMenu: { bg: "bg-emerald-700", border: "border border-emerald-600" },
+    mobileMenu: {
+      bg: "bg-[#111827]",
+      border: "border border-cyan-400/20",
+    },
 
-    // separador mobile
-    divider: "border-t border-emerald-600",
+    divider: "border-t border-cyan-400/20",
 
-    // logout
-    logout: { text: "text-red-500", hoverBg: "hover:bg-red-500/20" },
+    logout: {
+      text: "text-red-400",
+      hoverBg: "hover:bg-red-500/10",
+    },
   },
 };

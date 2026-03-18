@@ -4,14 +4,14 @@ export default function Footer() {
   return (
     <footer className="bg-black text-white">
       {/* Línea superior decorativa */}
-      <div className="h-1 bg-gradient-to-r from-green-500 via-green-400 to-green-600" />
+      <div className="h-1 bg-gradient-to-r from-blue-500 via-blue-400 to-blue-600" />
 
       <div className="max-w-7xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-10">
 
         {/* BLOQUE 1 – Marca / Mensaje */}
         <div>
-          <h3 className="text-2xl font-extrabold tracking-tight">
-            Dynamic <span className="text-green-500">Gym</span>
+          <h3 className="text-2xl font-extrabold tracking-tight text-blue-500">
+            Dynamic <span className="text-blue-500"></span>
           </h3>
 
           <p className="mt-4 text-gray-400 max-w-sm">
@@ -70,8 +70,8 @@ export default function Footer() {
             Entrenamos para ser mejores que ayer.
           </p>
 
-          <div className="mt-6 rounded-2xl bg-green-600/10 border border-green-500/20 p-4">
-            <p className="text-green-400 font-semibold">
+          <div className="mt-6 rounded-2xl bg-blue-600/10 border border-blue-500/20 p-4">
+            <p className="text-blue-400 font-semibold">
               🔥 Constancia &gt; Motivación
             </p>
             <p className="text-sm text-gray-300 mt-1">
@@ -98,7 +98,7 @@ export default function Footer() {
 function FooterItem({ icon, title, text }) {
   return (
     <li className="flex items-start gap-3">
-      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-green-600/20 text-green-400">
+      <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-600/20 text-blue-400">
         {icon}
       </div>
       <div>

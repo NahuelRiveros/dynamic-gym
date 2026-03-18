@@ -181,7 +181,7 @@ export default function RegistrarPagoPage() {
           <div className="space-y-3">
             <FormError message={error} />
             {okMsg ? (
-              <div className="rounded-xl bg-green-50 p-3 text-sm text-green-700 text-center">
+              <div className="rounded-xl bg-blue-50 p-3 text-sm text-blue-700 text-center">
                 {okMsg}
               </div>
             ) : null}
@@ -294,17 +294,18 @@ export default function RegistrarPagoPage() {
                   disabled={!alumno}
                   className="w-42"
                 />
-
-                <button
-                  type="button "
-                  className="w-24 rounded-xl border px-4 py-3 font-semibold"
+                <SubmitButton
+                  label={"Limpiar"}
+                  
+                  type="button"
                   onClick={() => {
                     limpiarMensajes();
                     limpiarFormularioCompleto();
                   }}
-                >
-                  Limpiar
-                </button>
+                  
+                  className="w-42"
+                />
+
 
             </div>
 

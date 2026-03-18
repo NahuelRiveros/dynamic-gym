@@ -14,7 +14,7 @@ export default function InputField({
 
   const errorStyles = error
     ? "border-red-400 focus:ring-red-200"
-    : "border-gray-300 focus:ring-green-200";
+    : "border-blue-500 focus:ring-blue-500";
 
   return (
     <div>

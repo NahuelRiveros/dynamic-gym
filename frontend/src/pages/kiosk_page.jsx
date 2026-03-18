@@ -79,10 +79,10 @@ export default function KioskPage() {
   const plan = resp?.plan;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-green-50 to-green-100">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 via-blue-50 to-blue-100">
       <div className="min-h-screen flex items-center justify-center p-4">
         <div className="w-full max-w-md rounded-3xl border border-black/5 bg-white/80 shadow-2xl backdrop-blur p-6 text-center">
-          <div className="inline-flex items-center gap-2 rounded-full bg-green-600/10 px-4 py-1 text-sm font-semibold text-green-700">
+          <div className="inline-flex items-center gap-2 rounded-full bg-blue-600/10 px-4 py-1 text-sm font-semibold text-blue-700">
             Control de ingreso
           </div>
 
@@ -104,7 +104,7 @@ export default function KioskPage() {
               className={[
                 "w-full rounded-2xl px-4 py-4 text-3xl text-gray-900",
                 "border border-gray-300 bg-white",
-                "outline-none focus:ring-2 focus:ring-green-500/60",
+                "outline-none focus:ring-2 focus:ring-blue-500/60",
                 "placeholder:text-gray-400 text-center font-bold",
               ].join(" ")}
             />
@@ -130,15 +130,15 @@ export default function KioskPage() {
               className={[
                 "mt-6 rounded-2xl border p-4 text-left",
                 ok
-                  ? "border-green-500/30 bg-green-50"
+                  ? "border-blue-500/30 bg-blue-50"
                   : "border-red-500/30 bg-red-50",
               ].join(" ")}
             >
               <div className="flex items-center gap-2 font-bold">
                 {ok ? (
                   <>
-                    <BadgeCheck className="text-green-600" size={18} />
-                    <span className="text-green-700">Ingreso OK</span>
+                    <BadgeCheck className="text-blue-600" size={18} />
+                    <span className="text-blue-700">Ingreso OK</span>
                   </>
                 ) : (
                   <>

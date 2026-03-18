@@ -208,7 +208,7 @@ export default function Navbar({ usuario = null, onLogout }) {
 
               return (
                 <div key={dd.id} className={`mt-2 ${t.divider} pt-2`}>
-                  <div className="px-3 py-2 text-xs font-bold text-gray-900">
+                  <div className="px-3 py-2 text-md font-bold text-gray-100">
                     {labelDropdown.toUpperCase()}
                   </div>
 

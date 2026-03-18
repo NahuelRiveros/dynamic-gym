@@ -67,13 +67,13 @@ export default function HomePage() {
       {/* SECTION 2 - CAROUSEL */}
       <Section background="" containerClassName="py-10">
             <div className="text-center">
-                <span className="inline-flex items-center rounded-full bg-green-700/60 px-4 py-1 text-4xl font-bold text-white">
+                <span className="inline-flex items-center rounded-full bg-blue-700/60 px-4 py-1 text-4xl font-bold text-white">
                     Dynamic GYM
                 </span>
 
                 <h2 className="mt-4 text-3xl md:text-4xl font-extrabold tracking-tight text-gray-900">
                     Un gimnasio pensado para
-                    <span className="block text-green-600">superar tus límites</span>
+                    <span className="block text-blue-600">superar tus límites</span>
                 </h2>
 
                 <p className="mt-4 text-gray-600 max-w-2xl font-semibold mx-auto text-base md:text-lg">

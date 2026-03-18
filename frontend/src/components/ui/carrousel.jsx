@@ -62,7 +62,7 @@ export default function CarouselGym({
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent" />
 
         {(slide.kicker || slide.icon) && (
-          <div className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full bg-gray-500/40 px-4 py-1 text-md font-semibold text-green-300">
+          <div className="absolute top-4 left-4 inline-flex items-center gap-2 rounded-full bg-gray-500/40 px-4 py-1 text-md font-semibold text-blue-300">
             {slide.icon}
             <span>{slide.kicker}</span>
           </div>
@@ -72,7 +72,7 @@ export default function CarouselGym({
           <h3 className="text-3xl md:text-4xl font-extrabold">
             {slide.title}{" "}
             {slide.highlight && (
-              <span className="text-green-500">
+              <span className="text-blue-500">
                 {slide.highlight}
               </span>
             )}
@@ -104,7 +104,7 @@ export default function CarouselGym({
                 <>
                   {/* Icono */}
                   {Icon && (
-                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-600/20 text-green-400">
+                    <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600/20 text-blue-400">
                       <Icon size={22} />
                     </div>
                   )}
@@ -135,7 +135,7 @@ export default function CarouselGym({
                   className="
                     flex items-start gap-4 rounded-2xl border border-white/10
                     bg-white/5 p-4 transition
-                    hover:bg-white/10 hover:border-green-500/40
+                    hover:bg-white/10 hover:border-blue-500/40
                     cursor-pointer
                   "
                 >
@@ -175,7 +175,7 @@ export default function CarouselGym({
                     className={[
                       "h-2.5 w-2.5 rounded-full border",
                       i === safeIdx
-                        ? "bg-green-500 border-green-500"
+                        ? "bg-blue-500 border-blue-500"
                         : "bg-white/20 border-white/30",
                     ].join(" ")}
                   />
