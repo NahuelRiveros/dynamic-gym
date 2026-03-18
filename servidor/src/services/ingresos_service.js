@@ -1,5 +1,5 @@
 // src/services/ingresos_service.js
-import { QueryTypes } from "sequelize";
+import { QueryTypes, Op } from "sequelize";
 import { sequelize } from "../database/sequelize.js";
 import {
   GymPersona,
@@ -10,17 +10,12 @@ import {
 
 const TZ_BA = "America/Argentina/Buenos_Aires";
 
-// Ajustá estos IDs según tu catálogo real
 const ESTADO_HABILITADO = 1;
 const ESTADO_RESTRINGIDO = 2;
 
 const normalizarDocumento = (doc) =>
   String(doc ?? "").replace(/[.\s]/g, "").trim();
 
-/**
- * YYYY-MM-DD en Argentina
- * (solo para devolver en respuesta / logs)
- */
 function hoyArgentinaISO() {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: TZ_BA,
@@ -30,13 +25,6 @@ function hoyArgentinaISO() {
   }).format(new Date());
 }
 
-/**
- * Registrar ingreso por DNI:
- * - Busca persona y alumno
- * - Toma SIEMPRE el plan/pago más reciente (mayor gym_fecha_id)
- * - Si tiene ingresos > 0: inserta ingreso y descuenta 1
- * - Si queda 0: pone alumno restringido
- */
 export async function registrarIngresoPorDni({ dni }) {
   const dniNormalizado = normalizarDocumento(dni);
   const dniNum = Number(dniNormalizado);
@@ -47,15 +35,10 @@ export async function registrarIngresoPorDni({ dni }) {
   }
 
   return sequelize.transaction(async (t) => {
-    
-
-    // 1) Persona
     const persona = await GymPersona.findOne({
       where: { gym_persona_documento: dniNum },
       transaction: t,
     });
-
-    
 
     if (!persona) {
       return {
@@ -65,15 +48,11 @@ export async function registrarIngresoPorDni({ dni }) {
       };
     }
 
-    // 2) Alumno (lock)
     const alumno = await GymAlumno.findOne({
       where: { gym_alumno_rela_persona: persona.gym_persona_id },
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
-
-    // console.log("Alumno encontrado:", alumno?.gym_alumno_id);
-    // console.log("Estado alumno:", alumno?.gym_alumno_rela_estadoalumno);
 
     if (!alumno) {
       return {
@@ -83,45 +62,59 @@ export async function registrarIngresoPorDni({ dni }) {
       };
     }
 
-    /**
-     * 3) Plan / Pago MÁS RECIENTE (lock)
-     * Regla pedida: tomar el de mayor gym_fecha_id
-     */
+    // Buscar último plan vigente, igual que en Python
     const planReciente = await GymFechaDisponible.findOne({
-      where: { gym_fecha_rela_alumno: alumno.gym_alumno_id },
-      order: [["gym_fecha_id", "DESC"]],
+      where: {
+        gym_fecha_rela_alumno: alumno.gym_alumno_id,
+        gym_fecha_fin: {
+          [Op.gte]: hoy,
+        },
+      },
+      order: [
+        ["gym_fecha_fin", "DESC"],
+        ["gym_fecha_id", "DESC"],
+      ],
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
 
-    console.log("PLAN MAS RECIENTE:", planReciente
-      ? {
-          fecha_id: planReciente.gym_fecha_id,
-          inicio: planReciente.gym_fecha_inicio,
-          fin: planReciente.gym_fecha_fin,
-          ingresos_disponibles: planReciente.gym_fecha_ingresosdisponibles,
-          tipo_plan: planReciente.gym_fecha_rela_tipoplan,
-        }
-      : "NO ENCONTRADO"
+    console.log(
+      "PLAN VIGENTE ENCONTRADO:",
+      planReciente
+        ? {
+            fecha_id: planReciente.gym_fecha_id,
+            inicio: planReciente.gym_fecha_inicio,
+            fin: planReciente.gym_fecha_fin,
+            ingresos_disponibles: planReciente.gym_fecha_ingresosdisponibles,
+            tipo_plan: planReciente.gym_fecha_rela_tipoplan,
+          }
+        : "NO ENCONTRADO"
     );
 
     if (!planReciente) {
+      if (Number(alumno.gym_alumno_rela_estadoalumno) !== ESTADO_RESTRINGIDO) {
+        await alumno.update(
+          { gym_alumno_rela_estadoalumno: ESTADO_RESTRINGIDO },
+          { transaction: t }
+        );
+      }
+
       return {
         ok: false,
-        codigo: "SIN_PAGOS",
-        mensaje: "Alumno sin pagos registrados",
-        alumno: { alumno_id: alumno.gym_alumno_id },
+        codigo: "PLAN_VENCIDO_O_INEXISTENTE",
+        mensaje: "El alumno no tiene un plan vigente",
+        alumno: {
+          alumno_id: alumno.gym_alumno_id,
+          estado_id: ESTADO_RESTRINGIDO,
+        },
       };
     }
 
-    // 4) Validar ingresos del plan reciente
-    const ingresosActuales = Number(planReciente.gym_fecha_ingresosdisponibles ?? 0);
-
-    // console.log("Ingresos actuales calculados:", ingresosActuales);
-    // console.log("Valor crudo desde DB:", planReciente.gym_fecha_ingresosdisponibles);
+    const ingresosActuales = Number(
+      planReciente.gym_fecha_ingresosdisponibles ?? 0
+    );
 
     if (ingresosActuales <= 0) {
-      // restringir alumno (porque su plan más reciente no tiene ingresos)
       if (Number(alumno.gym_alumno_rela_estadoalumno) !== ESTADO_RESTRINGIDO) {
         await alumno.update(
           { gym_alumno_rela_estadoalumno: ESTADO_RESTRINGIDO },
@@ -132,7 +125,7 @@ export async function registrarIngresoPorDni({ dni }) {
       return {
         ok: false,
         codigo: "SIN_INGRESOS",
-        mensaje: "Alumno sin ingresos disponibles (en el pago más reciente)",
+        mensaje: "Alumno sin ingresos disponibles",
         alumno: {
           alumno_id: alumno.gym_alumno_id,
           estado_id: ESTADO_RESTRINGIDO,
@@ -146,7 +139,6 @@ export async function registrarIngresoPorDni({ dni }) {
       };
     }
 
-    // ✅ 5) Insert ingreso: LA HORA LA PONE POSTGRES (Argentina)
     const [rows] = await sequelize.query(
       `
       INSERT INTO gym_dia_ingreso (
@@ -176,7 +168,6 @@ export async function registrarIngresoPorDni({ dni }) {
 
     const ingresoDB = Array.isArray(rows) ? rows[0] : rows;
 
-    // 6) Descontar ingresos
     const ingresosRestantes = ingresosActuales - 1;
 
     await sequelize.query(
@@ -196,11 +187,9 @@ export async function registrarIngresoPorDni({ dni }) {
       }
     );
 
-    // 7) Estado final del alumno
     let estadoFinal = Number(alumno.gym_alumno_rela_estadoalumno);
 
-    // Si estaba restringido y ahora pudo ingresar, lo habilitamos
-    if (estadoFinal === ESTADO_RESTRINGIDO && ingresosRestantes >= 0) {
+    if (estadoFinal === ESTADO_RESTRINGIDO && ingresosRestantes > 0) {
       await alumno.update(
         { gym_alumno_rela_estadoalumno: ESTADO_HABILITADO },
         { transaction: t }
@@ -208,7 +197,6 @@ export async function registrarIngresoPorDni({ dni }) {
       estadoFinal = ESTADO_HABILITADO;
     }
 
-    // Si quedó en 0, lo restringimos
     if (ingresosRestantes === 0) {
       await alumno.update(
         { gym_alumno_rela_estadoalumno: ESTADO_RESTRINGIDO },
@@ -217,7 +205,6 @@ export async function registrarIngresoPorDni({ dni }) {
       estadoFinal = ESTADO_RESTRINGIDO;
     }
 
-    // 8) Tipo plan (opcional)
     let tipoPlanDesc = null;
     if (planReciente.gym_fecha_rela_tipoplan) {
       const tipoPlan = await GymCatTipoPlan.findByPk(
