@@ -79,6 +79,12 @@ export const navbar_config = {
           requiereAuth: true,
           roles: ["admin"],
         },
+        {
+          label: "Editar plan de alumno",
+          to: "/admin/alumnos/editar-plan",
+          requiereAuth: true,
+          roles: ["admin"],
+        },
       ],
     },
   ],

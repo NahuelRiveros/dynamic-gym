@@ -71,12 +71,11 @@ export default function RecaudacionesDetallePage() {
   }
 
   function horaLabel(fechaHora) {
-  if (!fechaHora) return "-";
+   if (!fechaHora) return "-";
 
-  const [hora = "00", minuto = "00", segundoRaw = "00"] = String(fechaHora).split(":");
-  const segundo = segundoRaw.split(".")[0];
+  const [fecha, hora] = String(fechaHora).split("T");
 
-  return `${hora.padStart(2, "0")}:${minuto.padStart(2, "0")}:${segundo.padStart(2, "0")}`;
+  return `${fecha} ${hora?.slice(0, 8)}`;
 }
 
   return (
@@ -135,7 +134,7 @@ export default function RecaudacionesDetallePage() {
               <table className="min-w-full text-sm">
                 <thead className="bg-gray-50 text-left text-gray-600">
                   <tr>
-                    <th className="px-4 py-3 font-semibold">Hora</th>
+                    <th className="px-4 py-3 font-semibold">Dia / Hora</th>
                     <th className="px-4 py-3 font-semibold">Alumno</th>
                     <th className="px-4 py-3 font-semibold">Plan</th>
                     <th className="px-4 py-3 font-semibold">Método</th>

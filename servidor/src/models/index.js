@@ -6,7 +6,7 @@ import { GymDiaIngreso } from "./gym_dia_ingreso.js";
 import { GymCatTipoPersona } from "./gym_cat_tipoPersona.js";
 import { GymCatTipoDocumento } from "./Gym_Cat_TipoDocumento.js";
 import { GymCatSexo } from "./gym_cat_sexo.js";
-
+import { GymCatEstadoAlumno } from "./gym_cat_estado_alumno.js";
 import { GymRol } from "./AuthRol.js";
 import { GymUsuario } from "./AuthUsuario.js";
 import { GymUsuarioRol } from "./AuthUsuarioRol.js";
@@ -19,6 +19,16 @@ GymPersona.hasOne(GymAlumno, {
 GymAlumno.belongsTo(GymPersona, {
   foreignKey: "gym_alumno_rela_persona",
   as: "persona",
+});
+
+// EstadoAlumno ↔ Alumno (1 a N)
+GymCatEstadoAlumno.hasMany(GymAlumno, {
+  foreignKey: "gym_alumno_rela_estadoalumno",
+  as: "alumnos",
+});
+GymAlumno.belongsTo(GymCatEstadoAlumno, {
+  foreignKey: "gym_alumno_rela_estadoalumno",
+  as: "estado",
 });
 
 // Alumno ↔ FechaDisponible (1 a N)
@@ -111,4 +121,5 @@ export {
   GymCatSexo,
   GymCatTipoDocumento,
   GymCatTipoPersona,
+  GymCatEstadoAlumno,
 };
