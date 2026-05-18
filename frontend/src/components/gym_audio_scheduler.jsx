@@ -173,8 +173,9 @@ export default function GymAudioScheduler() {
       {!audioHabilitado && (
         <button
           onClick={desbloquearAudio}
-          className="fixed bottom-4 right-4 z-[9998] rounded-2xl bg-black px-4 py-2 text-sm font-semibold text-white shadow-lg"
+          className="fixed bottom-6 right-6 z-9998 flex items-center gap-2 rounded-2xl bg-orange-500 px-6 py-4 text-base font-bold text-white shadow-2xl ring-4 ring-orange-300 animate-pulse hover:bg-orange-600 hover:animate-none transition-colors"
         >
+          <span className="text-xl">🔔</span>
           Activar avisos de audio
         </button>
       )}
