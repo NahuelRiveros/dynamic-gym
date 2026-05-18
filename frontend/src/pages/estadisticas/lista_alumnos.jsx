@@ -108,6 +108,7 @@ export default function ListaAlumnosPage() {
   const nav = useNavigate();
 
   const [planVigente, setPlanVigente] = useState("");
+  const [busqueda, setBusqueda]       = useState("");
   const [page, setPage]   = useState(1);
   const [limit, setLimit] = useState(20);
 
@@ -115,8 +116,9 @@ export default function ListaAlumnosPage() {
   const [cargando, setCargando] = useState(false);
   const [error, setError]       = useState(null);
 
-  async function cargar({ resetPage = false, q = "", planVigenteOverride } = {}) {
+  async function cargar({ resetPage = false, qOverride, planVigenteOverride } = {}) {
     const nextPage = resetPage ? 1 : page;
+    const q  = qOverride  !== undefined ? qOverride  : busqueda;
     const pv = planVigenteOverride !== undefined ? planVigenteOverride : planVigente;
     setCargando(true);
     setError(null);
@@ -139,14 +141,23 @@ export default function ListaAlumnosPage() {
     }
   }
 
+  function handleSearch(val) {
+    setBusqueda(val);
+    cargar({ resetPage: true, qOverride: val });
+  }
+
   async function actualizarYRecargar() {
     setCargando(true);
     setError(null);
     try {
       await actualizarEstadosAlumnos();
+    } catch {
+      // staff puede no tener permiso para actualizar estados; se recarga igual
+    }
+    try {
       await cargar();
     } catch (e) {
-      setError(e?.response?.data?.mensaje || e?.message || "No se pudo actualizar estados");
+      setError(e?.response?.data?.mensaje || e?.message || "Error al recargar");
     } finally {
       setCargando(false);
     }
@@ -215,6 +226,7 @@ export default function ListaAlumnosPage() {
           loading={cargando}
           searchable
           searchPlaceholder="Buscar por nombre, apellido, DNI o email…"
+          onSearch={handleSearch}
           emptyMessage="No hay alumnos para mostrar."
           onRowClick={(row) => nav(`/admin/estadisticas/alumnos/${row.gym_alumno_id}`)}
           /* paginación server-side */

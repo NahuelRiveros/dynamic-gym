@@ -142,6 +142,7 @@ export default function DataGrid({
   onPageChange,
   onPageSizeChange,
   pageSize: externalPageSize,
+  onSearch,
   /* misc */
   className = "",
   onRowClick,
@@ -224,6 +225,9 @@ export default function DataGrid({
 
   function handleSearch(val) {
     setQuery(val);
+    if (isExternal && typeof onSearch === "function") {
+      onSearch(val);
+    }
     if (!isExternal) setInternalPage(1);
   }
 
