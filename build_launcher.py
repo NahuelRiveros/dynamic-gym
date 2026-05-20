@@ -2,7 +2,7 @@
 #  Dynamic Gym — Script de empaquetado con PyInstaller
 #
 #  Uso:
-#    pip install pillow pyinstaller
+#    pip install pyinstaller
 #    python build_launcher.py
 #
 #  Genera:  DynamicGym.exe  en la carpeta raíz del proyecto
@@ -11,14 +11,22 @@
 import os
 import sys
 import subprocess
+import io
+
+# Forzar UTF-8 en stdout para que los símbolos no causen errores en consolas Windows
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
 
 BASE = os.path.dirname(os.path.abspath(__file__))
-PNG  = os.path.join(BASE, "frontend", "src", "assets", "dynamicLogo.png")
 ICO  = os.path.join(BASE, "dynamic_gym.ico")
+PNG  = os.path.join(BASE, "frontend", "src", "assets", "dynamicLogo.png")
 
 
-def convertir_icono():
-    print("→ Convirtiendo PNG a ICO...")
+def preparar_icono():
+    if os.path.isfile(ICO):
+        print(f"  ✓ Usando ICO existente: {ICO}")
+        return
+
+    print("→ ICO no encontrado, convirtiendo desde PNG...")
     try:
         from PIL import Image
     except ImportError:
@@ -48,8 +56,8 @@ def empaquetar():
         sys.executable, "-m", "PyInstaller",
         "--onefile",
         "--windowed",
-        "--name",  "DynamicGym",
-        "--icon",  ICO,
+        "--name",     "DynamicGym",
+        "--icon",     ICO,
         "--distpath", BASE,
         "--workpath", os.path.join(BASE, "build_tmp"),
         "--specpath", os.path.join(BASE, "build_tmp"),
@@ -72,5 +80,5 @@ def empaquetar():
 
 
 if __name__ == "__main__":
-    convertir_icono()
+    preparar_icono()
     empaquetar()

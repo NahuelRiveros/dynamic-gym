@@ -2,6 +2,7 @@ import { actualizarEstadosAlumnosAutomatico } from "../services/estado_alumno_au
 import {
   obtenerPlanVigentePorDni,
   actualizarPlanVigentePorDni,
+  actualizarPersonaAlumnoPorDni,
 } from "../services/admin_planes_alumno_service.js";
 
 export async function ActualizarEstadosAutomatico(req, res) {
@@ -59,6 +60,60 @@ export async function buscarPlanVigenteAlumno(req, res, next) {
 function esNumeroValido(n) {
   const x = Number(n);
   return Number.isFinite(x) && x > 0;
+}
+
+export async function actualizarPersonaAlumno(req, res, next) {
+  try {
+    const {
+      documento,
+      nombre,
+      apellido,
+      nuevo_documento,
+      celular,
+      celular_emergencia,
+      email,
+      fecha_nacimiento,
+    } = req.body;
+
+    if (!documento || typeof documento !== "string") {
+      return res.status(400).json({
+        ok: false,
+        codigo: "VALIDACION",
+        mensaje: "documento es obligatorio",
+      });
+    }
+
+    if (!nombre?.trim() || !apellido?.trim()) {
+      return res.status(400).json({
+        ok: false,
+        codigo: "VALIDACION",
+        mensaje: "nombre y apellido son obligatorios",
+      });
+    }
+
+    const resultado = await actualizarPersonaAlumnoPorDni({
+      documento: documento.trim(),
+      nombre,
+      apellido,
+      nuevo_documento,
+      celular,
+      celular_emergencia,
+      email,
+      fecha_nacimiento,
+    });
+
+    if (!resultado.ok) {
+      const status =
+        resultado.codigo === "NO_EXISTE" ? 404 :
+        resultado.codigo === "DOCUMENTO_DUPLICADO" || resultado.codigo === "EMAIL_DUPLICADO" ? 409 :
+        400;
+      return res.status(status).json(resultado);
+    }
+
+    return res.json(resultado);
+  } catch (err) {
+    next(err);
+  }
 }
 
 export async function actualizarPlanVigenteAlumno(req, res, next) {

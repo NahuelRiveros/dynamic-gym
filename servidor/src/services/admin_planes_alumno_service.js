@@ -82,6 +82,10 @@ export async function obtenerPlanVigentePorDni({ documento }) {
       nombre: persona.gym_persona_nombre,
       apellido: persona.gym_persona_apellido,
       documento: persona.gym_persona_documento,
+      celular: persona.gym_persona_celular ?? null,
+      celular_emergencia: persona.gym_persona_celular_emergencia ?? null,
+      email: persona.gym_persona_email ?? null,
+      fecha_nacimiento: persona.gym_persona_fechanacimiento ?? null,
       estado_id: alumno.gym_alumno_rela_estadoalumno,
       estado_desc:
         estadoAlumno?.gym_cat_estadoalumno_descripcion ?? null,
@@ -247,6 +251,7 @@ export async function actualizarPlanVigentePorDni({
     return {
       ok: true,
       mensaje: "Plan vigente actualizado correctamente",
+
       alumno: {
         alumno_id: alumno.gym_alumno_id,
         nombre: persona.gym_persona_nombre,
@@ -261,6 +266,86 @@ export async function actualizarPlanVigentePorDni({
         inicio: fecha_inicio,
         fin: fecha_fin,
         ingresos_disponibles: nuevosIngresos,
+      },
+    };
+  });
+}
+
+export async function actualizarPersonaAlumnoPorDni({
+  documento,
+  nombre,
+  apellido,
+  nuevo_documento,
+  celular,
+  celular_emergencia,
+  email,
+  fecha_nacimiento,
+}) {
+  const dni = Number(normalizarDocumento(documento));
+
+  if (!Number.isFinite(dni) || dni <= 0) {
+    return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
+  }
+
+  return sequelize.transaction(async (t) => {
+    const persona = await GymPersona.findOne({
+      where: { gym_persona_documento: dni },
+      transaction: t,
+      lock: t.LOCK.UPDATE,
+    });
+
+    if (!persona) {
+      return { ok: false, codigo: "NO_EXISTE", mensaje: "No existe una persona con ese documento" };
+    }
+
+    const nuevoDoc = nuevo_documento != null && String(nuevo_documento).trim() !== ""
+      ? Number(nuevo_documento)
+      : null;
+
+    if (nuevoDoc && nuevoDoc !== dni) {
+      const existeDoc = await GymPersona.findOne({
+        where: { gym_persona_documento: nuevoDoc },
+        transaction: t,
+      });
+      if (existeDoc) {
+        return { ok: false, codigo: "DOCUMENTO_DUPLICADO", mensaje: "Ya existe otra persona con ese DNI" };
+      }
+    }
+
+    const nuevoEmail = email != null ? email.trim() : null;
+    if (nuevoEmail && nuevoEmail !== persona.gym_persona_email) {
+      const existeEmail = await GymPersona.findOne({
+        where: { gym_persona_email: nuevoEmail },
+        transaction: t,
+      });
+      if (existeEmail && existeEmail.gym_persona_id !== persona.gym_persona_id) {
+        return { ok: false, codigo: "EMAIL_DUPLICADO", mensaje: "Ya existe otra persona con ese email" };
+      }
+    }
+
+    const updates = { gym_persona_fechacambio: new Date() };
+    if (nombre != null)                   updates.gym_persona_nombre               = nombre.trim();
+    if (apellido != null)                 updates.gym_persona_apellido             = apellido.trim();
+    if (nuevoDoc)                         updates.gym_persona_documento            = nuevoDoc;
+    if (celular !== undefined)            updates.gym_persona_celular              = celular === "" ? null : Number(celular) || null;
+    if (celular_emergencia !== undefined) updates.gym_persona_celular_emergencia   = celular_emergencia === "" ? null : Number(celular_emergencia) || null;
+    if (email !== undefined)              updates.gym_persona_email                = nuevoEmail === "" ? null : nuevoEmail;
+    if (fecha_nacimiento !== undefined)   updates.gym_persona_fechanacimiento      = fecha_nacimiento === "" ? null : fecha_nacimiento;
+
+    await persona.update(updates, { transaction: t });
+
+    return {
+      ok: true,
+      mensaje: "Datos personales actualizados correctamente",
+      persona: {
+        persona_id: persona.gym_persona_id,
+        nombre: persona.gym_persona_nombre,
+        apellido: persona.gym_persona_apellido,
+        documento: persona.gym_persona_documento,
+        celular: persona.gym_persona_celular ?? null,
+        celular_emergencia: persona.gym_persona_celular_emergencia ?? null,
+        email: persona.gym_persona_email ?? null,
+        fecha_nacimiento: persona.gym_persona_fechanacimiento ?? null,
       },
     };
   });

@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['c:\\Users\\UPSTI-16\\Desktop\\TESIS\\dynamic-gym\\launcher.py'],
+    ['C:\\Users\\UPSTI-16\\Desktop\\dynamic\\dynamic-gym\\launcher.py'],
     pathex=[],
     binaries=[],
     datas=[],
@@ -35,5 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=['c:\\Users\\UPSTI-16\\Desktop\\TESIS\\dynamic-gym\\dynamic_gym.ico'],
+    icon=['C:\\Users\\UPSTI-16\\Desktop\\dynamic\\dynamic-gym\\dynamic_gym.ico'],
 )

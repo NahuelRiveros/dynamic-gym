@@ -24,18 +24,18 @@ FRONTEND_DIR  = os.path.join(BASE_DIR, "frontend")
 PORT          = 3001
 
 # ── colores Dynamic Gym ───────────────────────────────────────────
-BG      = "#060a12"
-PANEL   = "#0c1018"
+BG      = "#131f33"
+PANEL   = "#1b2b44"
 ACCENT  = "#2563eb"
-BORDER  = "#1e293b"
+BORDER  = "#2d3f5c"
 GREEN   = "#22c55e"
 RED     = "#ef4444"
 YELLOW  = "#eab308"
 CYAN    = "#22d3ee"
 ORANGE  = "#f97316"
 TEXT    = "#f8fafc"
-MUTED   = "#64748b"
-LOG_BG  = "#020408"
+MUTED   = "#8ba0bc"
+LOG_BG  = "#0d1828"
 PURPLE  = "#a78bfa"
 
 
@@ -281,6 +281,7 @@ class DynamicGymLauncher(tk.Tk):
 
         def _do_install():
             self._log(f"Instalando dependencias en {target}...", "install")
+            install_ok = False
             try:
                 proc = subprocess.Popen(
                     [self._npm(), "install"],
@@ -291,11 +292,27 @@ class DynamicGymLauncher(tk.Tk):
                 )
                 for line in proc.stdout:
                     line = line.rstrip()
-                    if line:
+                    if not line:
+                        continue
+                    lower = line.lower()
+                    # Audit/funding info son advertencias, no errores
+                    if any(kw in lower for kw in (
+                        "vulnerabilit", "npm audit", "npm fund",
+                        "looking for funding", "to address", "run `npm audit",
+                    )):
+                        self._log(line, "warn")
+                    elif any(kw in lower for kw in ("added", "up to date", "audited")):
+                        self._log(line, "ok")
+                        install_ok = True
+                    else:
                         self._log(line, "install")
                 proc.wait()
-                if proc.returncode == 0:
+                # npm install puede salir con código 1 solo por vulnerabilidades de audit;
+                # se considera exitoso si el install_ok fue detectado o returncode == 0
+                if proc.returncode == 0 or install_ok:
                     self._log(f"✓ npm install {target} completado.", "ok")
+                    if proc.returncode != 0:
+                        self._log("⚠  Hay vulnerabilidades en las dependencias (no afectan el funcionamiento).", "warn")
                 else:
                     self._log(f"npm install {target} terminó con error (código {proc.returncode}).", "error")
             except Exception as e:

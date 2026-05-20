@@ -1,4 +1,4 @@
-('c:\\Users\\UPSTI-16\\Desktop\\TESIS\\dynamic-gym\\build_tmp\\DynamicGym\\PYZ-00.pyz',
+('C:\\Users\\UPSTI-16\\Desktop\\dynamic\\dynamic-gym\\build_tmp\\DynamicGym\\PYZ-00.pyz',
  [('_compat_pickle',
    'C:\\Users\\UPSTI-16\\AppData\\Local\\Programs\\Python\\Python310\\lib\\_compat_pickle.py',
    'PYMODULE'),

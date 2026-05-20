@@ -4,6 +4,7 @@ import {
   ActualizarEstadosAutomatico,
   buscarPlanVigenteAlumno,
   actualizarPlanVigenteAlumno,
+  actualizarPersonaAlumno,
 } from "../controllers/estado_alumno_auto_controller.js";
 
 export const adminAlumnosRouter = Router();
@@ -17,3 +18,6 @@ adminAlumnosRouter.get("/actualizar-plan", buscarPlanVigenteAlumno);
 
 // Actualizar plan vigente
 adminAlumnosRouter.put("/actualizar-plan", actualizarPlanVigenteAlumno);
+
+// Actualizar datos personales del alumno
+adminAlumnosRouter.patch("/actualizar-persona", actualizarPersonaAlumno);
