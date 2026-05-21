@@ -45,7 +45,7 @@ class DynamicGymLauncher(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Dynamic Gym")
-        self.geometry("720x520")
+        self.geometry("720x570")
         self.resizable(False, False)
         self.configure(bg=BG)
 
@@ -131,6 +131,27 @@ class DynamicGymLauncher(tk.Tk):
             CYAN,
         )
         self.btn_build_fe.pack(side="left")
+
+        # ── fila 3 de botones: audit fix ─────────────────────────
+        btn_row3 = tk.Frame(self, bg=BG, pady=4)
+        btn_row3.pack(fill="x", padx=24)
+
+        tk.Label(btn_row3, text="Audit fix:", bg=BG, fg=MUTED,
+                 font=("Segoe UI", 8)).pack(side="left", padx=(0, 8))
+
+        self.btn_audit_be = self._btn_sm(
+            btn_row3, "🔧  npm audit fix servidor",
+            lambda: self._run_npm_audit_fix("servidor"),
+            GREEN,
+        )
+        self.btn_audit_be.pack(side="left", padx=(0, 6))
+
+        self.btn_audit_fe = self._btn_sm(
+            btn_row3, "🔧  npm audit fix frontend",
+            lambda: self._run_npm_audit_fix("frontend"),
+            GREEN,
+        )
+        self.btn_audit_fe.pack(side="left")
 
         # ── consola ──────────────────────────────────────────────
         tk.Frame(self, bg=BORDER, height=1).pack(fill="x", padx=24, pady=(8, 4))
@@ -274,14 +295,24 @@ class DynamicGymLauncher(tk.Tk):
             return
 
         self._installing = True
-        self.btn_install_be.configure(state="disabled")
-        self.btn_install_fe.configure(state="disabled")
-        if hasattr(self, "btn_build_fe"):
-            self.btn_build_fe.configure(state="disabled")
+        self._set_all_tool_btns("disabled")
 
         def _do_install():
             self._log(f"Instalando dependencias en {target}...", "install")
             install_ok = False
+            vuln_count = 0  # cantidad de vulnerabilidades detectadas
+
+            # Palabras que indican líneas de ruido a suprimir del log
+            _SKIP = (
+                "looking for funding",
+                "run `npm fund",
+                "npm fund",
+                "to address all issues",
+                "npm audit fix",
+                "run `npm audit",
+                "run npm audit",
+            )
+
             try:
                 proc = subprocess.Popen(
                     [self._npm(), "install"],
@@ -291,38 +322,47 @@ class DynamicGymLauncher(tk.Tk):
                     text=True, bufsize=1, encoding="utf-8", errors="replace",
                 )
                 for line in proc.stdout:
-                    line = line.rstrip()
+                    line  = line.rstrip()
                     if not line:
                         continue
                     lower = line.lower()
-                    # Audit/funding info son advertencias, no errores
-                    if any(kw in lower for kw in (
-                        "vulnerabilit", "npm audit", "npm fund",
-                        "looking for funding", "to address", "run `npm audit",
-                    )):
-                        self._log(line, "warn")
-                    elif any(kw in lower for kw in ("added", "up to date", "audited")):
+
+                    # Suprimir líneas de funding y audit que son solo ruido
+                    if any(kw in lower for kw in _SKIP):
+                        continue
+
+                    # Detectar y suprimir línea de vulnerabilidades (guardar el count)
+                    if "vulnerabilit" in lower:
+                        import re
+                        m = re.search(r"(\d+)\s+vulnerabilit", lower)
+                        if m:
+                            vuln_count = int(m.group(1))
+                        continue  # suprimir la línea, mostraremos resumen al final
+
+                    # Línea de éxito de install
+                    if any(kw in lower for kw in ("added", "up to date", "audited")):
                         self._log(line, "ok")
                         install_ok = True
                     else:
                         self._log(line, "install")
+
                 proc.wait()
-                # npm install puede salir con código 1 solo por vulnerabilidades de audit;
-                # se considera exitoso si el install_ok fue detectado o returncode == 0
+
                 if proc.returncode == 0 or install_ok:
                     self._log(f"✓ npm install {target} completado.", "ok")
-                    if proc.returncode != 0:
-                        self._log("⚠  Hay vulnerabilidades en las dependencias (no afectan el funcionamiento).", "warn")
+                    if vuln_count:
+                        self._log(
+                            f"⚠  {vuln_count} vulnerabilidad(es) en dependencias "
+                            "(no afectan el funcionamiento). Ejecutá 'npm audit fix' si querés resolverlas.",
+                            "warn",
+                        )
                 else:
                     self._log(f"npm install {target} terminó con error (código {proc.returncode}).", "error")
             except Exception as e:
                 self._log(f"Error en npm install {target}: {e}", "error")
             finally:
                 self._installing = False
-                self.after(0, lambda: self.btn_install_be.configure(state="normal"))
-                self.after(0, lambda: self.btn_install_fe.configure(state="normal"))
-                if hasattr(self, "btn_build_fe"):
-                    self.after(0, lambda: self.btn_build_fe.configure(state="normal"))
+                self.after(0, lambda: self._set_all_tool_btns("normal"))
 
         threading.Thread(target=_do_install, daemon=True).start()
 
@@ -336,9 +376,7 @@ class DynamicGymLauncher(tk.Tk):
             return
 
         self._installing = True
-        self.btn_install_be.configure(state="disabled")
-        self.btn_install_fe.configure(state="disabled")
-        self.btn_build_fe.configure(state="disabled")
+        self._set_all_tool_btns("disabled")
 
         def _do_build():
             self._log("Construyendo frontend (npm run build)...", "install")
@@ -363,11 +401,89 @@ class DynamicGymLauncher(tk.Tk):
                 self._log(f"Error en npm run build frontend: {e}", "error")
             finally:
                 self._installing = False
-                self.after(0, lambda: self.btn_install_be.configure(state="normal"))
-                self.after(0, lambda: self.btn_install_fe.configure(state="normal"))
-                self.after(0, lambda: self.btn_build_fe.configure(state="normal"))
+                self.after(0, lambda: self._set_all_tool_btns("normal"))
 
         threading.Thread(target=_do_build, daemon=True).start()
+
+    def _run_npm_audit_fix(self, target):
+        if self._installing:
+            self._log("Ya hay una operación en curso, esperá...", "warn")
+            return
+
+        target_dir = BACKEND_DIR if target == "servidor" else FRONTEND_DIR
+        if not os.path.isdir(target_dir):
+            self._log(f"Carpeta no encontrada: {target_dir}", "error")
+            return
+
+        self._installing = True
+        self._set_all_tool_btns("disabled")
+
+        def _do_audit_fix():
+            self._log(f"Ejecutando npm audit fix en {target}...", "install")
+            try:
+                proc = subprocess.Popen(
+                    [self._npm(), "audit", "fix"],
+                    cwd=target_dir,
+                    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                    creationflags=subprocess.CREATE_NO_WINDOW,
+                    text=True, bufsize=1, encoding="utf-8", errors="replace",
+                )
+                vuln_after = None
+                for line in proc.stdout:
+                    line  = line.rstrip()
+                    if not line:
+                        continue
+                    lower = line.lower()
+                    # Suprimir ruido de funding
+                    if any(kw in lower for kw in (
+                        "looking for funding", "run `npm fund", "npm fund",
+                    )):
+                        continue
+                    # Capturar resumen de vulnerabilidades restantes
+                    if "vulnerabilit" in lower:
+                        import re
+                        m = re.search(r"(\d+)\s+vulnerabilit", lower)
+                        vuln_after = int(m.group(1)) if m else None
+                        continue
+                    # Suprimir líneas de "to address" y "npm audit"
+                    if any(kw in lower for kw in ("to address", "run `npm audit", "run npm audit")):
+                        continue
+                    if any(kw in lower for kw in ("added", "removed", "changed", "up to date", "audited", "fixed")):
+                        self._log(line, "ok")
+                    else:
+                        self._log(line, "install")
+                proc.wait()
+                if proc.returncode == 0:
+                    self._log(f"✓ npm audit fix {target} completado.", "ok")
+                    if vuln_after and vuln_after > 0:
+                        self._log(
+                            f"⚠  Quedan {vuln_after} vulnerabilidad(es) que requieren cambios manuales "
+                            "(breaking changes). Revisá con 'npm audit'.",
+                            "warn",
+                        )
+                    else:
+                        self._log("✓ Sin vulnerabilidades pendientes.", "ok")
+                else:
+                    self._log(f"npm audit fix {target} terminó con advertencias (código {proc.returncode}).", "warn")
+                    if vuln_after:
+                        self._log(
+                            f"⚠  {vuln_after} vulnerabilidad(es) requieren '--force' o corrección manual.",
+                            "warn",
+                        )
+            except Exception as e:
+                self._log(f"Error en npm audit fix {target}: {e}", "error")
+            finally:
+                self._installing = False
+                self.after(0, lambda: self._set_all_tool_btns("normal"))
+
+        threading.Thread(target=_do_audit_fix, daemon=True).start()
+
+    def _set_all_tool_btns(self, state):
+        for btn in (
+            self.btn_install_be, self.btn_install_fe,
+            self.btn_build_fe, self.btn_audit_be, self.btn_audit_fe,
+        ):
+            self.after(0, lambda b=btn: b.configure(state=state))
 
     # ── procesos ─────────────────────────────────────────────────
     def _npm(self):
