@@ -22,7 +22,7 @@ function money(v) {
 }
 
 // Número de WhatsApp de Nahuel (soporte)
-const WA_SOPORTE = "543705023131";
+const WA_SOPORTE = "543704081082";
 
 const ESTADO_UI = {
   activo: {
@@ -188,7 +188,8 @@ export default function SuscripcionPage() {
                 <div>
                   <p className="text-sm font-semibold text-slate-700">Realizá la transferencia</p>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Transferí <span className="font-bold text-blue-700">{money(estado?.precio)}</span> al alias o CBU que te indicó Nahuel.
+                    Transferí <span className="font-bold text-blue-700">{money(estado?.precio)}</span> al alias{" "}
+                    <span className="font-bold text-slate-700 tracking-wide">Maloki03</span>.
                   </p>
                 </div>
               </div>
