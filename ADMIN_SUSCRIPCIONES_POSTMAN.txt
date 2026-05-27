@@ -1,0 +1,160 @@
+══════════════════════════════════════════════════════════════════
+  DYNAMIC GYM — ADMINISTRACIÓN DE SUSCRIPCIONES (Solo Nahuel)
+  Uso exclusivo vía Postman · Requiere SEED_SECRET de Render
+══════════════════════════════════════════════════════════════════
+
+REQUISITO
+─────────
+Todos los endpoints de administración requieren este header:
+
+  Key:    x-seed-token
+  Value:  setup_dynamic_2026   ← (el que configuraste en Render)
+
+BASE URL
+────────
+  Producción:  https://dynamic-gym.onrender.com/api/suscripcion
+  Local:       http://localhost:3001/api/suscripcion
+
+
+══════════════════════════════════════════════════════════════════
+1. VER ESTADO ACTUAL (sin necesitar login)
+══════════════════════════════════════════════════════════════════
+
+  Método:  GET
+  URL:     https://dynamic-gym.onrender.com/api/suscripcion/admin/estado
+  Header:  x-seed-token: setup_dynamic_2026
+
+  Respuesta de ejemplo:
+  {
+    "ok": true,
+    "cliente_nombre": "Dynamic Gym Formosa",
+    "plan_nombre": "Plan Mensual",
+    "precio": 10000,
+    "fecha_vencimiento": "2026-06-30",
+    "estado": "activo",
+    "dias_restantes": 34,
+    "mensaje": "Plan activo — vence en 34 días"
+  }
+
+  Estados posibles:
+    activo   → todo bien, más de 10 días
+    aviso    → últimos 10 días (banner amarillo en el sistema)
+    gracia   → venció, del 1 al 10 del mes (banner naranja)
+    vencido  → bloqueado (overlay rojo)
+
+
+══════════════════════════════════════════════════════════════════
+2. DAR DÍAS DE PRUEBA / EXTENDER EL PLAN
+══════════════════════════════════════════════════════════════════
+
+  Extiende el plan N días a partir del vencimiento actual.
+  Si el plan ya venció, los días se cuentan desde hoy.
+
+  Método:  POST
+  URL:     https://dynamic-gym.onrender.com/api/suscripcion/admin/extender
+  Header:  x-seed-token: setup_dynamic_2026
+  Header:  Content-Type: application/json
+  Body:
+    {
+      "dias": 30
+    }
+
+  EJEMPLOS DE USO:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  "dias": 7    → 7 días de prueba                            │
+  │  "dias": 15   → 15 días                                     │
+  │  "dias": 30   → 1 mes                                       │
+  │  "dias": 90   → 3 meses (cliente pagó trimestral)           │
+  │  "dias": 365  → 1 año                                       │
+  └─────────────────────────────────────────────────────────────┘
+
+  Respuesta de ejemplo:
+  {
+    "ok": true,
+    "mensaje": "Plan extendido 30 día(s)",
+    "nuevo_vencimiento": "2026-07-30"
+  }
+
+
+══════════════════════════════════════════════════════════════════
+3. FIJAR FECHA EXACTA DE VENCIMIENTO
+══════════════════════════════════════════════════════════════════
+
+  Útil para sincronizar el vencimiento con el ciclo de facturación
+  (ej: que todos los clientes venzan el último día del mes).
+
+  Método:  POST
+  URL:     https://dynamic-gym.onrender.com/api/suscripcion/admin/fijar
+  Header:  x-seed-token: setup_dynamic_2026
+  Header:  Content-Type: application/json
+  Body:
+    {
+      "fecha": "2026-12-31"
+    }
+
+  La fecha DEBE estar en formato: YYYY-MM-DD
+
+  EJEMPLOS DE USO:
+  ┌─────────────────────────────────────────────────────────────┐
+  │  "fecha": "2026-07-31"  → vence fin de julio               │
+  │  "fecha": "2026-12-31"  → vence fin de año                 │
+  │  "fecha": "2026-05-28"  → prueba: vence en 1 día           │
+  │  "fecha": "2026-05-20"  → prueba: simular gracia           │
+  │  "fecha": "2026-05-10"  → prueba: simular vencido          │
+  └─────────────────────────────────────────────────────────────┘
+
+  Respuesta de ejemplo:
+  {
+    "ok": true,
+    "mensaje": "Vencimiento fijado a 2026-12-31",
+    "estado": "activo",
+    "mensaje_estado": "Plan activo — vence en 218 días"
+  }
+
+
+══════════════════════════════════════════════════════════════════
+4. INICIALIZAR SUSCRIPCIÓN (solo la primera vez)
+══════════════════════════════════════════════════════════════════
+
+  Ya fue ejecutado. Solo usar si hay que resetear todo.
+
+  Método:  POST
+  URL:     https://dynamic-gym.onrender.com/api/suscripcion/setup
+  Header:  x-seed-token: setup_dynamic_2026
+
+  ⚠️  Si ya existe una suscripción, responde:
+  {
+    "ok": false,
+    "codigo": "YA_EXISTE",
+    "mensaje": "La suscripción ya existe"
+  }
+
+
+══════════════════════════════════════════════════════════════════
+FLUJO TÍPICO PARA UN NUEVO CLIENTE
+══════════════════════════════════════════════════════════════════
+
+  1. Deployar el sistema en Render para el cliente nuevo
+  2. Configurar variables de entorno (incluido SEED_SECRET)
+  3. Llamar POST /setup para crear las tablas
+  4. Llamar POST /admin/extender con { "dias": 7 } para dar prueba gratis
+  5. El cliente entra al sistema y ve el panel de suscripción
+  6. Cuando paga vía MercadoPago → el sistema se extiende solo 30 días
+  7. Si no paga → a los 10 días de gracia se bloquea automáticamente
+  8. Vos podés extender manualmente si hubo algún problema con el pago
+
+
+══════════════════════════════════════════════════════════════════
+CONFIGURACIÓN EN POSTMAN (colección sugerida)
+══════════════════════════════════════════════════════════════════
+
+  Crear una colección "Dynamic Gym Admin" con estas variables:
+    base_url   = https://dynamic-gym.onrender.com/api/suscripcion
+    seed_token = setup_dynamic_2026
+
+  Crear header global en la colección:
+    x-seed-token: {{seed_token}}
+
+  Así no tenés que poner el token en cada request.
+
+══════════════════════════════════════════════════════════════════
