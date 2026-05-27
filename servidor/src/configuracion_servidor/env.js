@@ -46,9 +46,25 @@ export const env = {
   CORS_ORIGIN:  process.env.CORS_ORIGIN || "",
 
   // ── Seed secret ────────────────────────────────────────────────
-  // Protege los endpoints /auth/seed-admin y /auth/seed-staff.
-  // Si no está seteado → endpoints deshabilitados.
-  // En Render: NO setear (queda deshabilitado en producción normal).
-  // Solo setear cuando necesites crear un usuario de emergencia.
   SEED_SECRET:  process.env.SEED_SECRET || "",
+
+  // ── MercadoPago (suscripción al software) ──────────────────────
+  // Obtenelo en https://www.mercadopago.com.ar/developers/panel/app
+  // Sandbox: usa el token de TEST para pruebas, PROD para producción.
+  MP_ACCESS_TOKEN: process.env.MP_ACCESS_TOKEN || "",
+
+  // URL COMPLETA del backend (para que MP envíe el webhook).
+  // Ejemplo: "https://dynamic-gym.onrender.com"
+  // En local: dejar vacío (el webhook no llegará, pero el flujo funciona).
+  APP_URL: process.env.APP_URL || "",
+
+  // URL COMPLETA del frontend (para la redirección post-pago de MP).
+  // Ejemplo: "https://dynamic-gym.vercel.app"
+  FRONTEND_URL: process.env.FRONTEND_URL || "http://localhost:5173",
+
+  // ── Plan del software ──────────────────────────────────────────
+  // Precio mensual en ARS (sin centavos). Ej: 10000 = $10.000
+  SOFTWARE_PRECIO: Number(process.env.SOFTWARE_PRECIO || 0),
+  // Nombre visible del cliente / gimnasio en la factura MP.
+  SOFTWARE_CLIENTE: process.env.SOFTWARE_CLIENTE || "Dynamic Gym",
 };

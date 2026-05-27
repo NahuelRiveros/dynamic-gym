@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import Navbar from "./navbar.jsx";
 import Footer from "./footer.jsx";
 import GymAudioScheduler from "../gym_audio_scheduler.jsx";
+import SuscripcionBanner from "../SuscripcionBanner.jsx";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -17,6 +18,7 @@ export default function AppLayout({ children }) {
     <div className="min-h-screen bg-gray-50">
       <ScrollToTop />
       <Navbar />
+      <SuscripcionBanner />
       <GymAudioScheduler />
       <main>{children}</main>
       <Footer />

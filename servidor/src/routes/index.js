@@ -14,6 +14,7 @@ import { planesRouter } from "./planes_router.js";
 import { staffRouter } from "./staffs_router.js";
 import { recaudacionRouter } from "./recaudacion_router.js";
 import { consultaPublicaRouter } from "./consulta_publica_router.js";
+import { suscripcionRouter } from "./suscripcion_router.js";
 
 const router = Router();
 
@@ -51,6 +52,7 @@ router.use("/admin/alumnos", adminAlumnosRouter);
 router.use("/planes", planesRouter);
 router.use("/staff", staffRouter);
 router.use("/recaudacion", recaudacionRouter);
-router.use("/consulta",   consultaPublicaRouter);   // ← público, sin auth
+router.use("/consulta",    consultaPublicaRouter);  // ← público, sin auth
+router.use("/suscripcion", suscripcionRouter);       // ← plan del software
 
 export default router;

@@ -20,6 +20,9 @@ import StaffPage from "../pages/admin/StaffPage.jsx";
 import RecaudacionesDetallePage from "../pages/estadisticas/recaudacion_detalle_dia_page.jsx";
 import EditarPlanVigentePage from "../pages/admin/editar_plan_vigente_page.jsx";
 import ConsultaPlanPage from "../pages/consulta_plan_page.jsx";
+import SuscripcionPage from "../pages/admin/suscripcion_page.jsx";
+import PagoExitosoPage from "../pages/pago_exitoso_page.jsx";
+import PagoFallidoPage from "../pages/pago_fallido_page.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -191,6 +194,32 @@ export const router = createBrowserRouter([
   element: (
     <AppLayout>
       <ConsultaPlanPage />
+    </AppLayout>
+  ),
+},
+{
+  path: "/admin/suscripcion",
+  element: (
+    <AppLayout>
+      <ProtectedRoute roles={["admin"]}>
+        <SuscripcionPage />
+      </ProtectedRoute>
+    </AppLayout>
+  ),
+},
+{
+  path: "/pago-exitoso",
+  element: (
+    <AppLayout>
+      <PagoExitosoPage />
+    </AppLayout>
+  ),
+},
+{
+  path: "/pago-fallido",
+  element: (
+    <AppLayout>
+      <PagoFallidoPage />
     </AppLayout>
   ),
 },
