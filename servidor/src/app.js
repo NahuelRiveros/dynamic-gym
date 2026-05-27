@@ -4,16 +4,21 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import morgan from "morgan";
+import path from "path";
+import { existsSync } from "fs";
+import { fileURLToPath } from "url";
 import routes from "./routes/index.js";
 import { env } from "./configuracion_servidor/env.js";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname  = path.dirname(__filename);
+
+// frontend/dist — se usa solo en modo local (NODE_ENV !== "production")
+const rutaFrontend = path.resolve(__dirname, "../../frontend/dist");
+
 // ── CORS ────────────────────────────────────────────────────────────────────
-// El frontend vive en Vercel (https://dynamic-gym.vercel.app).
-// El backend DEBE permitir ese origen explícitamente.
-//
-// En Render seteá: CORS_ORIGIN=https://dynamic-gym.vercel.app
-// Múltiples orígenes separados por coma: "https://a.vercel.app,https://custom.com"
-// Vacío / sin setear = permite TODOS los orígenes (solo para desarrollo local)
+// PRODUCCIÓN : CORS_ORIGIN = "https://dynamic-gym.vercel.app"
+// LOCAL      : CORS_ORIGIN vacío → permite todo (Vercel no aplica en localhost)
 const corsOrigin = env.CORS_ORIGIN
   ? env.CORS_ORIGIN.split(",").map((s) => s.trim())
   : true;
@@ -23,13 +28,10 @@ export function createApp() {
 
   app.use(helmet());
 
-  // ── Compresión gzip ──────────────────────────────────────────────────────
-  // Reduce el tamaño de las respuestas JSON hasta un 70%.
-  // Va ANTES de las rutas para comprimir todo.
+  // Reduce respuestas JSON/estáticos hasta un 70% — va ANTES de rutas
   app.use(compression());
 
-  // En producción "combined" guarda IP + User-Agent para auditoría.
-  // En desarrollo "dev" es más legible en consola.
+  // "combined" en prod guarda IP + User-Agent; "dev" es legible en consola
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
   app.use(express.json());
@@ -39,27 +41,39 @@ export function createApp() {
   // ── API ──────────────────────────────────────────────────────────────────
   app.use("/api", routes);
 
-  // ── Ruta raíz informativa ────────────────────────────────────────────────
-  // El frontend vive en Vercel — este servidor es solo API.
-  // Si alguien visita la URL del backend directamente, ve esto.
-  app.get("/", (_req, res) => {
-    res.json({
-      ok: true,
-      nombre: "Dynamic Gym API",
-      entorno: env.NODE_ENV,
-      salud: "/api/health",
-      frontend: "https://dynamic-gym.vercel.app",
-    });
-  });
+  // ── Modo LOCAL: servir el frontend desde frontend/dist/ ──────────────────
+  // En producción el frontend vive en Vercel — acá no hace falta.
+  // En local el launcher puede hacer "Build frontend" y usar localhost:3001.
+  if (env.NODE_ENV !== "production" && existsSync(rutaFrontend)) {
+    app.use(express.static(rutaFrontend));
 
-  // ── 404 ──────────────────────────────────────────────────────────────────
-  app.use((_req, res) => {
-    res.status(404).json({
-      ok: false,
-      codigo: "NOT_FOUND",
-      mensaje: "Ruta no encontrada. El API vive bajo /api/",
+    // SPA fallback: cualquier ruta que no sea /api → index.html
+    app.use((_req, res) => {
+      res.sendFile(path.join(rutaFrontend, "index.html"));
     });
-  });
+
+  } else {
+    // ── Modo PRODUCCIÓN (Render): API pura ───────────────────────────────
+    // El frontend está en Vercel, no servimos archivos estáticos.
+
+    app.get("/", (_req, res) => {
+      res.json({
+        ok: true,
+        nombre: "Dynamic Gym API",
+        entorno: env.NODE_ENV,
+        salud: "/api/health",
+        frontend: "https://dynamic-gym.vercel.app",
+      });
+    });
+
+    app.use((_req, res) => {
+      res.status(404).json({
+        ok: false,
+        codigo: "NOT_FOUND",
+        mensaje: "Ruta no encontrada. El API vive bajo /api/",
+      });
+    });
+  }
 
   // ── Error handler global ─────────────────────────────────────────────────
   app.use((err, _req, res, _next) => {
@@ -70,7 +84,6 @@ export function createApp() {
         mensaje: "Body JSON inválido",
       });
     }
-
     console.error(err);
     return res.status(500).json({
       ok: false,

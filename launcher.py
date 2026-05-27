@@ -84,8 +84,8 @@ class DynamicGymLauncher(tk.Tk):
         # ── cards de estado ──────────────────────────────────────
         cards_row = tk.Frame(self, bg=BG, padx=24)
         cards_row.pack(fill="x")
-        self.pg_dot, pg_card = self._card(cards_row, "PostgreSQL", ":5432")
-        self.be_dot, be_card = self._card(cards_row, "Servidor",   ":3001")
+        self.pg_dot, pg_card = self._card(cards_row, "Base de datos", "Render · Cloud")
+        self.be_dot, be_card = self._card(cards_row, "Servidor",      "localhost:3001")
         pg_card.pack(side="left", padx=(0, 12))
         be_card.pack(side="left")
 
@@ -100,9 +100,13 @@ class DynamicGymLauncher(tk.Tk):
         self.btn_stop.pack(side="left", padx=(0, 8))
         self.btn_stop.configure(state="disabled")
 
-        self.btn_browser = self._btn(btn_row1, "🌐  Abrir App", self._open_browser, CYAN)
-        self.btn_browser.pack(side="left")
+        self.btn_browser = self._btn(btn_row1, "🖥  Local", self._open_browser, CYAN)
+        self.btn_browser.pack(side="left", padx=(0, 8))
         self.btn_browser.configure(state="disabled")
+
+        self.btn_vercel = self._btn(btn_row1, "🌐  Vercel", self._open_vercel, PURPLE)
+        self.btn_vercel.pack(side="left")
+
 
         # ── fila 2 de botones: herramientas ──────────────────────
         btn_row2 = tk.Frame(self, bg=BG, pady=0)
@@ -282,6 +286,9 @@ class DynamicGymLauncher(tk.Tk):
 
     def _open_browser(self):
         webbrowser.open(f"http://localhost:{PORT}")
+
+    def _open_vercel(self):
+        webbrowser.open("https://dynamic-gym.vercel.app")
 
     # ── npm install ──────────────────────────────────────────────
     def _run_npm_install(self, target):
@@ -509,7 +516,8 @@ class DynamicGymLauncher(tk.Tk):
             self.after(0, lambda: self.btn_start.configure(state="normal"))
 
     def _read_output(self, proc, dot):
-        READY = ["✅ API local", "listening", "started", "API local:"]
+        READY = ["✅ API local", "✅ Base de datos conectada", "✅ Servidor corriendo",
+                 "listening", "started", "API local:"]
         for line in proc.stdout:
             line = line.rstrip()
             if not line:
@@ -529,14 +537,33 @@ class DynamicGymLauncher(tk.Tk):
             except Exception as e:
                 self._log(f"Error al detener {name}: {e}", "error")
 
-    def _check_postgres(self):
+    def _get_db_host_port(self):
+        """Lee DATABASE_URL del .env y devuelve (host, port)."""
+        import re
+        env_path = os.path.join(BACKEND_DIR, ".env")
         try:
-            r = subprocess.run(
-                ["pg_isready", "-h", "localhost", "-p", "5432"],
-                capture_output=True, timeout=5,
-                creationflags=subprocess.CREATE_NO_WINDOW,
-            )
-            return r.returncode == 0
+            with open(env_path, encoding="utf-8") as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("DATABASE_URL="):
+                        url = line[len("DATABASE_URL="):].strip()
+                        m = re.search(r"@([^:/\s]+):?(\d+)?/", url)
+                        if m:
+                            host = m.group(1)
+                            port = int(m.group(2)) if m.group(2) else 5432
+                            return host, port
+        except Exception:
+            pass
+        return "localhost", 5432
+
+    def _check_postgres(self):
+        """Verifica conectividad TCP al host de la DB (local o Render)."""
+        try:
+            host, port = self._get_db_host_port()
+            label = f"{host}:{port}"
+            self._log(f"Verificando DB en {label} ...", "info")
+            with socket.create_connection((host, port), timeout=8):
+                return True
         except Exception:
             return False
 
