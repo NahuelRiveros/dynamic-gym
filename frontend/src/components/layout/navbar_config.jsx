@@ -20,7 +20,7 @@ export const navbar_config = {
 
   links: [
     { label: "Home",         to: "/" },
-    { label: "Mi Plan",      to: "/consulta-plan" },
+    { label: "Mi Plan",      to: "/consulta-plan",      ocultarSiAuth: true },
     { label: "Ingreso",      to: "/kiosk",               requiereAuth: true, roles: ["admin", "staff"] },
     { label: "Login",        to: "/login",               ocultarSiAuth: true },
     { label: "Registro",     to: "/register",            requiereAuth: true, roles: ["admin", "staff"] },
