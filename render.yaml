@@ -40,7 +40,8 @@ services:
           property: connectionString
 
       # ⚠️ IMPORTANTE: dominio de Vercel para que CORS funcione.
-      # Si en el futuro cambia el dominio, actualizá este valor.
+      # Frontend: https://dynamic-gym.vercel.app
+      # Backend:  https://dynamic-gym.onrender.com
       - key: CORS_ORIGIN
         value: "https://dynamic-gym.vercel.app"
 
