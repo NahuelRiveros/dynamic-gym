@@ -41,7 +41,9 @@ export const router = createBrowserRouter([
     path: "/kiosk",
     element: (
       <AppLayout>
-        <KioskPage />
+        <ProtectedRoute roles={["admin", "staff"]}>
+          <KioskPage />
+        </ProtectedRoute>
       </AppLayout>
     ),
   },
