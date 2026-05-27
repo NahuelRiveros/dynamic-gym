@@ -44,4 +44,11 @@ export const env = {
   // Ejemplo: "https://mi-gym.onrender.com"
   // Dejarlo vacío = permite todos los orígenes (OK si el front vive en el mismo servidor)
   CORS_ORIGIN:  process.env.CORS_ORIGIN || "",
+
+  // ── Seed secret ────────────────────────────────────────────────
+  // Protege los endpoints /auth/seed-admin y /auth/seed-staff.
+  // Si no está seteado → endpoints deshabilitados.
+  // En Render: NO setear (queda deshabilitado en producción normal).
+  // Solo setear cuando necesites crear un usuario de emergencia.
+  SEED_SECRET:  process.env.SEED_SECRET || "",
 };
