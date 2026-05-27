@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import compression from "compression";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import morgan from "morgan";
@@ -25,6 +26,11 @@ export function createApp() {
   const app = express();
 
   app.use(helmet());
+
+  // ── Compresión gzip ───────────────────────────────────────────────────────
+  // Reduce el tamaño de las respuestas JSON y archivos estáticos hasta un 70%.
+  // Debe ir ANTES de las rutas y archivos estáticos.
+  app.use(compression());
 
   // En producción "combined" guarda IP, User-Agent, etc. para auditoría.
   // En desarrollo "dev" es más legible en consola.
