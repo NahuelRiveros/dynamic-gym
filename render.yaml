@@ -1,23 +1,26 @@
 # ─────────────────────────────────────────────────────────────────
 #  render.yaml — Infraestructura de Dynamic Gym en Render.com
+#
+#  ARQUITECTURA:
+#    Frontend → Vercel  (https://dynamic-gym.vercel.app)
+#    Backend  → Render  (este archivo)
+#
 #  Docs: https://render.com/docs/infrastructure-as-code
 # ─────────────────────────────────────────────────────────────────
 
 services:
-  # ── Web Service (API + Frontend) ──────────────────────────────
+  # ── API (solo backend, el front está en Vercel) ────────────────
   - type: web
-    name: dynamic-gym
+    name: dynamic-gym-api
     env: node
-    region: oregon          # Cambiá a "frankfurt" si querés servidor en Europa
+    region: oregon
 
-    # Render corre estos comandos desde la RAÍZ del repositorio
-    buildCommand: |
-      cd frontend && npm ci && VITE_API_URL=/api npm run build
-      cd ../servidor && npm ci
+    # Solo instalamos las dependencias del servidor.
+    # El frontend ya está deployado en Vercel, no se construye acá.
+    buildCommand: cd servidor && npm ci
 
     startCommand: cd servidor && npm start
 
-    # Render asigna el PORT automáticamente, NO lo hardcodees
     envVars:
       - key: NODE_ENV
         value: production
@@ -25,24 +28,21 @@ services:
       - key: DB_SSL
         value: "true"
 
-      # Render genera este valor seguro automáticamente la primera vez
+      # Render genera un valor seguro automáticamente la primera vez.
+      # Podés rotarlo desde el panel de Render → Environment.
       - key: JWT_SECRET
         generateValue: true
 
-      # Render conecta la DB de abajo automáticamente
+      # Render conecta la base de datos de abajo automáticamente.
       - key: DATABASE_URL
         fromDatabase:
           name: dynamic-gym-db
           property: connectionString
 
-      # CORS vacío = ok porque el front está en el mismo dominio
+      # ⚠️ IMPORTANTE: dominio de Vercel para que CORS funcione.
+      # Si en el futuro cambia el dominio, actualizá este valor.
       - key: CORS_ORIGIN
-        value: ""
-
-  # (Opcional) si en el futuro agregás un worker para emails/notificaciones:
-  # - type: worker
-  #   name: dynamic-gym-worker
-  #   ...
+        value: "https://dynamic-gym.vercel.app"
 
 # ── Base de datos PostgreSQL ───────────────────────────────────
 databases:
@@ -50,4 +50,3 @@ databases:
     databaseName: dynamicgym
     user: dynamicgym_user
     region: oregon
-    # plan: free   ← descomentá si querés forzar free tier

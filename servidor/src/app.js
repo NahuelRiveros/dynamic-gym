@@ -4,20 +4,16 @@ import compression from "compression";
 import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import morgan from "morgan";
-import path from "path";
-import { fileURLToPath } from "url";
 import routes from "./routes/index.js";
 import { env } from "./configuracion_servidor/env.js";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const rutaFrontend = path.resolve(__dirname, "../../frontend/dist");
-
-// ── CORS ───────────────────────────────────────────────────────────────────
-// Si CORS_ORIGIN está seteado, solo permite ese dominio.
-// Si está vacío, permite cualquier origen (ok cuando el front vive en el
-// mismo servidor Express como en producción en Render).
+// ── CORS ────────────────────────────────────────────────────────────────────
+// El frontend vive en Vercel (https://dynamic-gym.vercel.app).
+// El backend DEBE permitir ese origen explícitamente.
+//
+// En Render seteá: CORS_ORIGIN=https://dynamic-gym.vercel.app
+// Múltiples orígenes separados por coma: "https://a.vercel.app,https://custom.com"
+// Vacío / sin setear = permite TODOS los orígenes (solo para desarrollo local)
 const corsOrigin = env.CORS_ORIGIN
   ? env.CORS_ORIGIN.split(",").map((s) => s.trim())
   : true;
@@ -27,12 +23,12 @@ export function createApp() {
 
   app.use(helmet());
 
-  // ── Compresión gzip ───────────────────────────────────────────────────────
-  // Reduce el tamaño de las respuestas JSON y archivos estáticos hasta un 70%.
-  // Debe ir ANTES de las rutas y archivos estáticos.
+  // ── Compresión gzip ──────────────────────────────────────────────────────
+  // Reduce el tamaño de las respuestas JSON hasta un 70%.
+  // Va ANTES de las rutas para comprimir todo.
   app.use(compression());
 
-  // En producción "combined" guarda IP, User-Agent, etc. para auditoría.
+  // En producción "combined" guarda IP + User-Agent para auditoría.
   // En desarrollo "dev" es más legible en consola.
   app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
@@ -40,14 +36,32 @@ export function createApp() {
   app.use(cookieParser());
   app.use(cors({ origin: corsOrigin, credentials: true }));
 
+  // ── API ──────────────────────────────────────────────────────────────────
   app.use("/api", routes);
 
-  app.use(express.static(rutaFrontend));
-
-  app.get("/*splat", (_req, res) => {
-    res.sendFile(path.join(rutaFrontend, "index.html"));
+  // ── Ruta raíz informativa ────────────────────────────────────────────────
+  // El frontend vive en Vercel — este servidor es solo API.
+  // Si alguien visita la URL del backend directamente, ve esto.
+  app.get("/", (_req, res) => {
+    res.json({
+      ok: true,
+      nombre: "Dynamic Gym API",
+      entorno: env.NODE_ENV,
+      salud: "/api/health",
+      frontend: "https://dynamic-gym.vercel.app",
+    });
   });
 
+  // ── 404 ──────────────────────────────────────────────────────────────────
+  app.use((_req, res) => {
+    res.status(404).json({
+      ok: false,
+      codigo: "NOT_FOUND",
+      mensaje: "Ruta no encontrada. El API vive bajo /api/",
+    });
+  });
+
+  // ── Error handler global ─────────────────────────────────────────────────
   app.use((err, _req, res, _next) => {
     if (err?.type === "entity.parse.failed") {
       return res.status(400).json({
@@ -61,7 +75,7 @@ export function createApp() {
     return res.status(500).json({
       ok: false,
       codigo: "ERROR",
-      mensaje: "Error interno",
+      mensaje: "Error interno del servidor",
     });
   });
 
