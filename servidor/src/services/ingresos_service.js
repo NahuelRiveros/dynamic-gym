@@ -7,7 +7,20 @@ import {
   GymCatTipoPlan,
 } from "../models/index.js";
 
-const ESTADO_HABILITADO = 1;
+// ─────────────────────────────────────────────────────────────────────────────
+//  COLA OFFLINE (desactivada — descomentar para habilitar)
+//
+//  Cuando no hay conexión a la DB, el ingreso se guarda localmente en un
+//  archivo JSON y un cron lo sincroniza cada 30 s al volver el internet.
+//  Para activar:
+//    1. Descomentar el import de abajo
+//    2. Descomentar el bloque "Sin conexión" al final de registrarIngresoPorDni
+//    3. Descomentar iniciarSyncQueueCron() en server.js
+//
+// import { agregarALaCola } from "./offline_queue_service.js";
+// ─────────────────────────────────────────────────────────────────────────────
+
+const ESTADO_HABILITADO  = 1;
 const ESTADO_RESTRINGIDO = 2;
 
 const normalizarDocumento = (doc) =>
@@ -255,4 +268,22 @@ export async function registrarIngresoPorDni({ dni }) {
       hora_ingreso: ingresoDB?.gym_dia_horaingreso ?? hora,
     };
   });
+
+  // ─────────────────────────────────────────────────────────────────────────
+  //  MODO OFFLINE — descomentar junto con el import de agregarALaCola
+  //  y iniciarSyncQueueCron() en server.js para habilitar la cola local.
+  //
+  // } catch (err) {
+  //   if (esErrorDeConexion(err)) {
+  //     const { fecha, hora } = obtenerFechaHoraSistema();
+  //     const item = agregarALaCola({ dni: dniNormalizado, fecha, hora });
+  //     return {
+  //       ok: true, offline: true, codigo: "OK_OFFLINE",
+  //       mensaje: "Sin conexión — ingreso guardado localmente",
+  //       cola_id: item.id,
+  //     };
+  //   }
+  //   throw err;
+  // }
+  // ─────────────────────────────────────────────────────────────────────────
 }

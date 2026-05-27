@@ -1,6 +1,7 @@
 import { createApp } from "./app.js";
 import { sequelize } from "./database/sequelize.js";
 import { iniciarCronEstadoAlumnos } from "./cron/estado_alumno_cron.js";
+// import { iniciarSyncQueueCron } from "./cron/sync_queue_cron.js"; // Cola offline (desactivada)
 import "./models/index.js";
 import { env } from "./configuracion_servidor/env.js";
 
@@ -13,6 +14,8 @@ async function main() {
 
   iniciarCronEstadoAlumnos();
   console.log("✅ Cron de estados iniciado");
+
+  // iniciarSyncQueueCron(); // Descomentar para activar cola offline
 
   const app = createApp();
 

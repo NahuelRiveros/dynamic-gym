@@ -1,3 +1,4 @@
 node_modules
 .env
 GymApp-3-3-26.sql
+data/

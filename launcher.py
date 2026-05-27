@@ -15,6 +15,8 @@ import os
 import sys
 import time
 import socket
+import urllib.request
+import json
 
 # ── rutas ────────────────────────────────────────────────────────
 BASE_DIR      = os.path.dirname(sys.executable) if getattr(sys, "frozen", False) \
@@ -45,13 +47,14 @@ class DynamicGymLauncher(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Dynamic Gym")
-        self.geometry("720x570")
+        self.geometry("780x600")
         self.resizable(False, False)
         self.configure(bg=BG)
 
         self.backend_proc  = None
         self._running      = True
         self._installing   = False
+        self._poll_active  = False
 
         self._try_set_icon()
         self._build_ui()
@@ -84,10 +87,14 @@ class DynamicGymLauncher(tk.Tk):
         # ── cards de estado ──────────────────────────────────────
         cards_row = tk.Frame(self, bg=BG, padx=24)
         cards_row.pack(fill="x")
-        self.pg_dot, pg_card = self._card(cards_row, "Base de datos", "Render · Cloud")
-        self.be_dot, be_card = self._card(cards_row, "Servidor",      "localhost:3001")
-        pg_card.pack(side="left", padx=(0, 12))
-        be_card.pack(side="left")
+
+        self.pg_dot, pg_card     = self._card(cards_row, "Base de datos", "Render · Cloud")
+        self.be_dot, be_card     = self._card(cards_row, "Servidor",      "localhost:3001")
+        self.q_dot, self.q_count_lbl, q_card = self._card_queue(cards_row)
+
+        pg_card.pack(side="left", padx=(0, 10))
+        be_card.pack(side="left", padx=(0, 10))
+        q_card.pack(side="left")
 
         # ── fila 1 de botones: sistema ───────────────────────────
         btn_row1 = tk.Frame(self, bg=BG, pady=10)
@@ -106,7 +113,6 @@ class DynamicGymLauncher(tk.Tk):
 
         self.btn_vercel = self._btn(btn_row1, "🌐  Vercel", self._open_vercel, PURPLE)
         self.btn_vercel.pack(side="left")
-
 
         # ── fila 2 de botones: herramientas ──────────────────────
         btn_row2 = tk.Frame(self, bg=BG, pady=0)
@@ -173,14 +179,15 @@ class DynamicGymLauncher(tk.Tk):
         )
         self.log.pack(fill="both", expand=True, padx=24, pady=(2, 18))
 
-        self.log.tag_config("info",   foreground=TEXT)
-        self.log.tag_config("ok",     foreground=GREEN)
-        self.log.tag_config("error",  foreground=RED)
-        self.log.tag_config("warn",   foreground=YELLOW)
-        self.log.tag_config("srv",    foreground=PURPLE)
-        self.log.tag_config("muted",  foreground=MUTED)
-        self.log.tag_config("link",   foreground=CYAN)
-        self.log.tag_config("install",foreground=ORANGE)
+        self.log.tag_config("info",    foreground=TEXT)
+        self.log.tag_config("ok",      foreground=GREEN)
+        self.log.tag_config("error",   foreground=RED)
+        self.log.tag_config("warn",    foreground=YELLOW)
+        self.log.tag_config("srv",     foreground=PURPLE)
+        self.log.tag_config("muted",   foreground=MUTED)
+        self.log.tag_config("link",    foreground=CYAN)
+        self.log.tag_config("install", foreground=ORANGE)
+        self.log.tag_config("offline", foreground=ORANGE)
 
         self._log("Dynamic Gym Launcher listo.", "muted")
         self._check_node_modules()
@@ -188,15 +195,28 @@ class DynamicGymLauncher(tk.Tk):
 
     # ── widgets ──────────────────────────────────────────────────
     def _card(self, parent, label, port_label):
-        card = tk.Frame(parent, bg=PANEL, padx=18, pady=12,
+        card = tk.Frame(parent, bg=PANEL, padx=14, pady=12,
                         highlightbackground=BORDER, highlightthickness=1)
         dot = tk.Label(card, text="●", fg=RED, bg=PANEL, font=("Segoe UI", 16))
-        dot.pack(side="left", padx=(0, 10))
+        dot.pack(side="left", padx=(0, 8))
         info = tk.Frame(card, bg=PANEL)
         info.pack(side="left")
-        tk.Label(info, text=label,      bg=PANEL, fg=TEXT,  font=("Segoe UI", 11, "bold")).pack(anchor="w")
+        tk.Label(info, text=label,      bg=PANEL, fg=TEXT,  font=("Segoe UI", 10, "bold")).pack(anchor="w")
         tk.Label(info, text=port_label, bg=PANEL, fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w")
         return dot, card
+
+    def _card_queue(self, parent):
+        """Card especial para la cola offline con contador dinámico."""
+        card = tk.Frame(parent, bg=PANEL, padx=14, pady=12,
+                        highlightbackground=BORDER, highlightthickness=1)
+        dot = tk.Label(card, text="●", fg=MUTED, bg=PANEL, font=("Segoe UI", 16))
+        dot.pack(side="left", padx=(0, 8))
+        info = tk.Frame(card, bg=PANEL)
+        info.pack(side="left")
+        tk.Label(info, text="Cola Offline", bg=PANEL, fg=TEXT, font=("Segoe UI", 10, "bold")).pack(anchor="w")
+        count_lbl = tk.Label(info, text="—", bg=PANEL, fg=MUTED, font=("Segoe UI", 8))
+        count_lbl.pack(anchor="w")
+        return dot, count_lbl, card
 
     def _btn(self, parent, text, cmd, color):
         return tk.Button(
@@ -253,7 +273,7 @@ class DynamicGymLauncher(tk.Tk):
             self._log("PostgreSQL OK ✓", "ok")
         else:
             self._dot(self.pg_dot, YELLOW)
-            self._log("PostgreSQL no detectado — verificá que esté corriendo.", "warn")
+            self._log("PostgreSQL no detectado — continuando en modo offline.", "warn")
 
         self._log("Iniciando servidor Node.js...", "srv")
         self._start_backend()
@@ -271,9 +291,14 @@ class DynamicGymLauncher(tk.Tk):
         except Exception:
             pass
 
+        # Iniciar polling de la cola offline
+        self._poll_active = True
+        threading.Thread(target=self._poll_queue, daemon=True).start()
+
     def _stop(self):
         self.btn_stop.configure(state="disabled")
         self.btn_browser.configure(state="disabled")
+        self._poll_active = False
         threading.Thread(target=self._stop_all, daemon=True).start()
 
     def _stop_all(self):
@@ -281,6 +306,8 @@ class DynamicGymLauncher(tk.Tk):
         self._kill(self.backend_proc, "Servidor")
         self.backend_proc = None
         self._dot(self.be_dot, RED)
+        self._dot(self.q_dot, MUTED)
+        self.after(0, lambda: self.q_count_lbl.configure(text="—", fg=MUTED))
         self._log("Servidor detenido.", "warn")
         self.after(0, lambda: self.btn_start.configure(state="normal"))
 
@@ -289,6 +316,55 @@ class DynamicGymLauncher(tk.Tk):
 
     def _open_vercel(self):
         webbrowser.open("https://dynamic-gym.vercel.app")
+
+    # ── cola offline: polling ─────────────────────────────────────
+    def _poll_queue(self):
+        """
+        Consulta el endpoint /api/ingresos/cola-offline cada 6 segundos
+        mientras el servidor esté activo. Actualiza la card "Cola Offline".
+        """
+        url = f"http://localhost:{PORT}/api/ingresos/cola-offline"
+        while self._running and self._poll_active:
+            try:
+                req = urllib.request.Request(url, headers={"Authorization": "Bearer -"})
+                with urllib.request.urlopen(req, timeout=2) as resp:
+                    data   = json.loads(resp.read().decode("utf-8"))
+                    cola   = data.get("cola", {})
+                    pendientes   = cola.get("pendientes", 0)
+                    sincronizados = cola.get("sincronizados", 0)
+                    errores      = cola.get("errores", 0)
+                    self._update_queue_card(pendientes, sincronizados, errores)
+            except Exception:
+                # Servidor aún no listo o token requerido — no actualizar
+                pass
+            time.sleep(6)
+
+    def _update_queue_card(self, pendientes, sincronizados, errores):
+        def _w():
+            if pendientes == 0 and errores == 0:
+                self.q_dot.configure(fg=GREEN)
+                self.q_count_lbl.configure(
+                    text=f"Al día · {sincronizados} sync",
+                    fg=GREEN,
+                )
+            elif pendientes > 0:
+                self.q_dot.configure(fg=ORANGE)
+                self.q_count_lbl.configure(
+                    text=f"⏳ {pendientes} pendiente(s)",
+                    fg=ORANGE,
+                )
+                if pendientes > 0:
+                    self._log(
+                        f"⚡ Cola offline: {pendientes} ingreso(s) esperando sync",
+                        "offline",
+                    )
+            if errores > 0:
+                self.q_dot.configure(fg=RED)
+                self.q_count_lbl.configure(
+                    text=f"⚠ {errores} error(es) · {pendientes} pend.",
+                    fg=RED,
+                )
+        self.after(0, _w)
 
     # ── npm install ──────────────────────────────────────────────
     def _run_npm_install(self, target):
@@ -307,9 +383,8 @@ class DynamicGymLauncher(tk.Tk):
         def _do_install():
             self._log(f"Instalando dependencias en {target}...", "install")
             install_ok = False
-            vuln_count = 0  # cantidad de vulnerabilidades detectadas
+            vuln_count = 0
 
-            # Palabras que indican líneas de ruido a suprimir del log
             _SKIP = (
                 "looking for funding",
                 "run `npm fund",
@@ -334,19 +409,16 @@ class DynamicGymLauncher(tk.Tk):
                         continue
                     lower = line.lower()
 
-                    # Suprimir líneas de funding y audit que son solo ruido
                     if any(kw in lower for kw in _SKIP):
                         continue
 
-                    # Detectar y suprimir línea de vulnerabilidades (guardar el count)
                     if "vulnerabilit" in lower:
                         import re
                         m = re.search(r"(\d+)\s+vulnerabilit", lower)
                         if m:
                             vuln_count = int(m.group(1))
-                        continue  # suprimir la línea, mostraremos resumen al final
+                        continue
 
-                    # Línea de éxito de install
                     if any(kw in lower for kw in ("added", "up to date", "audited")):
                         self._log(line, "ok")
                         install_ok = True
@@ -441,18 +513,15 @@ class DynamicGymLauncher(tk.Tk):
                     if not line:
                         continue
                     lower = line.lower()
-                    # Suprimir ruido de funding
                     if any(kw in lower for kw in (
                         "looking for funding", "run `npm fund", "npm fund",
                     )):
                         continue
-                    # Capturar resumen de vulnerabilidades restantes
                     if "vulnerabilit" in lower:
                         import re
                         m = re.search(r"(\d+)\s+vulnerabilit", lower)
                         vuln_after = int(m.group(1)) if m else None
                         continue
-                    # Suprimir líneas de "to address" y "npm audit"
                     if any(kw in lower for kw in ("to address", "run `npm audit", "run npm audit")):
                         continue
                     if any(kw in lower for kw in ("added", "removed", "changed", "up to date", "audited", "fixed")):
@@ -516,8 +585,10 @@ class DynamicGymLauncher(tk.Tk):
             self.after(0, lambda: self.btn_start.configure(state="normal"))
 
     def _read_output(self, proc, dot):
-        READY = ["✅ API local", "✅ Base de datos conectada", "✅ Servidor corriendo",
-                 "listening", "started", "API local:"]
+        READY = [
+            "✅ API local", "✅ Base de datos conectada",
+            "✅ Servidor corriendo", "listening", "started", "API local:",
+        ]
         for line in proc.stdout:
             line = line.rstrip()
             if not line:
@@ -525,6 +596,9 @@ class DynamicGymLauncher(tk.Tk):
             self._log(line, "srv")
             if any(kw in line for kw in READY):
                 self._dot(dot, GREEN)
+            # Log de cola offline desde el servidor
+            if "📥 Cola offline:" in line or "🔄 Sync offline:" in line:
+                self._log(line.split("] ")[-1] if "] " in line else line, "offline")
 
     def _kill(self, proc, name):
         if proc and proc.poll() is None:
@@ -568,7 +642,8 @@ class DynamicGymLauncher(tk.Tk):
             return False
 
     def _on_close(self):
-        self._running = False
+        self._running     = False
+        self._poll_active = False
         self._stop_all()
         self.destroy()
 
