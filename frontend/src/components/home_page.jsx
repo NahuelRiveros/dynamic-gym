@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import {
   MapPin, Phone, Dumbbell, Users, Instagram,
   ArrowRight, Flame, Trophy,
@@ -72,7 +72,6 @@ const FEATURES = [
     title: "Profesores Certificados",
     desc: "Entrenadores con formación profesional para guiarte de forma personalizada hacia tus objetivos.",
     image: images.maquinas1,
-    accentColor: "sky",
     iconCls: "text-sky-400 bg-sky-500/15 group-hover:bg-sky-500/30",
     glowCls: "group-hover:shadow-sky-500/20",
     barCls: "bg-sky-500",
@@ -82,7 +81,6 @@ const FEATURES = [
     title: "Equipamiento Moderno",
     desc: "Máquinas de última generación y pesos libres para trabajar cada grupo muscular con precisión.",
     image: images.maquinas2,
-    accentColor: "amber",
     iconCls: "text-amber-400 bg-amber-500/15 group-hover:bg-amber-500/30",
     glowCls: "group-hover:shadow-amber-500/20",
     barCls: "bg-amber-500",
@@ -92,7 +90,6 @@ const FEATURES = [
     title: "Comunidad Motivadora",
     desc: "Un ambiente de energía donde cada miembro se convierte en tu fuente de inspiración diaria.",
     image: images.maquinas3,
-    accentColor: "rose",
     iconCls: "text-rose-400 bg-rose-500/15 group-hover:bg-rose-500/30",
     glowCls: "group-hover:shadow-rose-500/20",
     barCls: "bg-rose-500",
@@ -136,324 +133,254 @@ const CONTACTS = [
 ];
 
 export default function HomePage() {
-  const [scrollY, setScrollY] = useState(0);
+  // ── Parallax sin re-render ─────────────────────────────────────────────────
+  // En vez de setState (que re-renderiza todo el componente en cada scroll),
+  // mutamos directamente el estilo del elemento via ref.
+  const parallaxRef = useRef(null);
 
   useEffect(() => {
-    const fn = () => setScrollY(window.scrollY);
-    window.addEventListener("scroll", fn, { passive: true });
-    return () => window.removeEventListener("scroll", fn);
+    const el = parallaxRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      el.style.transform = `translateY(${window.scrollY * 0.25}px)`;
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
   return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,700;0,900;1,900&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&display=swap');
+    <div className="dg-body-font min-h-screen bg-[#060a12] text-white overflow-x-hidden">
 
-        .dg-display    { font-family: 'Barlow Condensed', sans-serif; }
-        .dg-body-font  { font-family: 'DM Sans', sans-serif; }
+      {/* ── HERO ──────────────────────────────────────────── */}
+      <section className="dg-grain relative flex h-screen min-h-[640px] items-center justify-center overflow-hidden">
 
-        @keyframes dg-fade-up {
-          from { opacity: 0; transform: translateY(32px); }
-          to   { opacity: 1; transform: translateY(0);    }
-        }
-        @keyframes dg-blink {
-          0%, 100% { opacity: 1;   }
-          50%       { opacity: 0.2; }
-        }
-        @keyframes dg-line-grow {
-          from { transform: scaleX(0); }
-          to   { transform: scaleX(1); }
-        }
-        @keyframes dg-grain {
-          0%, 100% { transform: translate(0,0);       }
-          10%       { transform: translate(-2%,-3%);   }
-          20%       { transform: translate(3%, 2%);    }
-          30%       { transform: translate(-1%, 4%);   }
-          40%       { transform: translate(4%, -1%);   }
-          50%       { transform: translate(-3%,3%);    }
-          60%       { transform: translate(2%,-4%);    }
-          70%       { transform: translate(-4%,1%);    }
-          80%       { transform: translate(1%,3%);     }
-          90%       { transform: translate(3%,-2%);    }
-        }
-        @keyframes dg-shimmer {
-          from { background-position: -200% center; }
-          to   { background-position:  200% center; }
-        }
+        {/* Background parallax — controlado por ref, sin setState */}
+        <div ref={parallaxRef} className="absolute inset-0">
+          <img
+            src={images.principal}
+            alt="Dynamic Gym"
+            fetchPriority="high"
+            className="h-full w-full object-cover scale-110"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#060a12]/70 via-[#060a12]/45 to-[#060a12]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#060a12]/55 via-transparent to-[#060a12]/55" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_40%,_transparent,_rgba(6,10,18,0.5))]" />
+        </div>
 
-        .dg-a1 { animation: dg-fade-up .8s .05s cubic-bezier(.22,1,.36,1) both; }
-        .dg-a2 { animation: dg-fade-up .8s .22s cubic-bezier(.22,1,.36,1) both; }
-        .dg-a3 { animation: dg-fade-up .8s .40s cubic-bezier(.22,1,.36,1) both; }
-        .dg-a4 { animation: dg-fade-up .8s .58s cubic-bezier(.22,1,.36,1) both; }
+        {/* Top accent line */}
+        <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-sky-500 to-transparent opacity-80" />
 
-        .dg-blink    { animation: dg-blink 2.4s ease-in-out infinite; }
-        .dg-line-grow { animation: dg-line-grow 1.1s .9s ease both; transform-origin: left; }
+        {/* Diagonal decorative line */}
+        <div
+          className="absolute bottom-0 left-0 w-1/2 h-[1px] bg-gradient-to-r from-sky-500/30 to-transparent"
+          style={{ transform: "rotate(-1.5deg) translateY(-60px)" }}
+        />
 
-        .dg-card { transition: transform .25s cubic-bezier(.22,1,.36,1), box-shadow .25s ease; }
-        .dg-card:hover { transform: translateY(-6px); }
-
-        .dg-img-card { transition: transform .28s cubic-bezier(.22,1,.36,1), box-shadow .28s ease; }
-        .dg-img-card:hover { transform: translateY(-8px); }
-        .dg-img-card img { transition: transform .7s cubic-bezier(.22,1,.36,1); }
-        .dg-img-card:hover img { transform: scale(1.08); }
-
-        .dg-grain::after {
-          content: '';
-          position: absolute;
-          inset: -200%;
-          width: 400%;
-          height: 400%;
-          background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
-          opacity: 0.028;
-          animation: dg-grain .5s steps(1) infinite;
-          pointer-events: none;
-          z-index: 1;
-        }
-
-        .dg-shimmer-text {
-          background: linear-gradient(90deg, #fff 0%, #7dd3fc 40%, #fff 60%, #7dd3fc 100%);
-          background-size: 200% auto;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-          background-clip: text;
-          animation: dg-shimmer 4s linear infinite;
-        }
-
-        .stat-item { transition: transform .22s ease; }
-        .stat-item:hover { transform: translateY(-4px); }
-      `}</style>
-
-      <div className="dg-body-font min-h-screen bg-[#060a12] text-white overflow-x-hidden">
-
-        {/* ── HERO ──────────────────────────────────────────── */}
-        <section className="dg-grain relative flex h-screen min-h-[640px] items-center justify-center overflow-hidden">
-
-          {/* Background parallax */}
-          <div
-            className="absolute inset-0"
-            style={{ transform: `translateY(${scrollY * 0.25}px)` }}
-          >
-            <img
-              src={images.principal}
-              alt="Dynamic Gym"
-              className="h-full w-full object-cover scale-110"
-            />
-            {/* Multi-layer gradient for dramatic depth */}
-            <div className="absolute inset-0 bg-gradient-to-b from-[#060a12]/70 via-[#060a12]/45 to-[#060a12]" />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#060a12]/55 via-transparent to-[#060a12]/55" />
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_40%,_transparent,_rgba(6,10,18,0.5))]" />
+        {/* Content */}
+        <div className="relative z-10 px-6 text-center max-w-5xl mx-auto">
+          <div className="dg-a1 inline-flex items-center gap-2.5 rounded-full border border-sky-500/35 bg-sky-500/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sky-400 mb-10 backdrop-blur-sm">
+            <span className="dg-blink h-1.5 w-1.5 rounded-full bg-sky-400" />
+            Dynamic Gym · Formosa Capital
           </div>
 
-          {/* Top accent line */}
-          <div className="absolute top-0 inset-x-0 h-[2px] bg-gradient-to-r from-transparent via-sky-500 to-transparent opacity-80" />
+          <h1 className="dg-display dg-a2 text-[4.5rem] sm:text-8xl md:text-[9.5rem] lg:text-[11.5rem] font-black uppercase leading-[0.86] tracking-tight">
+            ROMPE
+            <span className="block dg-shimmer-text drop-shadow-[0_0_50px_rgba(14,165,233,0.35)]">
+              TUS LÍMITES
+            </span>
+          </h1>
 
-          {/* Diagonal decorative line */}
-          <div className="absolute bottom-0 left-0 w-1/2 h-[1px] bg-gradient-to-r from-sky-500/30 to-transparent" style={{ transform: "rotate(-1.5deg) translateY(-60px)" }} />
+          <p className="dg-a3 mt-8 max-w-md mx-auto text-base text-gray-400 leading-relaxed">
+            Profesores certificados, equipamiento moderno y una comunidad
+            que te impulsa a dar el 100&nbsp;% cada día.
+          </p>
 
-          {/* Content */}
-          <div className="relative z-10 px-6 text-center max-w-5xl mx-auto">
-            <div className="dg-a1 inline-flex items-center gap-2.5 rounded-full border border-sky-500/35 bg-sky-500/10 px-5 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-sky-400 mb-10 backdrop-blur-sm">
-              <span className="dg-blink h-1.5 w-1.5 rounded-full bg-sky-400" />
-              Dynamic Gym · Formosa Capital
-            </div>
-
-            <h1 className="dg-display dg-a2 text-[4.5rem] sm:text-8xl md:text-[9.5rem] lg:text-[11.5rem] font-black uppercase leading-[0.86] tracking-tight">
-              ROMPE
-              <span className="block dg-shimmer-text drop-shadow-[0_0_50px_rgba(14,165,233,0.35)]">
-                TUS LÍMITES
-              </span>
-            </h1>
-
-            <p className="dg-a3 mt-8 max-w-md mx-auto text-base text-gray-400 leading-relaxed">
-              Profesores certificados, equipamiento moderno y una comunidad
-              que te impulsa a dar el 100&nbsp;% cada día.
-            </p>
-
-            <div className="dg-a4 mt-11 flex flex-col sm:flex-row items-center justify-center gap-4">
-              <a
-                href="https://wa.me/543705023131"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="group inline-flex items-center gap-2.5 rounded-2xl bg-sky-500 px-8 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-sky-500/35 hover:bg-sky-400 hover:scale-105 hover:shadow-sky-400/45 transition-all duration-200"
-              >
-                Contactar ahora
-                <ArrowRight size={15} className="group-hover:translate-x-1.5 transition-transform" />
-              </a>
-              <a
-                href="#gimnasio"
-                className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-8 py-4 text-sm font-bold uppercase tracking-wider text-white backdrop-blur-sm hover:bg-white/10 hover:border-white/28 transition-all duration-200"
-              >
-                Ver el gym
-              </a>
-            </div>
-          </div>
-
-          {/* Scroll hint */}
-          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-gray-600">
-            <span className="text-[10px] uppercase tracking-[0.25em]">Scroll</span>
-            <div className="h-9 w-px bg-gradient-to-b from-gray-600 to-transparent animate-pulse" />
-          </div>
-        </section>
-
-        {/* ── STATS ─────────────────────────────────────────── */}
-        <section className="border-y border-white/6 bg-[#0b0f18] py-14">
-          <div className="max-w-5xl mx-auto px-6">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-              {STATS.map(({ icon: Icon, value, label }) => (
-                <div key={label} className="stat-item group">
-                  <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/15 transition-colors group-hover:bg-sky-500/20 group-hover:ring-sky-500/30">
-                    <Icon size={22} />
-                  </div>
-                  <div className="dg-display text-4xl font-black text-white">{value}</div>
-                  <div className="mt-1 text-[11px] uppercase tracking-wider text-gray-500">{label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── FEATURES (IMAGE CARDS) ────────────────────────── */}
-        <section id="planes" className="py-28 px-6">
-          <div className="max-w-5xl mx-auto">
-
-            <div className="text-center mb-18">
-              <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-sky-400">
-                ¿Por qué elegirnos?
-              </span>
-              <h2 className="dg-display mt-3 text-5xl md:text-6xl lg:text-7xl font-black uppercase leading-none">
-                ENTRENAMIENTO
-                <span className="block text-sky-400">DE ÉLITE</span>
-              </h2>
-              <div className="dg-line-grow mx-auto mt-5 h-[2px] w-16 origin-left bg-gradient-to-r from-sky-500 to-sky-400" />
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-6">
-              {FEATURES.map(({ icon: Icon, title, desc, image, iconCls, glowCls, barCls }) => (
-                <div
-                  key={title}
-                  className={`dg-img-card group relative rounded-3xl overflow-hidden border border-white/10 shadow-xl ${glowCls} h-[400px]`}
-                >
-                  {/* Photo */}
-                  <img
-                    src={image}
-                    alt={title}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-
-                  {/* Gradients */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#060a12] via-[#060a12]/60 to-[#060a12]/10" />
-                  <div className="absolute inset-0 bg-gradient-to-br from-transparent to-[#060a12]/40" />
-
-                  {/* Accent bar top */}
-                  <div className={`absolute top-0 inset-x-0 h-[2px] ${barCls} opacity-70`} />
-
-                  {/* Content */}
-                  <div className="absolute inset-0 flex flex-col justify-end p-7">
-                    <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300 ${iconCls}`}>
-                      <Icon size={24} />
-                    </div>
-                    <h3 className="dg-display text-3xl font-black uppercase leading-none mb-3">
-                      {title}
-                    </h3>
-                    <p className="text-gray-400 text-sm leading-relaxed translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-350">
-                      {desc}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── GALLERY / CAROUSEL ────────────────────────────── */}
-        <section id="gimnasio" className="py-20 px-6 bg-[#0b0f18]">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-12">
-              <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-sky-400">
-                Nuestro espacio
-              </span>
-              <h2 className="dg-display mt-3 text-5xl md:text-6xl lg:text-7xl font-black uppercase leading-none">
-                CONOCÉ EL
-                <span className="block text-sky-400">GYM</span>
-              </h2>
-            </div>
-            <Carousel slides={slides} autoPlay intervalMs={6500} />
-          </div>
-        </section>
-
-        {/* ── CONTACT ───────────────────────────────────────── */}
-        <section id="contacto" className="py-28 px-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-16">
-              <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-sky-400">
-                Contacto directo
-              </span>
-              <h2 className="dg-display mt-3 text-5xl md:text-6xl lg:text-7xl font-black uppercase leading-none">
-                HABLEMOS
-                <span className="block text-sky-400">HOY</span>
-              </h2>
-            </div>
-
-            <div className="grid md:grid-cols-3 gap-5">
-              {CONTACTS.map(({ icon: Icon, label, desc, sub, href, iconCls, hoverBorder, accentCls, glowCls }) => (
-                <a
-                  key={label}
-                  href={href}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className={`dg-card group flex flex-col gap-4 rounded-3xl border border-white/8 bg-white/[0.03] p-7 shadow-lg transition-all ${hoverBorder} hover:bg-white/[0.06] ${glowCls}`}
-                >
-                  <div className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-300 ${iconCls}`}>
-                    <Icon size={26} />
-                  </div>
-                  <div>
-                    <div className="font-bold text-white text-lg leading-none">{label}</div>
-                    <div className="text-[11px] text-gray-500 uppercase tracking-wide mt-1">{desc}</div>
-                    <div className="mt-2 text-sm text-gray-400">{sub}</div>
-                  </div>
-                  <div className={`mt-auto inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${accentCls}`}>
-                    Ir <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
-                  </div>
-                </a>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* ── FOOTER CTA ────────────────────────────────────── */}
-        <section className="relative overflow-hidden border-t border-white/8 py-28 px-6 text-center">
-          {/* Background: use principal2 as subtle texture */}
-          <div className="absolute inset-0">
-            <img src={images.principal2} alt="" className="h-full w-full object-cover opacity-10 scale-105" />
-            <div className="absolute inset-0 bg-gradient-to-b from-[#060a12]/90 via-[#060a12]/80 to-[#060a12]" />
-          </div>
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_50%_100%,_rgba(14,165,233,0.09),_transparent)]" />
-          <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-500/45 to-transparent" />
-
-          <div className="relative max-w-2xl mx-auto">
-            <h2 className="dg-display text-6xl md:text-7xl lg:text-8xl font-black uppercase leading-none mb-6">
-              TU MEJOR
-              <span className="block text-sky-400 drop-shadow-[0_0_35px_rgba(14,165,233,0.40)]">
-                VERSIÓN
-              </span>
-              TE ESPERA
-            </h2>
-            <p className="text-gray-500 mb-10 text-base tracking-wide">
-              Comenzá hoy. Sin excusas.
-            </p>
+          <div className="dg-a4 mt-11 flex flex-col sm:flex-row items-center justify-center gap-4">
             <a
               href="https://wa.me/543705023131"
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-3 rounded-2xl bg-sky-500 px-10 py-4 font-bold uppercase tracking-wider text-white shadow-xl shadow-sky-500/30 hover:bg-sky-400 hover:scale-105 transition-all duration-200"
+              className="group inline-flex items-center gap-2.5 rounded-2xl bg-sky-500 px-8 py-4 text-sm font-bold uppercase tracking-wider text-white shadow-lg shadow-sky-500/35 hover:bg-sky-400 hover:scale-105 hover:shadow-sky-400/45 transition-all duration-200"
             >
-              <Phone size={18} />
-              Empezar ahora
+              Contactar ahora
+              <ArrowRight size={15} className="group-hover:translate-x-1.5 transition-transform" />
+            </a>
+            <a
+              href="#gimnasio"
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-8 py-4 text-sm font-bold uppercase tracking-wider text-white backdrop-blur-sm hover:bg-white/10 hover:border-white/28 transition-all duration-200"
+            >
+              Ver el gym
             </a>
           </div>
-        </section>
+        </div>
 
-      </div>
-    </>
+        {/* Scroll hint */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-gray-600">
+          <span className="text-[10px] uppercase tracking-[0.25em]">Scroll</span>
+          <div className="h-9 w-px bg-gradient-to-b from-gray-600 to-transparent animate-pulse" />
+        </div>
+      </section>
+
+      {/* ── STATS ─────────────────────────────────────────── */}
+      <section className="border-y border-white/6 bg-[#0b0f18] py-14">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+            {STATS.map(({ icon: Icon, value, label }) => (
+              <div key={label} className="stat-item group">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl bg-sky-500/10 text-sky-400 ring-1 ring-sky-500/15 transition-colors group-hover:bg-sky-500/20 group-hover:ring-sky-500/30">
+                  <Icon size={22} />
+                </div>
+                <div className="dg-display text-4xl font-black text-white">{value}</div>
+                <div className="mt-1 text-[11px] uppercase tracking-wider text-gray-500">{label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURES (IMAGE CARDS) ────────────────────────── */}
+      <section id="planes" className="py-28 px-6">
+        <div className="max-w-5xl mx-auto">
+
+          <div className="text-center mb-18">
+            <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-sky-400">
+              ¿Por qué elegirnos?
+            </span>
+            <h2 className="dg-display mt-3 text-5xl md:text-6xl lg:text-7xl font-black uppercase leading-none">
+              ENTRENAMIENTO
+              <span className="block text-sky-400">DE ÉLITE</span>
+            </h2>
+            <div className="dg-line-grow mx-auto mt-5 h-[2px] w-16 origin-left bg-gradient-to-r from-sky-500 to-sky-400" />
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {FEATURES.map(({ icon: Icon, title, desc, image, iconCls, glowCls, barCls }) => (
+              <div
+                key={title}
+                className={`dg-img-card group relative rounded-3xl overflow-hidden border border-white/10 shadow-xl ${glowCls} h-[400px]`}
+              >
+                {/* Lazy: estas imágenes están debajo del fold */}
+                <img
+                  src={image}
+                  alt={title}
+                  loading="lazy"
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#060a12] via-[#060a12]/60 to-[#060a12]/10" />
+                <div className="absolute inset-0 bg-gradient-to-br from-transparent to-[#060a12]/40" />
+                <div className={`absolute top-0 inset-x-0 h-[2px] ${barCls} opacity-70`} />
+                <div className="absolute inset-0 flex flex-col justify-end p-7">
+                  <div className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-300 ${iconCls}`}>
+                    <Icon size={24} />
+                  </div>
+                  <h3 className="dg-display text-3xl font-black uppercase leading-none mb-3">
+                    {title}
+                  </h3>
+                  <p className="text-gray-400 text-sm leading-relaxed translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-350">
+                    {desc}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── GALLERY / CAROUSEL ────────────────────────────── */}
+      <section id="gimnasio" className="py-20 px-6 bg-[#0b0f18]">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-12">
+            <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-sky-400">
+              Nuestro espacio
+            </span>
+            <h2 className="dg-display mt-3 text-5xl md:text-6xl lg:text-7xl font-black uppercase leading-none">
+              CONOCÉ EL
+              <span className="block text-sky-400">GYM</span>
+            </h2>
+          </div>
+          <Carousel slides={slides} autoPlay intervalMs={6500} />
+        </div>
+      </section>
+
+      {/* ── CONTACT ───────────────────────────────────────── */}
+      <section id="contacto" className="py-28 px-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="text-center mb-16">
+            <span className="text-[11px] font-bold uppercase tracking-[0.3em] text-sky-400">
+              Contacto directo
+            </span>
+            <h2 className="dg-display mt-3 text-5xl md:text-6xl lg:text-7xl font-black uppercase leading-none">
+              HABLEMOS
+              <span className="block text-sky-400">HOY</span>
+            </h2>
+          </div>
+
+          <div className="grid md:grid-cols-3 gap-5">
+            {CONTACTS.map(({ icon: Icon, label, desc, sub, href, iconCls, hoverBorder, accentCls, glowCls }) => (
+              <a
+                key={label}
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`dg-card group flex flex-col gap-4 rounded-3xl border border-white/8 bg-white/[0.03] p-7 shadow-lg transition-all ${hoverBorder} hover:bg-white/[0.06] ${glowCls}`}
+              >
+                <div className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl transition-all duration-300 ${iconCls}`}>
+                  <Icon size={26} />
+                </div>
+                <div>
+                  <div className="font-bold text-white text-lg leading-none">{label}</div>
+                  <div className="text-[11px] text-gray-500 uppercase tracking-wide mt-1">{desc}</div>
+                  <div className="mt-2 text-sm text-gray-400">{sub}</div>
+                </div>
+                <div className={`mt-auto inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider ${accentCls}`}>
+                  Ir <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                </div>
+              </a>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FOOTER CTA ────────────────────────────────────── */}
+      <section className="relative overflow-hidden border-t border-white/8 py-28 px-6 text-center">
+        <div className="absolute inset-0">
+          {/* Lazy: imagen de fondo del footer, no es LCP */}
+          <img
+            src={images.principal2}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover opacity-10 scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-[#060a12]/90 via-[#060a12]/80 to-[#060a12]" />
+        </div>
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_55%_at_50%_100%,_rgba(14,165,233,0.09),_transparent)]" />
+        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-sky-500/45 to-transparent" />
+
+        <div className="relative max-w-2xl mx-auto">
+          <h2 className="dg-display text-6xl md:text-7xl lg:text-8xl font-black uppercase leading-none mb-6">
+            TU MEJOR
+            <span className="block text-sky-400 drop-shadow-[0_0_35px_rgba(14,165,233,0.40)]">
+              VERSIÓN
+            </span>
+            TE ESPERA
+          </h2>
+          <p className="text-gray-500 mb-10 text-base tracking-wide">
+            Comenzá hoy. Sin excusas.
+          </p>
+          <a
+            href="https://wa.me/543705023131"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-3 rounded-2xl bg-sky-500 px-10 py-4 font-bold uppercase tracking-wider text-white shadow-xl shadow-sky-500/30 hover:bg-sky-400 hover:scale-105 transition-all duration-200"
+          >
+            <Phone size={18} />
+            Empezar ahora
+          </a>
+        </div>
+      </section>
+
+    </div>
   );
 }
