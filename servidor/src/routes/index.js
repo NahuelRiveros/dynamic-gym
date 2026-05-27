@@ -13,6 +13,7 @@ import { adminAlumnosRouter } from "./admin_alumnos_router.js";
 import { planesRouter } from "./planes_router.js";
 import { staffRouter } from "./staffs_router.js";
 import { recaudacionRouter } from "./recaudacion_router.js";
+import { consultaPublicaRouter } from "./consulta_publica_router.js";
 
 const router = Router();
 
@@ -50,5 +51,6 @@ router.use("/admin/alumnos", adminAlumnosRouter);
 router.use("/planes", planesRouter);
 router.use("/staff", staffRouter);
 router.use("/recaudacion", recaudacionRouter);
+router.use("/consulta",   consultaPublicaRouter);   // ← público, sin auth
 
 export default router;

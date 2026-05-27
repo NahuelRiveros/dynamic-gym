@@ -24,3 +24,9 @@ export async function getAlumnosCumples(params = {}){
   const r = await http.get("/alumnos/cumples", { params })
   return r.data;
 }
+
+// Consulta pública por DNI — no requiere auth
+export async function consultarPlanPorDni(dni) {
+  const r = await http.get(`/consulta/plan/${encodeURIComponent(dni)}`);
+  return r.data;
+}

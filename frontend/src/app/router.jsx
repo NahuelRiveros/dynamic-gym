@@ -19,6 +19,7 @@ import PlanesPage from "../pages/admin/planes_page.jsx";
 import StaffPage from "../pages/admin/StaffPage.jsx";
 import RecaudacionesDetallePage from "../pages/estadisticas/recaudacion_detalle_dia_page.jsx";
 import EditarPlanVigentePage from "../pages/admin/editar_plan_vigente_page.jsx";
+import ConsultaPlanPage from "../pages/consulta_plan_page.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -182,6 +183,14 @@ export const router = createBrowserRouter([
       <ProtectedRoute roles={["admin"]}>
         <EditarPlanVigentePage />
       </ProtectedRoute>
+    </AppLayout>
+  ),
+},
+{
+  path: "/consulta-plan",
+  element: (
+    <AppLayout>
+      <ConsultaPlanPage />
     </AppLayout>
   ),
 },
