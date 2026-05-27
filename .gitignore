@@ -1,2 +1,36 @@
-node_modules
+# ── Dependencias ──────────────────────────────
+node_modules/
+
+# ── Variables de entorno (NUNCA subir a git) ──
 .env
+.env.local
+.env.*.local
+
+# ── Builds del frontend ───────────────────────
+frontend/dist/
+frontend/dist-ssr/
+
+# ── Logs ──────────────────────────────────────
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# ── Backups / SQL dumps ───────────────────────
+*.sql
+*.dump
+*.bak
+
+# ── OS / Editores ─────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# ── Archivos temporales ───────────────────────
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

@@ -6,20 +6,33 @@ import morgan from "morgan";
 import path from "path";
 import { fileURLToPath } from "url";
 import routes from "./routes/index.js";
+import { env } from "./configuracion_servidor/env.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const rutaFrontend = path.resolve(__dirname, "../../frontend/dist");
 
+// ── CORS ───────────────────────────────────────────────────────────────────
+// Si CORS_ORIGIN está seteado, solo permite ese dominio.
+// Si está vacío, permite cualquier origen (ok cuando el front vive en el
+// mismo servidor Express como en producción en Render).
+const corsOrigin = env.CORS_ORIGIN
+  ? env.CORS_ORIGIN.split(",").map((s) => s.trim())
+  : true;
+
 export function createApp() {
   const app = express();
 
   app.use(helmet());
-  app.use(morgan("dev"));
+
+  // En producción "combined" guarda IP, User-Agent, etc. para auditoría.
+  // En desarrollo "dev" es más legible en consola.
+  app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
+
   app.use(express.json());
   app.use(cookieParser());
-  app.use(cors({ origin: true, credentials: true }));
+  app.use(cors({ origin: corsOrigin, credentials: true }));
 
   app.use("/api", routes);
 

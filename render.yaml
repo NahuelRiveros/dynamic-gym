@@ -1,0 +1,53 @@
+# ─────────────────────────────────────────────────────────────────
+#  render.yaml — Infraestructura de Dynamic Gym en Render.com
+#  Docs: https://render.com/docs/infrastructure-as-code
+# ─────────────────────────────────────────────────────────────────
+
+services:
+  # ── Web Service (API + Frontend) ──────────────────────────────
+  - type: web
+    name: dynamic-gym
+    env: node
+    region: oregon          # Cambiá a "frankfurt" si querés servidor en Europa
+
+    # Render corre estos comandos desde la RAÍZ del repositorio
+    buildCommand: |
+      cd frontend && npm ci && VITE_API_URL=/api npm run build
+      cd ../servidor && npm ci
+
+    startCommand: cd servidor && npm start
+
+    # Render asigna el PORT automáticamente, NO lo hardcodees
+    envVars:
+      - key: NODE_ENV
+        value: production
+
+      - key: DB_SSL
+        value: "true"
+
+      # Render genera este valor seguro automáticamente la primera vez
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Render conecta la DB de abajo automáticamente
+      - key: DATABASE_URL
+        fromDatabase:
+          name: dynamic-gym-db
+          property: connectionString
+
+      # CORS vacío = ok porque el front está en el mismo dominio
+      - key: CORS_ORIGIN
+        value: ""
+
+  # (Opcional) si en el futuro agregás un worker para emails/notificaciones:
+  # - type: worker
+  #   name: dynamic-gym-worker
+  #   ...
+
+# ── Base de datos PostgreSQL ───────────────────────────────────
+databases:
+  - name: dynamic-gym-db
+    databaseName: dynamicgym
+    user: dynamicgym_user
+    region: oregon
+    # plan: free   ← descomentá si querés forzar free tier
