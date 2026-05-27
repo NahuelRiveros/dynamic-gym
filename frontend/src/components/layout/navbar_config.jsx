@@ -20,9 +20,9 @@ export const navbar_config = {
 
   links: [
     { label: "Home",    to: "/" },
-    { label: "Ingreso", to: "/kiosk" },
+    { label: "Ingreso", to: "/kiosk", requiereAuth: true, roles: ["admin", "staff"] },
     { label: "Login",   to: "/login",    ocultarSiAuth: true },
-    { label: "Registro", to: "/register", requiereAuth: true },
+    { label: "Registro", to: "/register", requiereAuth: true, roles: ["admin", "staff"] },
     {
       label: "Registrar pago",
       to: "/admin/pagos/registrar",
