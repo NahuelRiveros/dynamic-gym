@@ -17,11 +17,13 @@ const __dirname  = path.dirname(__filename);
 const rutaFrontend = path.resolve(__dirname, "../../frontend/dist");
 
 // ── CORS ────────────────────────────────────────────────────────────────────
-// PRODUCCIÓN : CORS_ORIGIN = "https://dynamic-gym.vercel.app"
-// LOCAL      : CORS_ORIGIN vacío → permite todo (Vercel no aplica en localhost)
+// Orígenes permitidos explícitos. En local (sin CORS_ORIGIN) se permiten
+// solo los orígenes de desarrollo conocidos.
+const CORS_DEV = ["http://localhost:5173", "http://localhost:3001", "http://localhost:4000"];
+
 const corsOrigin = env.CORS_ORIGIN
   ? env.CORS_ORIGIN.split(",").map((s) => s.trim())
-  : true;
+  : CORS_DEV;
 
 export function createApp() {
   const app = express();
@@ -36,7 +38,15 @@ export function createApp() {
 
   app.use(express.json());
   app.use(cookieParser());
-  app.use(cors({ origin: corsOrigin, credentials: true }));
+  app.use(cors({
+    origin: (origin, callback) => {
+      // Permitir requests sin origin (Postman, curl, mobile apps)
+      if (!origin) return callback(null, true);
+      if (corsOrigin === true || corsOrigin.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS: origen no permitido — ${origin}`));
+    },
+    credentials: true,
+  }));
 
   // ── API ──────────────────────────────────────────────────────────────────
   app.use("/api", routes);

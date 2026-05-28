@@ -5,6 +5,10 @@ node_modules/
 .env
 .env.local
 .env.*.local
+frontend/.env
+frontend/.env.*
+servidor/.env
+servidor/.env.*
 
 # ── Builds del frontend ───────────────────────
 frontend/dist/
