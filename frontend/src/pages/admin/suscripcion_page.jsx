@@ -209,7 +209,7 @@ export default function SuscripcionPage() {
               <div className="flex gap-3">
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-600 text-[11px] font-extrabold text-white">3</span>
                 <div>
-                  <p className="text-sm font-semibold text-slate-700">Nahuel activa el sistema</p>
+                  <p className="text-sm font-semibold text-slate-700">Automáticamente en 15m se activa el sistema</p>
                   <p className="text-xs text-slate-500 mt-0.5">
                     Confirmado el pago, el plan se extiende 30 días automáticamente.
                   </p>
