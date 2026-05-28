@@ -11,19 +11,9 @@ promocionesRouter.use(requireAuth, requireRole("admin"));
 
 // ── Query base: alumnos según filtro ─────────────────────────────────────────
 const FILTROS = {
-  todos:      "",
-  activos:    "AND a.gym_alumno_rela_estadoalumno = 1",
-  vencidos:   "AND a.gym_alumno_rela_estadoalumno != 1",
-  con_plan:   `AND EXISTS (
-                  SELECT 1 FROM gym_plan_alumno p
-                  WHERE p.gym_planalu_rela_alumno = a.gym_alumno_id
-                    AND p.gym_fecha_fin >= CURRENT_DATE
-               )`,
-  sin_plan:   `AND NOT EXISTS (
-                  SELECT 1 FROM gym_plan_alumno p
-                  WHERE p.gym_planalu_rela_alumno = a.gym_alumno_id
-                    AND p.gym_fecha_fin >= CURRENT_DATE
-               )`,
+  todos:    "",
+  activos:  "AND a.gym_alumno_rela_estadoalumno = 1",
+  vencidos: "AND a.gym_alumno_rela_estadoalumno != 1",
 };
 
 async function obtenerDestinatarios(filtro = "todos") {

@@ -8,63 +8,34 @@ import { getPreviewDestinatarios, getNumerosWhatsApp, enviarPromocion } from "..
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 
 const FILTROS = [
-  { value: "todos",    label: "Todos los alumnos" },
-  { value: "activos",  label: "Solo activos" },
-  { value: "vencidos", label: "Solo vencidos" },
-  { value: "con_plan", label: "Con plan vigente" },
-  { value: "sin_plan", label: "Sin plan vigente" },
+  { value: "todos",   label: "Todos los alumnos" },
+  { value: "activos", label: "Solo activos" },
+  { value: "vencidos",label: "Solo vencidos" },
 ];
 
-const PLANTILLAS = [
-  {
-    label: "Promoción general",
-    subject: "🎯 Oferta especial para vos — Dynamic Gym",
-    html: `<div style="font-family:sans-serif;max-width:600px;margin:auto">
-  <h2 style="color:#2563eb">¡Hola {nombre}! 👋</h2>
-  <p>Tenemos una <strong>oferta especial</strong> que no te podés perder.</p>
-  <p>Escribí tu promoción acá...</p>
-  <p>¡Te esperamos en Dynamic Gym!</p>
-  <p style="color:#64748b;font-size:12px">Dynamic Gym Formosa</p>
-</div>`,
-  },
-  {
-    label: "Recordatorio de renovación",
-    subject: "⏰ Tu plan vence pronto — Dynamic Gym",
-    html: `<div style="font-family:sans-serif;max-width:600px;margin:auto">
-  <h2 style="color:#f59e0b">¡Hola {nombre}!</h2>
-  <p>Te recordamos que tu plan está por vencer.</p>
-  <p>Acercate al gimnasio o contactanos para renovarlo y no perder tu lugar.</p>
-  <p>¡Seguí entrenando fuerte!</p>
-  <p style="color:#64748b;font-size:12px">Dynamic Gym Formosa</p>
-</div>`,
-  },
-  {
-    label: "Bienvenida",
-    subject: "🏋️ ¡Bienvenido a Dynamic Gym!",
-    html: `<div style="font-family:sans-serif;max-width:600px;margin:auto">
-  <h2 style="color:#10b981">¡Bienvenido/a {nombre}!</h2>
-  <p>Nos alegra tenerte en la familia de <strong>Dynamic Gym</strong>.</p>
-  <p>Cualquier consulta estamos a disposición.</p>
-  <p>¡A entrenar!</p>
-  <p style="color:#64748b;font-size:12px">Dynamic Gym Formosa</p>
-</div>`,
-  },
-];
+function construirHtml(titulo, mensaje) {
+  return `<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
+  ${titulo ? `<h2 style="color:#2563eb;margin-bottom:8px">${titulo}</h2>` : ""}
+  <p style="margin-top:0">Hola <strong>{nombre}</strong>, somos de Dynamic Gym.</p>
+  <p style="white-space:pre-line;line-height:1.6">${mensaje}</p>
+  <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0"/>
+  <p style="color:#94a3b8;font-size:12px;margin:0">Dynamic Gym Formosa<br/>Este mensaje fue enviado a nuestros alumnos.</p>
+</div>`;
+}
 
 /* ── componente ──────────────────────────────────────────────────────────── */
 
 export default function PromocionesPage() {
-  const [filtro,   setFiltro]   = useState("todos");
-  const [subject,  setSubject]  = useState(PLANTILLAS[0].subject);
-  const [html,     setHtml]     = useState(PLANTILLAS[0].html);
-  const [preview,  setPreview]  = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
+  const [filtro,    setFiltro]    = useState("todos");
+  const [subject,   setSubject]   = useState("");
+  const [titulo,    setTitulo]    = useState("");
+  const [mensaje,   setMensaje]   = useState("");
+  const [preview,   setPreview]   = useState(null);
+  const [cargando,  setCargando]  = useState(false);
+  const [enviando,  setEnviando]  = useState(false);
   const [resultado, setResultado] = useState(null);
-  const [copiado,  setCopiado]  = useState(false);
-  const [numeros,  setNumeros]  = useState(null);
+  const [copiado,   setCopiado]   = useState(false);
 
-  // Cargar preview cuando cambia el filtro
   useEffect(() => {
     setPreview(null);
     setResultado(null);
@@ -75,20 +46,15 @@ export default function PromocionesPage() {
       .finally(() => setCargando(false));
   }, [filtro]);
 
-  function aplicarPlantilla(p) {
-    setSubject(p.subject);
-    setHtml(p.html);
-    setResultado(null);
-  }
-
   async function handleEnviar() {
-    if (!subject.trim() || !html.trim()) return;
+    if (!subject.trim() || !mensaje.trim()) return;
     if (!confirm(`¿Enviar email a ${preview?.total ?? "?"} destinatarios?`)) return;
 
     setEnviando(true);
     setResultado(null);
     try {
-      const r = await enviarPromocion({ filtro, subject, html });
+      const html = construirHtml(titulo.trim(), mensaje.trim());
+      const r = await enviarPromocion({ filtro, subject: subject.trim(), html });
       setResultado(r);
     } catch (err) {
       setResultado({ ok: false, mensaje: err?.response?.data?.mensaje || "Error al enviar" });
@@ -99,7 +65,6 @@ export default function PromocionesPage() {
 
   async function handleCopiarNumeros() {
     const r = await getNumerosWhatsApp(filtro);
-    setNumeros(r);
     if (r.numeros?.length > 0) {
       navigator.clipboard.writeText(r.numeros.join("\n"));
       setCopiado(true);
@@ -107,9 +72,11 @@ export default function PromocionesPage() {
     }
   }
 
+  const puedeEnviar = subject.trim() && mensaje.trim() && (preview?.total ?? 0) > 0 && !enviando;
+
   return (
     <div className="min-h-screen bg-slate-50 p-4 sm:p-8">
-      <div className="mx-auto max-w-3xl space-y-5">
+      <div className="mx-auto max-w-2xl space-y-5">
 
         {/* ── ENCABEZADO ── */}
         <div className="overflow-hidden rounded-2xl border border-violet-100 bg-white shadow-sm">
@@ -120,183 +87,160 @@ export default function PromocionesPage() {
             </div>
             <div>
               <h1 className="text-lg font-extrabold text-slate-900">Promociones</h1>
-              <p className="text-xs text-slate-400">Enviá emails masivos a tus alumnos</p>
+              <p className="text-xs text-slate-400">Enviá emails a tus alumnos</p>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-5 md:grid-cols-[1fr_1.6fr]">
+        {/* ── DESTINATARIOS ── */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1.5">
+            <Users size={12} /> Destinatarios
+          </h2>
 
-          {/* ── PANEL IZQUIERDO: filtro + info ── */}
-          <div className="space-y-4">
-
-            {/* Filtro */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1.5">
-                <Users size={12} /> Destinatarios
-              </h2>
-              <div className="space-y-1.5">
-                {FILTROS.map((f) => (
-                  <label key={f.value}
-                    className={`flex cursor-pointer items-center gap-2.5 rounded-xl border px-3 py-2.5 text-sm transition ${
-                      filtro === f.value
-                        ? "border-violet-300 bg-violet-50 font-semibold text-violet-700"
-                        : "border-slate-200 text-slate-600 hover:bg-slate-50"
-                    }`}
-                  >
-                    <input type="radio" name="filtro" value={f.value}
-                      checked={filtro === f.value}
-                      onChange={() => setFiltro(f.value)}
-                      className="accent-violet-600"
-                    />
-                    {f.label}
-                  </label>
-                ))}
-              </div>
-
-              {/* Preview counter */}
-              <div className={`rounded-xl border px-3 py-2.5 text-center ${
-                cargando ? "border-slate-200 bg-slate-50" : "border-violet-200 bg-violet-50"
-              }`}>
-                {cargando ? (
-                  <span className="text-xs text-slate-400 flex items-center justify-center gap-1.5">
-                    <RefreshCw size={11} className="animate-spin" /> Cargando…
-                  </span>
-                ) : (
-                  <>
-                    <p className="text-2xl font-extrabold text-violet-700">{preview?.total ?? 0}</p>
-                    <p className="text-[11px] text-violet-500 font-medium flex items-center justify-center gap-1">
-                      <Mail size={10} /> alumnos con email
-                    </p>
-                  </>
-                )}
-              </div>
-
-              {/* Muestra */}
-              {preview?.muestra?.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Ejemplo</p>
-                  {preview.muestra.map((d, i) => (
-                    <div key={i} className="text-xs text-slate-500 truncate">• {d.nombre} — {d.email}</div>
-                  ))}
-                  {preview.total > 5 && (
-                    <p className="text-[10px] text-slate-400">y {preview.total - 5} más…</p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Exportar números WhatsApp */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1.5">
-                <Phone size={12} /> WhatsApp
-              </h2>
-              <p className="text-xs text-slate-500">
-                Copiá los números para crear una <strong>lista de difusión</strong> en tu celular.
-              </p>
+          <div className="flex gap-2 flex-wrap">
+            {FILTROS.map((f) => (
               <button
-                onClick={handleCopiarNumeros}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition"
+                key={f.value}
+                onClick={() => setFiltro(f.value)}
+                className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
+                  filtro === f.value
+                    ? "border-violet-300 bg-violet-600 text-white shadow-sm"
+                    : "border-slate-200 text-slate-600 hover:bg-slate-50"
+                }`}
               >
-                {copiado ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                {copiado ? "¡Copiado!" : "Copiar números"}
+                {f.label}
               </button>
-              {numeros && (
-                <p className="text-[11px] text-slate-400 text-center">
-                  {numeros.total} número(s) copiado(s)
-                </p>
-              )}
-            </div>
+            ))}
           </div>
 
-          {/* ── PANEL DERECHO: editor ── */}
-          <div className="space-y-4">
-
-            {/* Plantillas */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-2">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-400">Plantillas rápidas</h2>
-              <div className="flex flex-wrap gap-2">
-                {PLANTILLAS.map((p) => (
-                  <button key={p.label}
-                    onClick={() => aplicarPlantilla(p)}
-                    className="rounded-lg border border-slate-200 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:border-violet-300 hover:bg-violet-50 hover:text-violet-700 transition"
-                  >
-                    {p.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Editor */}
-            <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-wide text-slate-400">Mensaje</h2>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 block">Asunto</label>
-                <input
-                  value={subject}
-                  onChange={(e) => setSubject(e.target.value)}
-                  placeholder="Asunto del email..."
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
-                />
-              </div>
-
-              <div>
-                <label className="text-xs font-semibold text-slate-500 mb-1 flex items-center justify-between">
-                  <span>Cuerpo (HTML)</span>
-                  <span className="font-normal text-slate-400">Usá <code className="bg-slate-100 px-1 rounded">{"{nombre}"}</code> para personalizar</span>
-                </label>
-                <textarea
-                  value={html}
-                  onChange={(e) => setHtml(e.target.value)}
-                  rows={10}
-                  placeholder="<p>Hola {nombre}...</p>"
-                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs font-mono text-slate-700 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 resize-y"
-                />
-              </div>
-
-              {/* Resultado */}
-              {resultado && (
-                <div className={`rounded-xl border px-4 py-3 text-sm ${
-                  resultado.ok
-                    ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                    : "border-red-200 bg-red-50 text-red-700"
-                }`}>
-                  {resultado.ok ? (
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
-                      <div>
-                        <p className="font-semibold">{resultado.mensaje}</p>
-                        {resultado.fallidos?.length > 0 && (
-                          <p className="text-xs mt-1 opacity-75">
-                            {resultado.fallidos.length} fallido(s): {resultado.fallidos.map(f => f.email).join(", ")}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <AlertTriangle size={16} className="shrink-0" />
-                      <p>{resultado.mensaje}</p>
-                    </div>
-                  )}
-                </div>
+          {/* Counter */}
+          <div className="flex items-center justify-between rounded-xl border border-slate-200 px-4 py-3">
+            <div className="flex items-center gap-2 text-sm text-slate-500">
+              <Mail size={14} className="text-violet-500" />
+              {cargando ? (
+                <span className="flex items-center gap-1.5">
+                  <RefreshCw size={11} className="animate-spin" /> Cargando…
+                </span>
+              ) : (
+                <span>
+                  <span className="font-extrabold text-slate-800 text-base">{preview?.total ?? 0}</span>
+                  {" "}alumnos recibirán el email
+                </span>
               )}
-
-              {/* Botón enviar */}
-              <button
-                onClick={handleEnviar}
-                disabled={enviando || !subject.trim() || !html.trim() || (preview?.total ?? 0) === 0}
-                className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 font-bold text-white shadow-sm shadow-violet-500/20 hover:bg-violet-700 active:scale-95 transition disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {enviando
-                  ? <><RefreshCw size={15} className="animate-spin" /> Enviando…</>
-                  : <><Send size={15} /> Enviar a {preview?.total ?? "?"} alumnos</>
-                }
-              </button>
             </div>
+
+            {/* Copiar números WhatsApp */}
+            <button
+              onClick={handleCopiarNumeros}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-semibold text-slate-500 hover:bg-slate-50 transition"
+            >
+              {copiado ? <Check size={12} className="text-emerald-500" /> : <Phone size={12} />}
+              {copiado ? "¡Copiado!" : "Copiar números"}
+            </button>
           </div>
+
+          {/* Muestra */}
+          {preview?.muestra?.length > 0 && (
+            <div className="space-y-1">
+              {preview.muestra.map((d, i) => (
+                <p key={i} className="text-xs text-slate-400 truncate">• {d.nombre} — {d.email}</p>
+              ))}
+              {preview.total > 5 && (
+                <p className="text-[11px] text-slate-400">y {preview.total - 5} más…</p>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* ── MENSAJE ── */}
+        <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
+          <h2 className="text-xs font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1.5">
+            <Mail size={12} /> Mensaje
+          </h2>
+
+          {/* Asunto */}
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Asunto del email</label>
+            <input
+              value={subject}
+              onChange={(e) => { setSubject(e.target.value); setResultado(null); }}
+              placeholder="Ej: 🎯 Oferta especial para vos"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+            />
+          </div>
+
+          {/* Título */}
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1.5 block">
+              Título <span className="font-normal text-slate-400">(opcional — aparece en negrita arriba del mensaje)</span>
+            </label>
+            <input
+              value={titulo}
+              onChange={(e) => { setTitulo(e.target.value); setResultado(null); }}
+              placeholder="Ej: ¡Promoción de mayo!"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
+            />
+          </div>
+
+          {/* Saludo fijo */}
+          <div className="rounded-xl border border-slate-100 bg-slate-50 px-4 py-2.5 text-sm text-slate-500">
+            Hola <span className="font-semibold text-slate-700">[nombre del alumno]</span>, somos de Dynamic Gym.
+          </div>
+
+          {/* Mensaje */}
+          <div>
+            <label className="text-xs font-semibold text-slate-500 mb-1.5 block">Mensaje</label>
+            <textarea
+              value={mensaje}
+              onChange={(e) => { setMensaje(e.target.value); setResultado(null); }}
+              rows={5}
+              placeholder="Escribí acá tu promoción, aviso o comunicado..."
+              className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-700 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100 resize-y"
+            />
+          </div>
+
+          {/* Resultado */}
+          {resultado && (
+            <div className={`rounded-xl border px-4 py-3 text-sm ${
+              resultado.ok
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-red-200 bg-red-50 text-red-700"
+            }`}>
+              {resultado.ok ? (
+                <div className="flex items-start gap-2">
+                  <CheckCircle2 size={16} className="mt-0.5 shrink-0" />
+                  <div>
+                    <p className="font-semibold">{resultado.mensaje}</p>
+                    {resultado.fallidos?.length > 0 && (
+                      <p className="text-xs mt-1 opacity-75">
+                        {resultado.fallidos.length} fallido(s): {resultado.fallidos.map(f => f.email).join(", ")}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <AlertTriangle size={16} className="shrink-0" />
+                  <p>{resultado.mensaje}</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Botón enviar */}
+          <button
+            onClick={handleEnviar}
+            disabled={!puedeEnviar}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-violet-600 px-4 py-3 font-bold text-white shadow-sm shadow-violet-500/20 hover:bg-violet-700 active:scale-95 transition disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {enviando
+              ? <><RefreshCw size={15} className="animate-spin" /> Enviando…</>
+              : <><Send size={15} /> Enviar a {preview?.total ?? "?"} alumnos</>
+            }
+          </button>
+        </div>
+
       </div>
     </div>
   );
