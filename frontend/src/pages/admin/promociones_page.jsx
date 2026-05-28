@@ -13,6 +13,23 @@ const FILTROS = [
   { value: "vencidos",label: "Solo vencidos" },
 ];
 
+const PLANTILLAS = [
+  {
+    id: "promocion",
+    label: "Promoción",
+    subject: "🎯 ¡Oferta especial para vos! — Dynamic Gym",
+    titulo:  "¡Tenemos una promo que no te podés perder!",
+    mensaje: "Este mes tenemos una oferta especial para nuestros alumnos.\n\nAcercate al gimnasio o escribinos para conocer los detalles.\n\n¡Te esperamos!",
+  },
+  {
+    id: "vencimiento",
+    label: "Vencimiento",
+    subject: "⏰ Tu plan está por vencer — Dynamic Gym",
+    titulo:  "Recordatorio de renovación",
+    mensaje: "Te avisamos que tu plan está próximo a vencer.\n\nPodés renovarlo acercándote al gimnasio o contactándonos directamente.\n\n¡No pierdas tu lugar y seguí entrenando!",
+  },
+];
+
 function construirHtml(titulo, mensaje) {
   return `<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
   ${titulo ? `<h2 style="color:#2563eb;margin-bottom:8px">${titulo}</h2>` : ""}
@@ -27,9 +44,10 @@ function construirHtml(titulo, mensaje) {
 
 export default function PromocionesPage() {
   const [filtro,    setFiltro]    = useState("todos");
-  const [subject,   setSubject]   = useState("");
-  const [titulo,    setTitulo]    = useState("");
-  const [mensaje,   setMensaje]   = useState("");
+  const [plantilla, setPlantilla] = useState("promocion");
+  const [subject,   setSubject]   = useState(PLANTILLAS[0].subject);
+  const [titulo,    setTitulo]    = useState(PLANTILLAS[0].titulo);
+  const [mensaje,   setMensaje]   = useState(PLANTILLAS[0].mensaje);
   const [preview,   setPreview]   = useState(null);
   const [cargando,  setCargando]  = useState(false);
   const [enviando,  setEnviando]  = useState(false);
@@ -45,6 +63,16 @@ export default function PromocionesPage() {
       .catch(() => setPreview({ ok: false, total: 0 }))
       .finally(() => setCargando(false));
   }, [filtro]);
+
+  function cambiarPlantilla(id) {
+    const p = PLANTILLAS.find((x) => x.id === id);
+    if (!p) return;
+    setPlantilla(id);
+    setSubject(p.subject);
+    setTitulo(p.titulo);
+    setMensaje(p.mensaje);
+    setResultado(null);
+  }
 
   async function handleEnviar() {
     if (!subject.trim() || !mensaje.trim()) return;
@@ -158,6 +186,23 @@ export default function PromocionesPage() {
           <h2 className="text-xs font-bold uppercase tracking-wide text-slate-400 flex items-center gap-1.5">
             <Mail size={12} /> Mensaje
           </h2>
+
+          {/* Slider de plantillas */}
+          <div className="flex rounded-xl border border-slate-200 bg-slate-100 p-1 gap-1">
+            {PLANTILLAS.map((p) => (
+              <button
+                key={p.id}
+                onClick={() => cambiarPlantilla(p.id)}
+                className={`flex-1 rounded-lg py-2 text-sm font-semibold transition ${
+                  plantilla === p.id
+                    ? "bg-white text-violet-700 shadow-sm"
+                    : "text-slate-500 hover:text-slate-700"
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
 
           {/* Asunto */}
           <div>
