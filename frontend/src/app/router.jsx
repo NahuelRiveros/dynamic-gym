@@ -23,6 +23,7 @@ import ConsultaPlanPage from "../pages/consulta_plan_page.jsx";
 import SuscripcionPage from "../pages/admin/suscripcion_page.jsx";
 import PagoExitosoPage from "../pages/pago_exitoso_page.jsx";
 import PagoFallidoPage from "../pages/pago_fallido_page.jsx";
+import PromocionesPage from "../pages/admin/promociones_page.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -203,6 +204,16 @@ export const router = createBrowserRouter([
     <AppLayout>
       <ProtectedRoute roles={["admin"]}>
         <SuscripcionPage />
+      </ProtectedRoute>
+    </AppLayout>
+  ),
+},
+{
+  path: "/admin/promociones",
+  element: (
+    <AppLayout>
+      <ProtectedRoute roles={["admin"]}>
+        <PromocionesPage />
       </ProtectedRoute>
     </AppLayout>
   ),

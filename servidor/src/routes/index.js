@@ -15,6 +15,7 @@ import { staffRouter } from "./staffs_router.js";
 import { recaudacionRouter } from "./recaudacion_router.js";
 import { consultaPublicaRouter } from "./consulta_publica_router.js";
 import { suscripcionRouter } from "./suscripcion_router.js";
+import { promocionesRouter } from "./promociones_router.js";
 
 const router = Router();
 
@@ -54,5 +55,6 @@ router.use("/staff", staffRouter);
 router.use("/recaudacion", recaudacionRouter);
 router.use("/consulta",    consultaPublicaRouter);  // ← público, sin auth
 router.use("/suscripcion", suscripcionRouter);       // ← plan del software
+router.use("/promociones", promocionesRouter);       // ← envío masivo de emails
 
 export default router;

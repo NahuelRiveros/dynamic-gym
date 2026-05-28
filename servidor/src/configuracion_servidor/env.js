@@ -67,4 +67,12 @@ export const env = {
   SOFTWARE_PRECIO: Number(process.env.SOFTWARE_PRECIO || 0),
   // Nombre visible del cliente / gimnasio en la factura MP.
   SOFTWARE_CLIENTE: process.env.SOFTWARE_CLIENTE || "Dynamic Gym",
+
+  // ── Email / SMTP ───────────────────────────────────────────────
+  SMTP_HOST:   process.env.SMTP_HOST   || "smtp.gmail.com",
+  SMTP_PORT:   Number(process.env.SMTP_PORT || 587),
+  SMTP_SECURE: String(process.env.SMTP_SECURE || "").toLowerCase() === "true",
+  SMTP_USER:   process.env.SMTP_USER   || "",
+  SMTP_PASS:   process.env.SMTP_PASS   || "",
+  SMTP_FROM:   process.env.SMTP_FROM   || "",
 };
