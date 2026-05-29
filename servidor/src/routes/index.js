@@ -16,6 +16,7 @@ import { recaudacionRouter } from "./recaudacion_router.js";
 import { consultaPublicaRouter } from "./consulta_publica_router.js";
 import { suscripcionRouter } from "./suscripcion_router.js";
 import { promocionesRouter } from "./promociones_router.js";
+import { verificarSuscripcion } from "../middleware/suscripcion_middleware.js";
 
 const router = Router();
 
@@ -37,6 +38,10 @@ router.get("/health", async (_req, res) => {
     });
   }
 });
+
+// Bloquea todas las rutas operativas si la suscripción está vencida.
+// Siempre pasan: /health, /auth, /suscripcion, /consulta
+router.use(verificarSuscripcion);
 
 /**
  * 🔽 TUS ROUTES

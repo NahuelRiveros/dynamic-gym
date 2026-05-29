@@ -27,13 +27,22 @@ export default function SuscripcionBanner() {
   useEffect(() => {
     if (!esAdmin) return;
 
-    getEstadoSuscripcion()
-      .then((r) => {
-        if (r.ok && ["aviso", "gracia", "vencido"].includes(r.estado)) {
-          setEstado(r);
-        }
-      })
-      .catch(() => {}); // silenciar errores (p.ej. si tablas no existen aún)
+    function verificar() {
+      getEstadoSuscripcion()
+        .then((r) => {
+          if (r.ok && ["aviso", "gracia", "vencido"].includes(r.estado)) {
+            setEstado(r);
+          } else {
+            setEstado(null); // limpiar si el estado mejoró (ej: Nahuel renovó)
+          }
+        })
+        .catch(() => {});
+    }
+
+    verificar();
+    // Re-verificar cada 15 minutos para tabs abiertos largo tiempo
+    const intervalo = setInterval(verificar, 15 * 60 * 1000);
+    return () => clearInterval(intervalo);
   }, [esAdmin]);
 
   if (!esAdmin || !estado) return null;

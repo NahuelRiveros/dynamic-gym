@@ -33,6 +33,7 @@ import {
   crearPreferencia,
   verificarPago,
 } from "../services/mercadopago_service.js";
+import { invalidarCacheSuscripcion } from "../middleware/suscripcion_middleware.js";
 
 export const suscripcionRouter = Router();
 
@@ -205,6 +206,7 @@ suscripcionRouter.post("/admin/extender", async (req, res, next) => {
     }
 
     const r = await extenderSuscripcion(dias);
+    invalidarCacheSuscripcion();
     return res.json({
       ok: true,
       mensaje: `Plan extendido ${dias} día(s)`,
@@ -238,6 +240,7 @@ suscripcionRouter.post("/admin/fijar", async (req, res, next) => {
       { replacements: { fecha }, type: QueryTypes.UPDATE }
     );
 
+    invalidarCacheSuscripcion();
     const estado = await obtenerEstado();
     return res.json({
       ok:      true,
