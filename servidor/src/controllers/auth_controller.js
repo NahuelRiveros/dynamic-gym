@@ -13,18 +13,7 @@ export async function loginController(req, res) {
       return res.status(401).json(result);
     }
 
-    // ✅ Opción simple (para empezar): devolver token en JSON
     return res.json(result);
-
-    // ✅ Opción más segura (cookie httpOnly) - si querés la activamos luego:
-    // res.cookie("access_token", result.token, {
-    //   httpOnly: true,
-    //   sameSite: "lax",
-    //   secure: false, // true en https
-    //   maxAge: 60 * 60 * 1000,
-    // });
-    // return res.json({ ok: true, usuario: result.usuario });
-
   } catch (error) {
     console.error("loginController:", error);
     return res.status(500).json({
@@ -43,7 +32,7 @@ export async function meController(req, res) {
 
     return res.json({
       ok: true,
-      user: {
+      usuario: {
         ...req.user,
         nombre:   persona?.gym_persona_nombre   ?? null,
         apellido: persona?.gym_persona_apellido ?? null,
@@ -56,15 +45,8 @@ export async function meController(req, res) {
   }
 }
 
-export async function logoutController(req, res) {
-  try {
-    // Si usás cookie:
-    // res.clearCookie("access_token");
-    return res.json({ ok: true, mensaje: "Logout OK" });
-  } catch (error) {
-    console.error("logoutController:", error);
-    return res.status(500).json({ ok: false, codigo: "ERROR_LOGOUT", mensaje: "No se pudo cerrar sesión" });
-  }
+export async function logoutController(_req, res) {
+  return res.json({ ok: true, mensaje: "Logout OK" });
 }
 
 export async function resetPasswordController(req, res) {

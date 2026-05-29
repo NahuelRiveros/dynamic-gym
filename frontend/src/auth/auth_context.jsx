@@ -13,7 +13,7 @@ export function AuthProvider({ children }) {
   async function cargarMe() {
     try {
       const r = await http.get(authConfig.endpoints.me);
-      setUsuario(r.data?.usuario || r.data?.user || r.data);
+      setUsuario(r.data?.usuario ?? null);
     } catch {
       setUsuario(null);
     } finally {
@@ -39,11 +39,6 @@ export function AuthProvider({ children }) {
     return r.data;
   }
 
-  async function register(payload) {
-    const r = await http.post(authConfig.endpoints.register, payload);
-    return r.data;
-  }
-
   async function logout() {
     try {
       await http.post(authConfig.endpoints.logout);
@@ -62,7 +57,6 @@ export function AuthProvider({ children }) {
       isAuth: !!usuario,
       login,
       logout,
-      register, 
       recargarUsuario: cargarMe,
     }),
     [usuario, cargando]

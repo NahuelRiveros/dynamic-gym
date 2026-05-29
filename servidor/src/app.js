@@ -42,7 +42,7 @@ export function createApp() {
     origin: (origin, callback) => {
       // Permitir requests sin origin (Postman, curl, mobile apps)
       if (!origin) return callback(null, true);
-      if (corsOrigin === true || corsOrigin.includes(origin)) return callback(null, true);
+      if (corsOrigin.includes(origin)) return callback(null, true);
       callback(new Error(`CORS: origen no permitido — ${origin}`));
     },
     credentials: true,
