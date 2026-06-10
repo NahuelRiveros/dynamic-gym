@@ -170,3 +170,11 @@ BEGIN
     RAISE NOTICE 'Migration v2 ya fue aplicada — omitiendo.';
   END IF;
 END $$;
+
+-- =============================================================================
+-- TRIGGERS: eliminar triggers con referencias a columnas viejas
+-- Se ejecuta SIEMPRE (idempotente con IF EXISTS) para corregir instalaciones
+-- que ya tenían la migración aplicada pero conservan triggers obsoletos.
+-- =============================================================================
+DROP TRIGGER IF EXISTS trg_log_estado_gym_alumno ON alumno;
+DROP FUNCTION IF EXISTS trg_log_estado_gym_alumno();
