@@ -61,7 +61,7 @@ export default function PlanesPage() {
     try {
       setGuardando(true);
       if (planSeleccionado) {
-        await actualizarPlan(planSeleccionado.gym_cat_tipoplan_id, payload);
+        await actualizarPlan(planSeleccionado.id, payload);
       } else {
         await crearPlan(payload);
       }
@@ -75,37 +75,37 @@ export default function PlanesPage() {
   }
 
   async function toggleEstado(plan) {
-    const nuevoEstado = !plan.gym_cat_tipoplan_activo;
+    const nuevoEstado = !plan.activo;
     const accion = nuevoEstado ? "activar" : "desactivar";
-    if (!window.confirm(`¿Seguro que querés ${accion} el plan "${plan.gym_cat_tipoplan_descripcion}"?`)) return;
+    if (!window.confirm(`¿Seguro que querés ${accion} el plan "${plan.descripcion}"?`)) return;
     try {
-      await cambiarEstadoPlan(plan.gym_cat_tipoplan_id, nuevoEstado);
+      await cambiarEstadoPlan(plan.id, nuevoEstado);
       await cargarPlanes();
     } catch (err) {
       alert(err?.response?.data?.mensaje || `No se pudo ${accion} el plan`);
     }
   }
 
-  const activos   = planes.filter((p) => p.gym_cat_tipoplan_activo).length;
+  const activos   = planes.filter((p) => p.activo).length;
   const inactivos = planes.length - activos;
 
   const columns = [
     {
-      key: "gym_cat_tipoplan_descripcion",
+      key: "descripcion",
       label: "Plan",
       sortable: true,
       searchable: true,
       render: (row) => (
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-[10px] font-extrabold text-white shadow-sm shadow-blue-500/30">
-            {iniciales(row.gym_cat_tipoplan_descripcion)}
+            {iniciales(row.descripcion)}
           </div>
-          <span className="font-semibold text-slate-900">{row.gym_cat_tipoplan_descripcion}</span>
+          <span className="font-semibold text-slate-900">{row.descripcion}</span>
         </div>
       ),
     },
     {
-      key: "gym_cat_tipoplan_dias_totales",
+      key: "dias_totales",
       label: "Días",
       sortable: true,
       className: "text-slate-600 text-center",
@@ -113,7 +113,7 @@ export default function PlanesPage() {
       align: "center",
     },
     {
-      key: "gym_cat_tipoplan_ingresos",
+      key: "ingresos",
       label: "Ingresos",
       sortable: true,
       className: "text-slate-600 text-center",
@@ -122,7 +122,7 @@ export default function PlanesPage() {
       render: (_, val) => val ?? "—",
     },
     {
-      key: "gym_cat_tipoplan_precio",
+      key: "precio",
       label: "Precio",
       sortable: true,
       render: (_, val) => (
@@ -130,7 +130,7 @@ export default function PlanesPage() {
       ),
     },
     {
-      key: "gym_cat_tipoplan_activo",
+      key: "activo",
       label: "Estado",
       render: (_, val) => (
         <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${val ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-slate-50 text-slate-500 border-slate-200"}`}>
@@ -139,7 +139,7 @@ export default function PlanesPage() {
       ),
     },
     {
-      key: "gym_cat_tipoplan_fechacambio",
+      key: "actualizado_en",
       label: "Último cambio",
       className: "text-slate-500 text-xs hidden lg:table-cell",
       headerClassName: "hidden lg:table-cell",
@@ -161,7 +161,7 @@ export default function PlanesPage() {
       icon: <ToggleLeft size={12} />,
       variant: "danger",
       onClick: (row) => toggleEstado(row),
-      show: (row) => row.gym_cat_tipoplan_activo,
+      show: (row) => row.activo,
     },
     {
       key: "activar",
@@ -169,7 +169,7 @@ export default function PlanesPage() {
       icon: <ToggleRight size={12} />,
       variant: "success",
       onClick: (row) => toggleEstado(row),
-      show: (row) => !row.gym_cat_tipoplan_activo,
+      show: (row) => !row.activo,
     },
   ];
 
@@ -224,7 +224,7 @@ export default function PlanesPage() {
         <DataGrid
           rows={planes}
           columns={columns}
-          keyField="gym_cat_tipoplan_id"
+          keyField="id"
           loading={cargando}
           searchable
           searchPlaceholder="Buscar plan…"

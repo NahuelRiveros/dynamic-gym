@@ -1,106 +1,67 @@
-import { GymCatTipoPlan, GymFechaDisponible } from "../models/index.js";
+﻿import { PlanTipo, Membresia } from "../models/index.js";
 import { Op } from "sequelize";
 import { sequelize } from "../database/sequelize.js";
 
 export async function listarPlanes({ incluirInactivos = true } = {}) {
   const where = {};
+  if (!incluirInactivos) where.activo = true;
 
-  if (!incluirInactivos) {
-    where.gym_cat_tipoplan_activo = true;
-  }
-
-  const planes = await GymCatTipoPlan.findAll({
+  return PlanTipo.findAll({
     where,
-    attributes: [
-      "gym_cat_tipoplan_id",
-      "gym_cat_tipoplan_descripcion",
-      "gym_cat_tipoplan_dias_totales",
-      "gym_cat_tipoplan_ingresos",
-      "gym_cat_tipoplan_precio",
-      "gym_cat_tipoplan_activo",
-      "gym_cat_tipoplan_fechacambio"
-    ],
-    order: [["gym_cat_tipoplan_descripcion", "ASC"]],
+    attributes: ["id", "descripcion", "dias_totales", "ingresos", "precio", "activo", "actualizado_en"],
+    order: [["descripcion", "ASC"]],
   });
-
-  return planes;
 }
 
 export async function obtenerPlanPorId(id) {
-  return await GymCatTipoPlan.findByPk(id, {
-    attributes: [
-      "gym_cat_tipoplan_id",
-      "gym_cat_tipoplan_descripcion",
-      "gym_cat_tipoplan_dias_totales",
-      "gym_cat_tipoplan_ingresos",
-      "gym_cat_tipoplan_precio",
-      "gym_cat_tipoplan_activo",
-    ],
+  return PlanTipo.findByPk(id, {
+    attributes: ["id", "descripcion", "dias_totales", "ingresos", "precio", "activo"],
   });
 }
 
 export async function existePlanConDescripcion(descripcion, excluirId = null) {
-  const where = {
-    gym_cat_tipoplan_descripcion: descripcion,
-  };
-
-  if (excluirId) {
-    where.gym_cat_tipoplan_id = {
-      [Op.ne]: excluirId,
-    };
-  }
-
-  const plan = await GymCatTipoPlan.findOne({ where });
+  const where = { descripcion };
+  if (excluirId) where.id = { [Op.ne]: excluirId };
+  const plan = await PlanTipo.findOne({ where });
   return !!plan;
 }
 
 export async function crearPlan(data) {
-  const nuevoPlan = await GymCatTipoPlan.create({
-    gym_cat_tipoplan_descripcion: data.descripcion,
-    gym_cat_tipoplan_dias_totales: data.dias_totales,
-    gym_cat_tipoplan_ingresos: data.ingresos,
-    gym_cat_tipoplan_precio: data.precio,
-    gym_cat_tipoplan_activo: true,
+  return PlanTipo.create({
+    descripcion:  data.descripcion,
+    dias_totales: data.dias_totales,
+    ingresos:     data.ingresos,
+    precio:       data.precio,
+    activo:       true,
   });
-
-  return nuevoPlan;
 }
 
 export async function actualizarPlan(id, data) {
-  const plan = await GymCatTipoPlan.findByPk(id);
-
+  const plan = await PlanTipo.findByPk(id);
   if (!plan) return null;
 
   await plan.update({
-    gym_cat_tipoplan_descripcion: data.descripcion,
-    gym_cat_tipoplan_dias_totales: data.dias_totales,
-    gym_cat_tipoplan_ingresos: data.ingresos,
-    gym_cat_tipoplan_precio: data.precio,
-    gym_cat_tipoplan_fechacambio: sequelize.literal("CURRENT_TIMESTAMP"),
+    descripcion:   data.descripcion,
+    dias_totales:  data.dias_totales,
+    ingresos:      data.ingresos,
+    precio:        data.precio,
+    actualizado_en: sequelize.literal("CURRENT_TIMESTAMP"),
   });
 
   return plan;
 }
 
 export async function planEstaUsado(id) {
-  const uso = await GymFechaDisponible.findOne({
-    where: {
-      gym_fecha_rela_tipoplan: id,
-    },
-    attributes: ["gym_fecha_id"],
+  const uso = await Membresia.findOne({
+    where: { plan_tipo_id: id },
+    attributes: ["id"],
   });
-
   return !!uso;
 }
 
 export async function cambiarEstadoPlan(id, activo) {
-  const plan = await GymCatTipoPlan.findByPk(id);
-
+  const plan = await PlanTipo.findByPk(id);
   if (!plan) return null;
-
-  await plan.update({
-    gym_cat_tipoplan_activo: activo,
-  });
-
+  await plan.update({ activo });
   return plan;
 }

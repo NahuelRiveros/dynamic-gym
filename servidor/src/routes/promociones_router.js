@@ -6,41 +6,37 @@ import { QueryTypes } from "sequelize";
 
 export const promocionesRouter = Router();
 
-// Solo admins
 promocionesRouter.use(requireAuth, requireRole("admin"));
 
-// ── Query base: alumnos según filtro ─────────────────────────────────────────
 const FILTROS = {
   todos:    "",
-  activos:  "AND a.gym_alumno_rela_estadoalumno = 1",
-  vencidos: "AND a.gym_alumno_rela_estadoalumno != 1",
+  activos:  "AND a.estado_id = 1",
+  vencidos: "AND a.estado_id != 1",
 };
 
 async function obtenerDestinatarios(filtro = "todos") {
   const where = FILTROS[filtro] ?? "";
   const rows = await sequelize.query(
     `SELECT
-       p.gym_persona_nombre    AS nombre,
-       p.gym_persona_apellido  AS apellido,
-       p.gym_persona_email     AS email,
-       p.gym_persona_celular   AS celular
-     FROM gym_alumno a
-     JOIN gym_persona p ON p.gym_persona_id = a.gym_alumno_rela_persona
-     WHERE p.gym_persona_email IS NOT NULL
-       AND p.gym_persona_email <> ''
+       p.nombre    AS nombre,
+       p.apellido  AS apellido,
+       p.email     AS email,
+       p.celular   AS celular
+     FROM alumno a
+     JOIN persona p ON p.id = a.persona_id
+     WHERE p.email IS NOT NULL
+       AND p.email <> ''
        ${where}
-     ORDER BY p.gym_persona_apellido, p.gym_persona_nombre`,
+     ORDER BY p.apellido, p.nombre`,
     { type: QueryTypes.SELECT }
   );
   return rows;
 }
 
-// ── GET /api/promociones/preview?filtro=todos ────────────────────────────────
-// Devuelve cuántos alumnos recibirían el email según el filtro
 promocionesRouter.get("/preview", async (req, res, next) => {
   try {
     const filtro = req.query.filtro || "todos";
-    if (!FILTROS.hasOwnProperty(filtro)) {
+    if (!Object.prototype.hasOwnProperty.call(FILTROS, filtro)) {
       return res.status(400).json({ ok: false, mensaje: "Filtro inválido" });
     }
     const destinatarios = await obtenerDestinatarios(filtro);
@@ -48,32 +44,30 @@ promocionesRouter.get("/preview", async (req, res, next) => {
       ok: true,
       total: destinatarios.length,
       muestra: destinatarios.slice(0, 5).map((d) => ({
-        nombre:   `${d.nombre} ${d.apellido}`,
-        email:    d.email,
+        nombre: `${d.nombre} ${d.apellido}`,
+        email:  d.email,
       })),
     });
   } catch (err) { next(err); }
 });
 
-// ── GET /api/promociones/numeros?filtro=todos ────────────────────────────────
-// Devuelve lista de celulares para armar lista de difusión de WhatsApp
 promocionesRouter.get("/numeros", async (req, res, next) => {
   try {
     const filtro = req.query.filtro || "todos";
-    if (!FILTROS.hasOwnProperty(filtro)) {
+    if (!Object.prototype.hasOwnProperty.call(FILTROS, filtro)) {
       return res.status(400).json({ ok: false, mensaje: "Filtro inválido" });
     }
     const where = FILTROS[filtro] ?? "";
     const rows = await sequelize.query(
       `SELECT
-         p.gym_persona_nombre    AS nombre,
-         p.gym_persona_apellido  AS apellido,
-         p.gym_persona_celular   AS celular
-       FROM gym_alumno a
-       JOIN gym_persona p ON p.gym_persona_id = a.gym_alumno_rela_persona
-       WHERE p.gym_persona_celular IS NOT NULL
+         p.nombre    AS nombre,
+         p.apellido  AS apellido,
+         p.celular   AS celular
+       FROM alumno a
+       JOIN persona p ON p.id = a.persona_id
+       WHERE p.celular IS NOT NULL
          ${where}
-       ORDER BY p.gym_persona_apellido`,
+       ORDER BY p.apellido`,
       { type: QueryTypes.SELECT }
     );
 
@@ -85,23 +79,18 @@ promocionesRouter.get("/numeros", async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// ── POST /api/promociones/enviar ─────────────────────────────────────────────
-// Body: { filtro, subject, html }
 promocionesRouter.post("/enviar", async (req, res, next) => {
   try {
     const { filtro = "todos", subject, html } = req.body ?? {};
 
-    if (!subject?.trim() || !html?.trim()) {
+    if (!subject?.trim() || !html?.trim())
       return res.status(400).json({ ok: false, mensaje: "Requerido: subject y html" });
-    }
-    if (!FILTROS.hasOwnProperty(filtro)) {
+    if (!Object.prototype.hasOwnProperty.call(FILTROS, filtro))
       return res.status(400).json({ ok: false, mensaje: "Filtro inválido" });
-    }
 
     const destinatarios = await obtenerDestinatarios(filtro);
-    if (destinatarios.length === 0) {
+    if (destinatarios.length === 0)
       return res.json({ ok: true, enviados: 0, fallidos: [], mensaje: "No hay destinatarios con email" });
-    }
 
     const lista = destinatarios.map((d) => ({
       email:  d.email,
@@ -118,9 +107,8 @@ promocionesRouter.post("/enviar", async (req, res, next) => {
       mensaje:  `${resultado.enviados} email(s) enviados correctamente`,
     });
   } catch (err) {
-    if (err.message?.includes("SMTP no configurado")) {
+    if (err.message?.includes("SMTP no configurado"))
       return res.status(400).json({ ok: false, mensaje: err.message });
-    }
     next(err);
   }
 });

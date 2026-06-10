@@ -16,7 +16,7 @@ import { QueryTypes } from "sequelize";
 import { env } from "../configuracion_servidor/env.js";
 
 const DIAS_AVISO  = 10;   // días previos al vencimiento → aviso
-const DIAS_GRACIA = 10;   // días de gracia después del vencimiento (1-10 del mes)
+const DIAS_GRACIA = 3;    // días de gracia después del vencimiento
 
 // ── Setup inicial (se llama UNA VEZ por instalación) ────────────────────────
 

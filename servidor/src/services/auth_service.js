@@ -1,7 +1,7 @@
-import bcrypt from "bcrypt";
+﻿import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../configuracion_servidor/env.js";
-import { GymPersona, GymUsuario, GymRol } from "../models/index.js";
+import { Persona, Usuario } from "../models/index.js";
 
 function safeStr(v) {
   return String(v ?? "").trim();
@@ -11,82 +11,44 @@ function crearToken({ usuario_id, persona_id, roles }) {
   const secret = env.JWT_SECRET;
   if (!secret) throw new Error("Falta JWT_SECRET en .env");
 
-  const payload = {
-    sub: usuario_id,
-    persona_id,
-    roles,
-  };
-
-  return jwt.sign(payload, secret, {
+  return jwt.sign({ sub: usuario_id, persona_id, roles }, secret, {
     expiresIn: env.JWT_EXPIRES_IN ?? "24h",
   });
 }
 
-/**
- * Login por email + password
- * - email se busca en gym_persona
- * - password se valida contra gym_usuario.gym_usuario_contrasena (bcrypt hash)
- * - roles se obtienen desde relación GymUsuario <-> GymRol
- */
 export async function login({ email, password }) {
   const emailNorm = safeStr(email).toLowerCase();
   const pass = safeStr(password);
 
-  console.log("🔐 Intento login:", emailNorm);
-
-  const persona = await GymPersona.findOne({
-    where: { gym_persona_email: emailNorm },
-  });
-
-  console.log("👤 Persona encontrada:", persona ? persona.gym_persona_id : null);
-
+  const persona = await Persona.findOne({ where: { email: emailNorm } });
   if (!persona) {
     return { ok: false, codigo: "CREDENCIALES_INVALIDAS", mensaje: "Email o contraseña incorrectos" };
   }
 
-  const usuario = await GymUsuario.findOne({
-    where: { gym_usuario_rela_persona: persona.gym_persona_id },
-  });
-
-  console.log("🧑 Usuario encontrado:", usuario ? usuario.gym_usuario_id : null);
-
+  const usuario = await Usuario.findOne({ where: { persona_id: persona.id } });
   if (!usuario) {
     return { ok: false, codigo: "SIN_USUARIO", mensaje: "La persona no tiene usuario habilitado" };
   }
 
-  console.log("🟢 Usuario activo:", usuario.gym_usuario_activo);
-
-  if (usuario.gym_usuario_activo === false) {
+  if (usuario.activo === false) {
     return { ok: false, codigo: "USUARIO_INACTIVO", mensaje: "Usuario inactivo" };
   }
 
-  const hash = usuario.gym_usuario_contrasena ?? "";
-  const valido = await bcrypt.compare(pass, hash);
-
-  console.log("🔑 Password válido:", valido);
-
+  const valido = await bcrypt.compare(pass, usuario.contrasena ?? "");
   if (!valido) {
     return { ok: false, codigo: "CREDENCIALES_INVALIDAS", mensaje: "Email o contraseña incorrectos" };
   }
 
-  console.log("✅ LOGIN OK para:", emailNorm);
-  // 5) Roles
   const rolesRows = await usuario.getRoles({
-    attributes: ["gym_rol_codigo"],
+    attributes: ["codigo"],
     joinTableAttributes: [],
   });
 
-  const roles = rolesRows.map((r) => r.gym_rol_codigo);
+  const roles = rolesRows.map((r) => r.codigo);
 
-  // 6) Token
-  const token = crearToken({
-    usuario_id: usuario.gym_usuario_id,
-    persona_id: persona.gym_persona_id,
-    roles,
-  });
+  const token = crearToken({ usuario_id: usuario.id, persona_id: persona.id, roles });
 
-  // 7) actualizar último login
-  await usuario.update({ gym_usuario_ultimo_login: new Date() });
+  await usuario.update({ ultimo_login: new Date() });
 
   return {
     ok: true,
@@ -94,11 +56,11 @@ export async function login({ email, password }) {
     mensaje: "Login correcto",
     token,
     usuario: {
-      usuario_id: usuario.gym_usuario_id,
-      persona_id: persona.gym_persona_id,
-      nombre: persona.gym_persona_nombre,
-      apellido: persona.gym_persona_apellido,
-      email: persona.gym_persona_email,
+      usuario_id: usuario.id,
+      persona_id: persona.id,
+      nombre: persona.nombre,
+      apellido: persona.apellido,
+      email: persona.email,
       roles,
     },
   };

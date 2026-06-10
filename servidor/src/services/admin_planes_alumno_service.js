@@ -1,14 +1,14 @@
-import { QueryTypes } from "sequelize";
+﻿import { QueryTypes } from "sequelize";
 import { sequelize } from "../database/sequelize.js";
 import {
-  GymPersona,
-  GymAlumno,
-  GymFechaDisponible,
-  GymCatTipoPlan,
-  GymCatEstadoAlumno
+  Persona,
+  Alumno,
+  Membresia,
+  PlanTipo,
+  AlumnoEstado,
 } from "../models/index.js";
 
-const ESTADO_HABILITADO = 1;
+const ESTADO_HABILITADO  = 1;
 const ESTADO_RESTRINGIDO = 2;
 
 function normalizarDocumento(doc) {
@@ -18,90 +18,55 @@ function normalizarDocumento(doc) {
 export async function obtenerPlanVigentePorDni({ documento }) {
   const dni = Number(normalizarDocumento(documento));
 
-  if (!Number.isFinite(dni) || dni <= 0) {
-    return {
-      ok: false,
-      codigo: "VALIDACION",
-      mensaje: "Documento inválido",
-    };
-  }
+  if (!Number.isFinite(dni) || dni <= 0)
+    return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
 
-  const persona = await GymPersona.findOne({
-    where: { gym_persona_documento: dni },
+  const persona = await Persona.findOne({ where: { documento: dni } });
+  if (!persona)
+    return { ok: false, codigo: "NO_EXISTE", mensaje: "No existe una persona con ese documento" };
+
+  const alumno = await Alumno.findOne({ where: { persona_id: persona.id } });
+  if (!alumno)
+    return { ok: false, codigo: "NO_ES_ALUMNO", mensaje: "La persona existe pero no es alumno" };
+
+  const plan = await Membresia.findOne({
+    where: { alumno_id: alumno.id },
+    order: [["fecha_fin", "DESC"], ["id", "DESC"]],
   });
+  if (!plan)
+    return { ok: false, codigo: "PLAN_NO_EXISTE", mensaje: "El alumno no tiene plan registrado" };
 
-  if (!persona) {
-    return {
-      ok: false,
-      codigo: "NO_EXISTE",
-      mensaje: "No existe una persona con ese documento",
-    };
-  }
-
-  const alumno = await GymAlumno.findOne({
-    where: { gym_alumno_rela_persona: persona.gym_persona_id },
-  });
-
-  if (!alumno) {
-    return {
-      ok: false,
-      codigo: "NO_ES_ALUMNO",
-      mensaje: "La persona existe pero no es alumno",
-    };
-  }
-
-  const plan = await GymFechaDisponible.findOne({
-    where: { gym_fecha_rela_alumno: alumno.gym_alumno_id },
-    order: [
-      ["gym_fecha_fin", "DESC"],
-      ["gym_fecha_id", "DESC"],
-    ],
-  });
-
-  if (!plan) {
-    return {
-      ok: false,
-      codigo: "PLAN_NO_EXISTE",
-      mensaje: "El alumno no tiene plan registrado",
-    };
-  }
-
-  const tipoPlan = plan.gym_fecha_rela_tipoplan
-    ? await GymCatTipoPlan.findByPk(plan.gym_fecha_rela_tipoplan)
-    : null;
-
-  const estadoAlumno = alumno.gym_alumno_rela_estadoalumno
-    ? await GymCatEstadoAlumno.findByPk(alumno.gym_alumno_rela_estadoalumno)
-    : null;
+  const tipoPlan     = plan.plan_tipo_id ? await PlanTipo.findByPk(plan.plan_tipo_id) : null;
+  const estadoAlumno = alumno.estado_id  ? await AlumnoEstado.findByPk(alumno.estado_id) : null;
 
   return {
     ok: true,
     alumno: {
-      alumno_id: alumno.gym_alumno_id,
-      persona_id: persona.gym_persona_id,
-      nombre: persona.gym_persona_nombre,
-      apellido: persona.gym_persona_apellido,
-      documento: persona.gym_persona_documento,
-      celular: persona.gym_persona_celular ?? null,
-      celular_emergencia: persona.gym_persona_celular_emergencia ?? null,
-      email: persona.gym_persona_email ?? null,
-      fecha_nacimiento: persona.gym_persona_fechanacimiento ?? null,
-      estado_id: alumno.gym_alumno_rela_estadoalumno,
-      estado_desc:
-        estadoAlumno?.gym_cat_estadoalumno_descripcion ?? null,
+      alumno_id:           alumno.id,
+      persona_id:          persona.id,
+      nombre:              persona.nombre,
+      apellido:            persona.apellido,
+      documento:           persona.documento,
+      celular:             persona.celular ?? null,
+      celular_emergencia:  persona.celular_emergencia ?? null,
+      email:               persona.email ?? null,
+      fecha_nacimiento:    persona.fecha_nacimiento ?? null,
+      estado_id:           alumno.estado_id,
+      estado_desc:         estadoAlumno?.descripcion ?? null,
     },
     plan: {
-      fecha_id: plan.gym_fecha_id,
-      tipo_plan_id: plan.gym_fecha_rela_tipoplan,
-      tipo_plan: tipoPlan?.gym_cat_tipoplan_descripcion ?? null,
-      inicio: plan.gym_fecha_inicio,
-      fin: plan.gym_fecha_fin,
-      monto_pagado: plan.gym_fecha_montopagado,
-      ingresos_disponibles: plan.gym_fecha_ingresosdisponibles,
-      metodo_pago: plan.gym_fecha_metodopago,
+      fecha_id:           plan.id,
+      tipo_plan_id:       plan.plan_tipo_id,
+      tipo_plan:          tipoPlan?.descripcion ?? null,
+      inicio:             plan.fecha_inicio,
+      fin:                plan.fecha_fin,
+      monto_pagado:       plan.monto_pagado,
+      ingresos_disponibles: plan.ingresos_disponibles,
+      metodo_pago:        plan.metodo_pago,
     },
   };
 }
+
 export async function actualizarPlanVigentePorDni({
   documento,
   tipo_plan_id,
@@ -112,135 +77,70 @@ export async function actualizarPlanVigentePorDni({
 }) {
   const dni = Number(normalizarDocumento(documento));
 
-  if (!Number.isFinite(dni) || dni <= 0) {
-    return {
-      ok: false,
-      codigo: "VALIDACION",
-      mensaje: "Documento inválido",
-    };
-  }
-
-  if (fecha_fin < fecha_inicio) {
-    return {
-      ok: false,
-      codigo: "VALIDACION",
-      mensaje: "fecha_fin no puede ser menor a fecha_inicio",
-    };
-  }
+  if (!Number.isFinite(dni) || dni <= 0)
+    return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
+  if (fecha_fin < fecha_inicio)
+    return { ok: false, codigo: "VALIDACION", mensaje: "fecha_fin no puede ser menor a fecha_inicio" };
 
   return sequelize.transaction(async (t) => {
-    const persona = await GymPersona.findOne({
-      where: { gym_persona_documento: dni },
-      transaction: t,
-    });
+    const persona = await Persona.findOne({ where: { documento: dni }, transaction: t });
+    if (!persona)
+      return { ok: false, codigo: "NO_EXISTE", mensaje: "No existe una persona con ese documento" };
 
-    if (!persona) {
-      return {
-        ok: false,
-        codigo: "NO_EXISTE",
-        mensaje: "No existe una persona con ese documento",
-      };
-    }
-
-    const alumno = await GymAlumno.findOne({
-      where: { gym_alumno_rela_persona: persona.gym_persona_id },
+    const alumno = await Alumno.findOne({
+      where: { persona_id: persona.id },
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
+    if (!alumno)
+      return { ok: false, codigo: "NO_ES_ALUMNO", mensaje: "La persona existe pero no es alumno" };
 
-    if (!alumno) {
-      return {
-        ok: false,
-        codigo: "NO_ES_ALUMNO",
-        mensaje: "La persona existe pero no es alumno",
-      };
-    }
+    const tipoPlan = await PlanTipo.findByPk(tipo_plan_id, { transaction: t });
+    if (!tipoPlan)
+      return { ok: false, codigo: "PLAN_NO_EXISTE", mensaje: "El tipo de plan no existe" };
 
-    const tipoPlan = await GymCatTipoPlan.findByPk(tipo_plan_id, {
-      transaction: t,
-    });
-
-    if (!tipoPlan) {
-      return {
-        ok: false,
-        codigo: "PLAN_NO_EXISTE",
-        mensaje: "El tipo de plan no existe",
-      };
-    }
-
-    const plan = await GymFechaDisponible.findOne({
-      where: { gym_fecha_rela_alumno: alumno.gym_alumno_id },
-      order: [
-        ["gym_fecha_fin", "DESC"],
-        ["gym_fecha_id", "DESC"],
-      ],
+    const plan = await Membresia.findOne({
+      where: { alumno_id: alumno.id },
+      order: [["fecha_fin", "DESC"], ["id", "DESC"]],
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
+    if (!plan)
+      return { ok: false, codigo: "PLAN_NO_EXISTE", mensaje: "El alumno no tiene plan registrado" };
 
-    if (!plan) {
-      return {
-        ok: false,
-        codigo: "PLAN_NO_EXISTE",
-        mensaje: "El alumno no tiene plan registrado",
-      };
-    }
-
-    const nuevosIngresos =
-      ingresos_disponibles == null
-        ? plan.gym_fecha_ingresosdisponibles
-        : ingresos_disponibles;
+    const nuevosIngresos = ingresos_disponibles == null
+      ? plan.ingresos_disponibles
+      : ingresos_disponibles;
 
     await plan.update(
-      {
-        gym_fecha_rela_tipoplan: tipo_plan_id,
-        gym_fecha_inicio: fecha_inicio,
-        gym_fecha_fin: fecha_fin,
-        gym_fecha_ingresosdisponibles: nuevosIngresos,
-      },
+      { plan_tipo_id: tipo_plan_id, fecha_inicio, fecha_fin, ingresos_disponibles: nuevosIngresos },
       { transaction: t }
     );
 
     const hoy = new Date().toLocaleDateString("en-CA");
+    const estadoNuevo = fecha_fin >= hoy && Number(nuevosIngresos ?? 0) > 0
+      ? ESTADO_HABILITADO
+      : ESTADO_RESTRINGIDO;
 
-    const estadoNuevo =
-      fecha_fin >= hoy && Number(nuevosIngresos ?? 0) > 0
-        ? ESTADO_HABILITADO
-        : ESTADO_RESTRINGIDO;
-
-    if (Number(alumno.gym_alumno_rela_estadoalumno) !== estadoNuevo) {
-      await alumno.update(
-        { gym_alumno_rela_estadoalumno: estadoNuevo },
-        { transaction: t }
-      );
+    if (Number(alumno.estado_id) !== estadoNuevo) {
+      await alumno.update({ estado_id: estadoNuevo }, { transaction: t });
     }
 
     await sequelize.query(
       `
-      INSERT INTO gym_log_estado_alumno (
-        gym_log_estadoalumno_rela_alumno,
-        gym_log_estadoalumno_estado_anterior,
-        gym_log_estadoalumno_estado_nuevo,
-        gym_log_estadoalumno_motivo,
-        gym_log_estadoalumno_fuente,
-        gym_log_estadoalumno_modificado_por
+      INSERT INTO alumno_estado_log (
+        alumno_id, estado_anterior_id, estado_nuevo_id,
+        motivo, fuente, modificado_por
       )
-      VALUES (
-        :alumno_id,
-        :estado_anterior,
-        :estado_nuevo,
-        :motivo,
-        :fuente,
-        :modificado_por
-      )
+      VALUES (:alumno_id, :estado_anterior, :estado_nuevo, :motivo, :fuente, :modificado_por)
       `,
       {
         replacements: {
-          alumno_id: alumno.gym_alumno_id,
-          estado_anterior: alumno.gym_alumno_rela_estadoalumno,
-          estado_nuevo: estadoNuevo,
-          motivo: "Ajuste manual de plan vigente por administrador",
-          fuente: "ADMIN_PANEL",
+          alumno_id:      alumno.id,
+          estado_anterior: alumno.estado_id,
+          estado_nuevo:   estadoNuevo,
+          motivo:         "Ajuste manual de plan vigente por administrador",
+          fuente:         "ADMIN_PANEL",
           modificado_por,
         },
         type: QueryTypes.INSERT,
@@ -251,20 +151,19 @@ export async function actualizarPlanVigentePorDni({
     return {
       ok: true,
       mensaje: "Plan vigente actualizado correctamente",
-
       alumno: {
-        alumno_id: alumno.gym_alumno_id,
-        nombre: persona.gym_persona_nombre,
-        apellido: persona.gym_persona_apellido,
-        documento: persona.gym_persona_documento,
+        alumno_id: alumno.id,
+        nombre:    persona.nombre,
+        apellido:  persona.apellido,
+        documento: persona.documento,
         estado_id: estadoNuevo,
       },
       plan: {
-        fecha_id: plan.gym_fecha_id,
+        fecha_id:            plan.id,
         tipo_plan_id,
-        tipo_plan: tipoPlan.gym_cat_tipoplan_descripcion,
-        inicio: fecha_inicio,
-        fin: fecha_fin,
+        tipo_plan:           tipoPlan.descripcion,
+        inicio:              fecha_inicio,
+        fin:                 fecha_fin,
         ingresos_disponibles: nuevosIngresos,
       },
     };
@@ -283,54 +182,43 @@ export async function actualizarPersonaAlumnoPorDni({
 }) {
   const dni = Number(normalizarDocumento(documento));
 
-  if (!Number.isFinite(dni) || dni <= 0) {
+  if (!Number.isFinite(dni) || dni <= 0)
     return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
-  }
 
   return sequelize.transaction(async (t) => {
-    const persona = await GymPersona.findOne({
-      where: { gym_persona_documento: dni },
+    const persona = await Persona.findOne({
+      where: { documento: dni },
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
-
-    if (!persona) {
+    if (!persona)
       return { ok: false, codigo: "NO_EXISTE", mensaje: "No existe una persona con ese documento" };
-    }
 
     const nuevoDoc = nuevo_documento != null && String(nuevo_documento).trim() !== ""
       ? Number(nuevo_documento)
       : null;
 
     if (nuevoDoc && nuevoDoc !== dni) {
-      const existeDoc = await GymPersona.findOne({
-        where: { gym_persona_documento: nuevoDoc },
-        transaction: t,
-      });
-      if (existeDoc) {
+      const existeDoc = await Persona.findOne({ where: { documento: nuevoDoc }, transaction: t });
+      if (existeDoc)
         return { ok: false, codigo: "DOCUMENTO_DUPLICADO", mensaje: "Ya existe otra persona con ese DNI" };
-      }
     }
 
     const nuevoEmail = email != null ? email.trim() : null;
-    if (nuevoEmail && nuevoEmail !== persona.gym_persona_email) {
-      const existeEmail = await GymPersona.findOne({
-        where: { gym_persona_email: nuevoEmail },
-        transaction: t,
-      });
-      if (existeEmail && existeEmail.gym_persona_id !== persona.gym_persona_id) {
+    if (nuevoEmail && nuevoEmail !== persona.email) {
+      const existeEmail = await Persona.findOne({ where: { email: nuevoEmail }, transaction: t });
+      if (existeEmail && existeEmail.id !== persona.id)
         return { ok: false, codigo: "EMAIL_DUPLICADO", mensaje: "Ya existe otra persona con ese email" };
-      }
     }
 
-    const updates = { gym_persona_fechacambio: new Date() };
-    if (nombre != null)                   updates.gym_persona_nombre               = nombre.trim();
-    if (apellido != null)                 updates.gym_persona_apellido             = apellido.trim();
-    if (nuevoDoc)                         updates.gym_persona_documento            = nuevoDoc;
-    if (celular !== undefined)            updates.gym_persona_celular              = celular === "" ? null : Number(celular) || null;
-    if (celular_emergencia !== undefined) updates.gym_persona_celular_emergencia   = celular_emergencia === "" ? null : Number(celular_emergencia) || null;
-    if (email !== undefined)              updates.gym_persona_email                = nuevoEmail === "" ? null : nuevoEmail;
-    if (fecha_nacimiento !== undefined)   updates.gym_persona_fechanacimiento      = fecha_nacimiento === "" ? null : fecha_nacimiento;
+    const updates = { actualizado_en: new Date() };
+    if (nombre != null)                   updates.nombre              = nombre.trim();
+    if (apellido != null)                 updates.apellido            = apellido.trim();
+    if (nuevoDoc)                         updates.documento           = nuevoDoc;
+    if (celular !== undefined)            updates.celular             = celular === "" ? null : Number(celular) || null;
+    if (celular_emergencia !== undefined) updates.celular_emergencia  = celular_emergencia === "" ? null : Number(celular_emergencia) || null;
+    if (email !== undefined)              updates.email               = nuevoEmail === "" ? null : nuevoEmail;
+    if (fecha_nacimiento !== undefined)   updates.fecha_nacimiento    = fecha_nacimiento === "" ? null : fecha_nacimiento;
 
     await persona.update(updates, { transaction: t });
 
@@ -338,14 +226,14 @@ export async function actualizarPersonaAlumnoPorDni({
       ok: true,
       mensaje: "Datos personales actualizados correctamente",
       persona: {
-        persona_id: persona.gym_persona_id,
-        nombre: persona.gym_persona_nombre,
-        apellido: persona.gym_persona_apellido,
-        documento: persona.gym_persona_documento,
-        celular: persona.gym_persona_celular ?? null,
-        celular_emergencia: persona.gym_persona_celular_emergencia ?? null,
-        email: persona.gym_persona_email ?? null,
-        fecha_nacimiento: persona.gym_persona_fechanacimiento ?? null,
+        persona_id:         persona.id,
+        nombre:             persona.nombre,
+        apellido:           persona.apellido,
+        documento:          persona.documento,
+        celular:            persona.celular ?? null,
+        celular_emergencia: persona.celular_emergencia ?? null,
+        email:              persona.email ?? null,
+        fecha_nacimiento:   persona.fecha_nacimiento ?? null,
       },
     };
   });

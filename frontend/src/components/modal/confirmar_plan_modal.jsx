@@ -29,7 +29,7 @@ export default function ConfirmarActualizacionPlanModal({
           </div>
           <div>
             <b>Tipo de plan:</b>{" "}
-            {tipoPlanSeleccionado?.gym_cat_tipoplan_descripcion || "—"}
+            {tipoPlanSeleccionado?.label || "—"}
           </div>
           <div>
             <b>Fecha inicio:</b> {form?.fecha_inicio || "—"}

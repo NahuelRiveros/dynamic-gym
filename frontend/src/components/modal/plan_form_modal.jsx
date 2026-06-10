@@ -20,10 +20,10 @@ export default function PlanFormModal({
   useEffect(() => {
     if (planEditar) {
       setForm({
-        descripcion: planEditar.gym_cat_tipoplan_descripcion || "",
-        dias_totales: planEditar.gym_cat_tipoplan_dias_totales ?? 0,
-        ingresos: planEditar.gym_cat_tipoplan_ingresos ?? 0,
-        precio: Number(planEditar.gym_cat_tipoplan_precio ?? 0),
+        descripcion: planEditar.descripcion || "",
+        dias_totales: planEditar.dias_totales ?? 0,
+        ingresos: planEditar.ingresos ?? 0,
+        precio: Number(planEditar.precio ?? 0),
       });
     } else {
       setForm(estadoInicial);

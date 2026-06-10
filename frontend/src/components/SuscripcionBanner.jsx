@@ -59,9 +59,9 @@ export default function SuscripcionBanner() {
       btn:    "bg-red-500/20 hover:bg-red-500/30 text-red-300",
     },
     gracia: {
-      bar:    "bg-orange-500/10 border-orange-500/30 text-orange-300",
-      icon:   "text-orange-400",
-      btn:    "bg-orange-500/20 hover:bg-orange-500/30 text-orange-300",
+      bar:    "bg-blue-500/10 border-blue-500/30 text-blue-300",
+      icon:   "text-blue-400",
+      btn:    "bg-blue-500/20 hover:bg-blue-500/30 text-blue-300",
     },
     aviso: {
       bar:    "bg-yellow-500/10 border-yellow-500/30 text-yellow-300",

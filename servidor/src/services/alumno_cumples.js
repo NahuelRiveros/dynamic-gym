@@ -17,9 +17,7 @@ function hoyArgentinaPartes() {
 
 function formatearFechaDDMM(fecha) {
   const f = new Date(fecha);
-  return `${String(f.getUTCDate()).padStart(2, "0")}/${String(
-    f.getUTCMonth() + 1
-  ).padStart(2, "0")}`;
+  return `${String(f.getUTCDate()).padStart(2, "0")}/${String(f.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
 export async function obtenerAlumnosCumples({ dias = 3, incluirMes = false } = {}) {
@@ -29,20 +27,17 @@ export async function obtenerAlumnosCumples({ dias = 3, incluirMes = false } = {
   const alumnos = await sequelize.query(
     `
     SELECT
-      p.gym_persona_id AS persona_id,
-      p.gym_persona_nombre AS nombre,
-      p.gym_persona_apellido AS apellido,
-      p.gym_persona_fechanacimiento AS fecha_nacimiento,
-      a.gym_alumno_id AS alumno_id
-    FROM public.gym_persona p
-    INNER JOIN public.gym_alumno a
-      ON a.gym_alumno_rela_persona = p.gym_persona_id
-    WHERE p.gym_persona_fechanacimiento IS NOT NULL
-    ORDER BY p.gym_persona_nombre, p.gym_persona_apellido
+      p.id AS persona_id,
+      p.nombre,
+      p.apellido,
+      p.fecha_nacimiento,
+      a.id AS alumno_id
+    FROM public.persona p
+    INNER JOIN public.alumno a ON a.persona_id = p.id
+    WHERE p.fecha_nacimiento IS NOT NULL
+    ORDER BY p.nombre, p.apellido
     `,
-    {
-      type: QueryTypes.SELECT,
-    }
+    { type: QueryTypes.SELECT }
   );
 
   const hoyDate = new Date(`${hoyStr}T00:00:00`);
@@ -50,19 +45,11 @@ export async function obtenerAlumnosCumples({ dias = 3, incluirMes = false } = {
   const procesados = alumnos.map((alumno) => {
     const fechaNac = new Date(alumno.fecha_nacimiento);
 
-    const cumpleEsteAnio = new Date(
-      anio,
-      fechaNac.getUTCMonth(),
-      fechaNac.getUTCDate()
-    );
+    const cumpleEsteAnio = new Date(anio, fechaNac.getUTCMonth(), fechaNac.getUTCDate());
 
     let proximoCumple = cumpleEsteAnio;
     if (cumpleEsteAnio < hoyDate) {
-      proximoCumple = new Date(
-        anio + 1,
-        fechaNac.getUTCMonth(),
-        fechaNac.getUTCDate()
-      );
+      proximoCumple = new Date(anio + 1, fechaNac.getUTCMonth(), fechaNac.getUTCDate());
     }
 
     const diffMs = proximoCumple - hoyDate;
@@ -72,40 +59,29 @@ export async function obtenerAlumnosCumples({ dias = 3, incluirMes = false } = {
       ...alumno,
       fecha: formatearFechaDDMM(alumno.fecha_nacimiento),
       dias_restantes: diasRestantes,
-      es_hoy:
-        fechaNac.getUTCMonth() + 1 === mes &&
-        fechaNac.getUTCDate() === dia,
+      es_hoy: fechaNac.getUTCMonth() + 1 === mes && fechaNac.getUTCDate() === dia,
     };
   });
 
   const hoy = procesados
     .filter((a) => a.es_hoy)
     .map((a) => ({
-      alumno_id: a.alumno_id,
-      persona_id: a.persona_id,
-      nombre: a.nombre,
-      apellido: a.apellido,
-      fecha_nacimiento: a.fecha_nacimiento,
-      fecha: a.fecha,
-      tipo: "hoy",
+      alumno_id: a.alumno_id, persona_id: a.persona_id,
+      nombre: a.nombre, apellido: a.apellido,
+      fecha_nacimiento: a.fecha_nacimiento, fecha: a.fecha, tipo: "hoy",
     }));
 
   const proximos = procesados
     .filter((a) => !a.es_hoy && a.dias_restantes > 0 && a.dias_restantes <= diasNumero)
     .sort((a, b) => a.dias_restantes - b.dias_restantes)
     .map((a) => ({
-      alumno_id: a.alumno_id,
-      persona_id: a.persona_id,
-      nombre: a.nombre,
-      apellido: a.apellido,
-      fecha_nacimiento: a.fecha_nacimiento,
-      fecha: a.fecha,
-      dias_restantes: a.dias_restantes,
-      tipo: "proximos",
+      alumno_id: a.alumno_id, persona_id: a.persona_id,
+      nombre: a.nombre, apellido: a.apellido,
+      fecha_nacimiento: a.fecha_nacimiento, fecha: a.fecha,
+      dias_restantes: a.dias_restantes, tipo: "proximos",
     }));
 
   let delMes = [];
-
   if (incluirMes) {
     delMes = procesados
       .filter((a) => {
@@ -118,20 +94,11 @@ export async function obtenerAlumnosCumples({ dias = 3, incluirMes = false } = {
         return fa.getUTCDate() - fb.getUTCDate();
       })
       .map((a) => ({
-        alumno_id: a.alumno_id,
-        persona_id: a.persona_id,
-        nombre: a.nombre,
-        apellido: a.apellido,
-        fecha_nacimiento: a.fecha_nacimiento,
-        fecha: a.fecha,
+        alumno_id: a.alumno_id, persona_id: a.persona_id,
+        nombre: a.nombre, apellido: a.apellido,
+        fecha_nacimiento: a.fecha_nacimiento, fecha: a.fecha,
       }));
   }
 
-  return {
-    ok: true,
-    hoy,
-    proximos,
-    delMes,
-    total: hoy.length + proximos.length,
-  };
+  return { ok: true, hoy, proximos, delMes, total: hoy.length + proximos.length };
 }

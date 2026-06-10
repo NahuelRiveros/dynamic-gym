@@ -1,24 +1,13 @@
-import { QueryTypes, Op } from "sequelize";
+﻿import { QueryTypes, Op } from "sequelize";
 import { sequelize } from "../database/sequelize.js";
 import {
-  GymPersona,
-  GymAlumno,
-  GymFechaDisponible,
-  GymCatTipoPlan,
+  Persona,
+  Alumno,
+  Membresia,
+  PlanTipo,
 } from "../models/index.js";
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  COLA OFFLINE (desactivada — descomentar para habilitar)
-//
-//  Cuando no hay conexión a la DB, el ingreso se guarda localmente en un
-//  archivo JSON y un cron lo sincroniza cada 30 s al volver el internet.
-//  Para activar:
-//    1. Descomentar el import de abajo
-//    2. Descomentar el bloque "Sin conexión" al final de registrarIngresoPorDni
-//    3. Descomentar iniciarSyncQueueCron() en server.js
-//
 // import { agregarALaCola } from "./offline_queue_service.js";
-// ─────────────────────────────────────────────────────────────────────────────
 
 const ESTADO_HABILITADO  = 1;
 const ESTADO_RESTRINGIDO = 2;
@@ -30,10 +19,7 @@ function obtenerFechaHoraSistema() {
   const ahora = new Date();
   const tz = "America/Argentina/Buenos_Aires";
 
-  // "YYYY-MM-DD" en timezone Argentina
   const fecha = ahora.toLocaleDateString("en-CA", { timeZone: tz });
-
-  // "HH:MM:SS" en 24h en timezone Argentina
   const hora = ahora.toLocaleTimeString("en-GB", {
     timeZone: tz,
     hour: "2-digit",
@@ -42,11 +28,7 @@ function obtenerFechaHoraSistema() {
     hour12: false,
   });
 
-  return {
-    fecha,
-    hora,
-    fechaHora: `${fecha} ${hora}`,
-  };
+  return { fecha, hora, fechaHora: `${fecha} ${hora}` };
 }
 
 export async function registrarIngresoPorDni({ dni }) {
@@ -55,109 +37,65 @@ export async function registrarIngresoPorDni({ dni }) {
 
   const { fecha: hoy, hora, fechaHora } = obtenerFechaHoraSistema();
 
-  if (!Number.isFinite(dniNum) || dniNum <= 0) {
+  if (!Number.isFinite(dniNum) || dniNum <= 0)
     return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
-  }
 
   return sequelize.transaction(async (t) => {
-    const persona = await GymPersona.findOne({
-      where: { gym_persona_documento: dniNum },
+    const persona = await Persona.findOne({
+      where: { documento: dniNum },
       transaction: t,
     });
+    if (!persona)
+      return { ok: false, codigo: "NO_EXISTE", mensaje: "No existe una persona con ese documento" };
 
-    if (!persona) {
-      return {
-        ok: false,
-        codigo: "NO_EXISTE",
-        mensaje: "No existe una persona con ese documento",
-      };
-    }
-
-    const alumno = await GymAlumno.findOne({
-      where: { gym_alumno_rela_persona: persona.gym_persona_id },
+    const alumno = await Alumno.findOne({
+      where: { persona_id: persona.id },
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
+    if (!alumno)
+      return { ok: false, codigo: "NO_ES_ALUMNO", mensaje: "La persona existe pero no es alumno" };
 
-    if (!alumno) {
-      return {
-        ok: false,
-        codigo: "NO_ES_ALUMNO",
-        mensaje: "La persona existe pero no es alumno",
-      };
-    }
-
-    const planReciente = await GymFechaDisponible.findOne({
+    const planReciente = await Membresia.findOne({
       where: {
-        gym_fecha_rela_alumno: alumno.gym_alumno_id,
-        gym_fecha_fin: {
-          [Op.gte]: hoy,
-        },
+        alumno_id: alumno.id,
+        fecha_fin: { [Op.gte]: hoy },
       },
       order: [
-        ["gym_fecha_fin", "DESC"],
-        ["gym_fecha_id", "DESC"],
+        ["fecha_fin", "DESC"],
+        ["id", "DESC"],
       ],
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
 
-    console.log(
-      "PLAN VIGENTE ENCONTRADO:",
-      planReciente
-        ? {
-            fecha_id: planReciente.gym_fecha_id,
-            inicio: planReciente.gym_fecha_inicio,
-            fin: planReciente.gym_fecha_fin,
-            ingresos_disponibles: planReciente.gym_fecha_ingresosdisponibles,
-            tipo_plan: planReciente.gym_fecha_rela_tipoplan,
-          }
-        : "NO ENCONTRADO"
-    );
-
     if (!planReciente) {
-      if (Number(alumno.gym_alumno_rela_estadoalumno) !== ESTADO_RESTRINGIDO) {
-        await alumno.update(
-          { gym_alumno_rela_estadoalumno: ESTADO_RESTRINGIDO },
-          { transaction: t }
-        );
+      if (Number(alumno.estado_id) !== ESTADO_RESTRINGIDO) {
+        await alumno.update({ estado_id: ESTADO_RESTRINGIDO }, { transaction: t });
       }
-
       return {
         ok: false,
         codigo: "PLAN_VENCIDO_O_INEXISTENTE",
         mensaje: "El alumno no tiene un plan vigente",
-        alumno: {
-          alumno_id: alumno.gym_alumno_id,
-          estado_id: ESTADO_RESTRINGIDO,
-        },
+        alumno: { alumno_id: alumno.id, estado_id: ESTADO_RESTRINGIDO },
       };
     }
 
-    const ingresosActuales = Number(
-      planReciente.gym_fecha_ingresosdisponibles ?? 0
-    );
+    const ingresosActuales = Number(planReciente.ingresos_disponibles ?? 0);
 
     if (ingresosActuales <= 0) {
-      if (Number(alumno.gym_alumno_rela_estadoalumno) !== ESTADO_RESTRINGIDO) {
-        await alumno.update(
-          { gym_alumno_rela_estadoalumno: ESTADO_RESTRINGIDO },
-          { transaction: t }
-        );
+      if (Number(alumno.estado_id) !== ESTADO_RESTRINGIDO) {
+        await alumno.update({ estado_id: ESTADO_RESTRINGIDO }, { transaction: t });
       }
-
       return {
         ok: false,
         codigo: "SIN_INGRESOS",
         mensaje: "Alumno sin ingresos disponibles",
-        alumno: {
-          alumno_id: alumno.gym_alumno_id,
-          estado_id: ESTADO_RESTRINGIDO,
-        },
+        alumno: { alumno_id: alumno.id, estado_id: ESTADO_RESTRINGIDO },
         plan: {
-          fecha_id: planReciente.gym_fecha_id,
-          inicio: planReciente.gym_fecha_inicio,
-          fin: planReciente.gym_fecha_fin,
+          fecha_id:         planReciente.id,
+          inicio:           planReciente.fecha_inicio,
+          fin:              planReciente.fecha_fin,
           ingresos_restantes: 0,
         },
       };
@@ -165,26 +103,13 @@ export async function registrarIngresoPorDni({ dni }) {
 
     const [rows] = await sequelize.query(
       `
-      INSERT INTO gym_dia_ingreso (
-        gym_dia_rela_fecha,
-        gym_dia_fechaingreso,
-        gym_dia_horaingreso,
-        gym_dia_fechacambio
-      )
-      VALUES (
-        :fecha_id,
-        :fecha,
-        :hora,
-        :fechaHora
-      )
-      RETURNING
-        gym_dia_id,
-        gym_dia_fechaingreso,
-        gym_dia_horaingreso
+      INSERT INTO ingreso (membresia_id, fecha_ingreso, hora_ingreso, creado_en)
+      VALUES (:fecha_id, :fecha, :hora, :fechaHora)
+      RETURNING id, fecha_ingreso, hora_ingreso
       `,
       {
         replacements: {
-          fecha_id: planReciente.gym_fecha_id,
+          fecha_id: planReciente.id,
           fecha: hoy,
           hora,
           fechaHora,
@@ -199,91 +124,58 @@ export async function registrarIngresoPorDni({ dni }) {
 
     await sequelize.query(
       `
-      UPDATE gym_fecha_disponible
-      SET gym_fecha_ingresosdisponibles = :restantes,
-          gym_fecha_fechacambio = :fechaHora
-      WHERE gym_fecha_id = :fecha_id
+      UPDATE membresia
+      SET ingresos_disponibles = :restantes, actualizado_en = :fechaHora
+      WHERE id = :fecha_id
       `,
       {
-        replacements: {
-          restantes: ingresosRestantes,
-          fechaHora,
-          fecha_id: planReciente.gym_fecha_id,
-        },
+        replacements: { restantes: ingresosRestantes, fechaHora, fecha_id: planReciente.id },
         type: QueryTypes.UPDATE,
         transaction: t,
       }
     );
 
-    let estadoFinal = Number(alumno.gym_alumno_rela_estadoalumno);
+    let estadoFinal = Number(alumno.estado_id);
 
     if (estadoFinal === ESTADO_RESTRINGIDO && ingresosRestantes > 0) {
-      await alumno.update(
-        { gym_alumno_rela_estadoalumno: ESTADO_HABILITADO },
-        { transaction: t }
-      );
+      await alumno.update({ estado_id: ESTADO_HABILITADO }, { transaction: t });
       estadoFinal = ESTADO_HABILITADO;
     }
 
     if (ingresosRestantes === 0) {
-      await alumno.update(
-        { gym_alumno_rela_estadoalumno: ESTADO_RESTRINGIDO },
-        { transaction: t }
-      );
+      await alumno.update({ estado_id: ESTADO_RESTRINGIDO }, { transaction: t });
       estadoFinal = ESTADO_RESTRINGIDO;
     }
 
     let tipoPlanDesc = null;
-    if (planReciente.gym_fecha_rela_tipoplan) {
-      const tipoPlan = await GymCatTipoPlan.findByPk(
-        planReciente.gym_fecha_rela_tipoplan,
-        { transaction: t }
-      );
-      tipoPlanDesc = tipoPlan?.gym_cat_tipoplan_descripcion ?? null;
+    if (planReciente.plan_tipo_id) {
+      const tipoPlan = await PlanTipo.findByPk(planReciente.plan_tipo_id, { transaction: t });
+      tipoPlanDesc = tipoPlan?.descripcion ?? null;
     }
 
     return {
       ok: true,
       codigo: "OK",
-      mensaje:
-        ingresosRestantes === 0
-          ? "Ingreso registrado - alumno quedó restringido"
-          : "Ingreso registrado",
+      mensaje: ingresosRestantes === 0
+        ? "Ingreso registrado - alumno quedó restringido"
+        : "Ingreso registrado",
       alumno: {
-        alumno_id: alumno.gym_alumno_id,
-        persona_id: persona.gym_persona_id,
-        nombre: persona.gym_persona_nombre,
-        apellido: persona.gym_persona_apellido,
-        documento: persona.gym_persona_documento,
-        estado_id: estadoFinal,
+        alumno_id:  alumno.id,
+        persona_id: persona.id,
+        nombre:     persona.nombre,
+        apellido:   persona.apellido,
+        documento:  persona.documento,
+        estado_id:  estadoFinal,
       },
       plan: {
-        fecha_id: planReciente.gym_fecha_id,
-        inicio: planReciente.gym_fecha_inicio,
-        fin: planReciente.gym_fecha_fin,
-        tipo_plan: tipoPlanDesc,
+        fecha_id:          planReciente.id,
+        inicio:            planReciente.fecha_inicio,
+        fin:               planReciente.fecha_fin,
+        tipo_plan:         tipoPlanDesc,
         ingresos_restantes: ingresosRestantes,
       },
-      fecha_ingreso: ingresoDB?.gym_dia_fechaingreso ?? hoy,
-      hora_ingreso: ingresoDB?.gym_dia_horaingreso ?? hora,
+      fecha_ingreso: ingresoDB?.fecha_ingreso ?? hoy,
+      hora_ingreso:  ingresoDB?.hora_ingreso  ?? hora,
     };
   });
-
-  // ─────────────────────────────────────────────────────────────────────────
-  //  MODO OFFLINE — descomentar junto con el import de agregarALaCola
-  //  y iniciarSyncQueueCron() en server.js para habilitar la cola local.
-  //
-  // } catch (err) {
-  //   if (esErrorDeConexion(err)) {
-  //     const { fecha, hora } = obtenerFechaHoraSistema();
-  //     const item = agregarALaCola({ dni: dniNormalizado, fecha, hora });
-  //     return {
-  //       ok: true, offline: true, codigo: "OK_OFFLINE",
-  //       mensaje: "Sin conexión — ingreso guardado localmente",
-  //       cola_id: item.id,
-  //     };
-  //   }
-  //   throw err;
-  // }
-  // ─────────────────────────────────────────────────────────────────────────
 }

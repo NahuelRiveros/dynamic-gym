@@ -1,125 +1,77 @@
-import { GymPersona } from "./gym_persona.js";
-import { GymAlumno } from "./gym_alumno.js";
-import { GymCatTipoPlan } from "./gym_cat_tipoplan.js";
-import { GymFechaDisponible } from "./gym_fecha_disponible.js";
-import { GymDiaIngreso } from "./gym_dia_ingreso.js";
-import { GymCatTipoPersona } from "./gym_cat_tipoPersona.js";
-import { GymCatTipoDocumento } from "./Gym_Cat_TipoDocumento.js";
-import { GymCatSexo } from "./gym_cat_sexo.js";
-import { GymCatEstadoAlumno } from "./gym_cat_estado_alumno.js";
-import { GymRol } from "./AuthRol.js";
-import { GymUsuario } from "./AuthUsuario.js";
-import { GymUsuarioRol } from "./AuthUsuarioRol.js";
+﻿import { Persona } from "./persona.js";
+import { Alumno } from "./alumno.js";
+import { PlanTipo } from "./plan_tipo.js";
+import { Membresia } from "./membresia.js";
+import { Ingreso } from "./ingreso.js";
+import { TipoPersona } from "./tipo_persona.js";
+import { TipoDocumento } from "./tipo_documento.js";
+import { Sexo } from "./sexo.js";
+import { AlumnoEstado } from "./alumno_estado.js";
+import { Rol } from "./rol.js";
+import { Usuario } from "./usuario.js";
+import { UsuarioRol } from "./usuario_rol.js";
+import { AlumnoEstadoLog } from "./alumno_estado_log.js";
 
 // Persona ↔ Alumno (1 a 1)
-GymPersona.hasOne(GymAlumno, {
-  foreignKey: "gym_alumno_rela_persona",
-  as: "alumno",
-});
-GymAlumno.belongsTo(GymPersona, {
-  foreignKey: "gym_alumno_rela_persona",
-  as: "persona",
-});
+Persona.hasOne(Alumno, { foreignKey: "persona_id", as: "alumno" });
+Alumno.belongsTo(Persona, { foreignKey: "persona_id", as: "persona" });
 
 // EstadoAlumno ↔ Alumno (1 a N)
-GymCatEstadoAlumno.hasMany(GymAlumno, {
-  foreignKey: "gym_alumno_rela_estadoalumno",
-  as: "alumnos",
-});
-GymAlumno.belongsTo(GymCatEstadoAlumno, {
-  foreignKey: "gym_alumno_rela_estadoalumno",
-  as: "estado",
-});
+AlumnoEstado.hasMany(Alumno, { foreignKey: "estado_id", as: "alumnos" });
+Alumno.belongsTo(AlumnoEstado, { foreignKey: "estado_id", as: "estado" });
 
-// Alumno ↔ FechaDisponible (1 a N)
-GymAlumno.hasMany(GymFechaDisponible, {
-  foreignKey: "gym_fecha_rela_alumno",
-  as: "fechas_disponibles",
-});
-GymFechaDisponible.belongsTo(GymAlumno, {
-  foreignKey: "gym_fecha_rela_alumno",
-  as: "alumno",
-});
+// Alumno ↔ Membresia (1 a N)
+Alumno.hasMany(Membresia, { foreignKey: "alumno_id", as: "membresias" });
+Membresia.belongsTo(Alumno, { foreignKey: "alumno_id", as: "alumno" });
 
-// TipoPlan ↔ FechaDisponible (1 a N)
-GymCatTipoPlan.hasMany(GymFechaDisponible, {
-  foreignKey: "gym_fecha_rela_tipoplan",
-  as: "fechas_disponibles",
-});
-GymFechaDisponible.belongsTo(GymCatTipoPlan, {
-  foreignKey: "gym_fecha_rela_tipoplan",
-  as: "tipo_plan",
-});
+// PlanTipo ↔ Membresia (1 a N)
+PlanTipo.hasMany(Membresia, { foreignKey: "plan_tipo_id", as: "membresias" });
+Membresia.belongsTo(PlanTipo, { foreignKey: "plan_tipo_id", as: "plan_tipo" });
 
-// FechaDisponible ↔ DiaIngreso (1 a N)
-GymFechaDisponible.hasMany(GymDiaIngreso, {
-  foreignKey: "gym_dia_rela_fecha",
-  as: "ingresos",
-});
-GymDiaIngreso.belongsTo(GymFechaDisponible, {
-  foreignKey: "gym_dia_rela_fecha",
-  as: "fecha_disponible",
-});
-
-// Login y seguridad
+// Membresia ↔ Ingreso (1 a N)
+Membresia.hasMany(Ingreso, { foreignKey: "membresia_id", as: "ingresos" });
+Ingreso.belongsTo(Membresia, { foreignKey: "membresia_id", as: "membresia" });
 
 // Persona ↔ Usuario (1 a 1)
-GymPersona.hasOne(GymUsuario, {
-  foreignKey: "gym_usuario_rela_persona",
-  as: "usuario",
-});
-GymUsuario.belongsTo(GymPersona, {
-  foreignKey: "gym_usuario_rela_persona",
-  as: "persona",
-});
+Persona.hasOne(Usuario, { foreignKey: "persona_id", as: "usuario" });
+Usuario.belongsTo(Persona, { foreignKey: "persona_id", as: "persona" });
 
 // Usuario ↔ Rol (N a N)
-GymUsuario.belongsToMany(GymRol, {
-  through: GymUsuarioRol,
-  foreignKey: "gym_usuario_rol_rela_usuario",
-  otherKey: "gym_usuario_rol_rela_rol",
+Usuario.belongsToMany(Rol, {
+  through: UsuarioRol,
+  foreignKey: "usuario_id",
+  otherKey: "rol_id",
   as: "roles",
 });
-
-GymRol.belongsToMany(GymUsuario, {
-  through: GymUsuarioRol,
-  foreignKey: "gym_usuario_rol_rela_rol",
-  otherKey: "gym_usuario_rol_rela_usuario",
+Rol.belongsToMany(Usuario, {
+  through: UsuarioRol,
+  foreignKey: "rol_id",
+  otherKey: "usuario_id",
   as: "usuarios",
 });
 
-// MUY IMPORTANTE para includes directos desde GymUsuarioRol
-GymUsuarioRol.belongsTo(GymUsuario, {
-  foreignKey: "gym_usuario_rol_rela_usuario",
-  as: "usuario",
-});
+// Acceso directo a la tabla pivote
+UsuarioRol.belongsTo(Usuario, { foreignKey: "usuario_id", as: "usuario" });
+Usuario.hasMany(UsuarioRol, { foreignKey: "usuario_id", as: "usuarios_roles" });
+UsuarioRol.belongsTo(Rol, { foreignKey: "rol_id", as: "rol" });
+Rol.hasMany(UsuarioRol, { foreignKey: "rol_id", as: "usuarios_roles" });
 
-GymUsuario.hasMany(GymUsuarioRol, {
-  foreignKey: "gym_usuario_rol_rela_usuario",
-  as: "usuarios_roles",
-});
-
-GymUsuarioRol.belongsTo(GymRol, {
-  foreignKey: "gym_usuario_rol_rela_rol",
-  as: "rol",
-});
-
-GymRol.hasMany(GymUsuarioRol, {
-  foreignKey: "gym_usuario_rol_rela_rol",
-  as: "usuarios_roles",
-});
+// AlumnoEstadoLog (sin include, solo para bootstrap)
+Alumno.hasMany(AlumnoEstadoLog, { foreignKey: "alumno_id", as: "estado_logs" });
+AlumnoEstadoLog.belongsTo(Alumno, { foreignKey: "alumno_id", as: "alumno" });
 
 export {
-  GymRol,
-  GymUsuario,
-  GymUsuarioRol,
-  GymPersona,
-  GymAlumno,
-  GymCatTipoPlan,
-  GymFechaDisponible,
-  GymDiaIngreso,
-  GymCatSexo,
-  GymCatTipoDocumento,
-  GymCatTipoPersona,
-  GymCatEstadoAlumno,
+  Rol,
+  Usuario,
+  UsuarioRol,
+  Persona,
+  Alumno,
+  PlanTipo,
+  Membresia,
+  Ingreso,
+  Sexo,
+  TipoDocumento,
+  TipoPersona,
+  AlumnoEstado,
+  AlumnoEstadoLog,
 };

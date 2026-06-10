@@ -9,154 +9,105 @@ function armarRangoMes(anio, mes) {
   return { desde, hasta };
 }
 
-/**
- * =========================
- * 1) RECAUDACIÓN MENSUAL
- * Mantiene la lógica original por gym_fecha_inicio
- * =========================
- */
 export async function obtenerRecaudacionMensual({ anio }) {
   const sql = `
     SELECT
-      EXTRACT(MONTH FROM gym_fecha_inicio)::int AS mes,
-      COALESCE(SUM(gym_fecha_montopagado::numeric), 0) AS total
-    FROM gym_fecha_disponible
-    WHERE EXTRACT(YEAR FROM gym_fecha_inicio) = :anio
-      AND COALESCE(gym_fecha_montopagado, 0) > 0
+      EXTRACT(MONTH FROM fecha_inicio)::int AS mes,
+      COALESCE(SUM(monto_pagado::numeric), 0) AS total
+    FROM membresia
+    WHERE EXTRACT(YEAR FROM fecha_inicio) = :anio
+      AND COALESCE(monto_pagado, 0) > 0
     GROUP BY 1
     ORDER BY 1 ASC;
   `;
 
-  const rows = await sequelize.query(sql, {
-    type: QueryTypes.SELECT,
-    replacements: { anio },
-  });
+  const rows = await sequelize.query(sql, { type: QueryTypes.SELECT, replacements: { anio } });
 
-  const items = Array.from({ length: 12 }, (_, i) => ({
-    mes: i + 1,
-    total: 0,
-  }));
-
+  const items = Array.from({ length: 12 }, (_, i) => ({ mes: i + 1, total: 0 }));
   for (const r of rows) {
     const mes = Number(r.mes);
-    if (mes >= 1 && mes <= 12) {
-      items[mes - 1].total = Number(r.total || 0);
-    }
+    if (mes >= 1 && mes <= 12) items[mes - 1].total = Number(r.total || 0);
   }
 
   return { items };
 }
 
-/**
- * =========================
- * 2) RECAUDACIÓN DIARIA DE UN MES
- * Mantiene la lógica original por gym_fecha_inicio
- * =========================
- */
 export async function obtenerRecaudacionDiariaMes({ anio, mes }) {
   const { desde, hasta } = armarRangoMes(anio, mes);
 
   const sql = `
     SELECT
-      gym_fecha_inicio AS dia,
-      COALESCE(SUM(gym_fecha_montopagado::numeric), 0) AS total
-    FROM gym_fecha_disponible
-    WHERE gym_fecha_inicio >= :desde::date
-      AND gym_fecha_inicio < :hasta::date
-      AND COALESCE(gym_fecha_montopagado, 0) > 0
+      fecha_inicio AS dia,
+      COALESCE(SUM(monto_pagado::numeric), 0) AS total
+    FROM membresia
+    WHERE fecha_inicio >= :desde::date
+      AND fecha_inicio < :hasta::date
+      AND COALESCE(monto_pagado, 0) > 0
     GROUP BY 1
     ORDER BY 1 ASC;
   `;
 
-  const rows = await sequelize.query(sql, {
-    type: QueryTypes.SELECT,
-    replacements: { desde, hasta },
-  });
+  const rows = await sequelize.query(sql, { type: QueryTypes.SELECT, replacements: { desde, hasta } });
 
   return {
     items: rows.map((r) => ({
-      dia: String(r.dia).slice(0, 10),
+      dia:   String(r.dia).slice(0, 10),
       total: Number(r.total || 0),
     })),
   };
 }
 
-/**
- * =========================
- * 3) DETALLE DE RECAUDACIÓN DE UN DÍA
- * CORREGIDO:
- * ahora filtra por gym_fecha_inicio para coincidir
- * con mensual y diariaMes.
- *
- * La hora mostrada sigue siendo gym_fecha_fechacambio.
- * =========================
- */
 export async function obtenerRecaudacionDetalleDia({ anio, mes, dia }) {
   const fecha = `${anio}-${String(mes).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
 
   const sql = `
     SELECT
-      f.gym_fecha_id,
-      f.gym_fecha_inicio,
-      f.gym_fecha_fechacambio AS fecha_hora,
-      f.gym_fecha_montopagado AS monto,
-      f.gym_fecha_metodopago AS metodo_pago,
+      f.id AS gym_fecha_id,
+      f.fecha_inicio,
+      f.actualizado_en AS fecha_hora,
+      f.monto_pagado AS monto,
+      f.metodo_pago,
 
-      p_alumno.gym_persona_nombre AS alumno_nombre,
-      p_alumno.gym_persona_apellido AS alumno_apellido,
-      p_alumno.gym_persona_documento AS alumno_documento,
+      p_alumno.nombre AS alumno_nombre,
+      p_alumno.apellido AS alumno_apellido,
+      p_alumno.documento AS alumno_documento,
 
-      tp.gym_cat_tipoplan_descripcion AS plan_descripcion,
+      tp.descripcion AS plan_descripcion,
 
-      p_usuario.gym_persona_nombre AS usuario_nombre,
-      p_usuario.gym_persona_apellido AS usuario_apellido
-    FROM gym_fecha_disponible f
-    LEFT JOIN gym_alumno a
-      ON a.gym_alumno_id = f.gym_fecha_rela_alumno
-    LEFT JOIN gym_persona p_alumno
-      ON p_alumno.gym_persona_id = a.gym_alumno_rela_persona
-    LEFT JOIN gym_cat_tipoplan tp
-      ON tp.gym_cat_tipoplan_id = f.gym_fecha_rela_tipoplan
-    LEFT JOIN gym_usuario u
-      ON u.gym_usuario_id = f.gym_fecha_rela_usuario_cobro
-    LEFT JOIN gym_persona p_usuario
-      ON p_usuario.gym_persona_id = u.gym_usuario_rela_persona
-    WHERE f.gym_fecha_inicio = :fecha::date
-      AND COALESCE(f.gym_fecha_montopagado, 0) > 0
-    ORDER BY f.gym_fecha_fechacambio ASC NULLS LAST, f.gym_fecha_id ASC;
+      p_usuario.nombre AS usuario_nombre,
+      p_usuario.apellido AS usuario_apellido
+    FROM membresia f
+    LEFT JOIN alumno a ON a.id = f.alumno_id
+    LEFT JOIN persona p_alumno ON p_alumno.id = a.persona_id
+    LEFT JOIN plan_tipo tp ON tp.id = f.plan_tipo_id
+    LEFT JOIN usuario u ON u.id = f.cobrado_por_id
+    LEFT JOIN persona p_usuario ON p_usuario.id = u.persona_id
+    WHERE f.fecha_inicio = :fecha::date
+      AND COALESCE(f.monto_pagado, 0) > 0
+    ORDER BY f.actualizado_en ASC NULLS LAST, f.id ASC;
   `;
 
-  const rows = await sequelize.query(sql, {
-    type: QueryTypes.SELECT,
-    replacements: { fecha },
-  });
+  const rows = await sequelize.query(sql, { type: QueryTypes.SELECT, replacements: { fecha } });
 
   const items = rows.map((r) => ({
-    gym_fecha_id: r.gym_fecha_id,
-    fecha_inicio: r.gym_fecha_inicio,
-    fecha_hora: r.fecha_hora,
-    monto: Number(r.monto || 0),
-    metodo_pago: r.metodo_pago || null,
-    alumno: [r.alumno_nombre, r.alumno_apellido].filter(Boolean).join(" "),
+    gym_fecha_id:    r.gym_fecha_id,
+    fecha_inicio:    r.fecha_inicio,
+    fecha_hora:      r.fecha_hora,
+    monto:           Number(r.monto || 0),
+    metodo_pago:     r.metodo_pago || null,
+    alumno:          [r.alumno_nombre, r.alumno_apellido].filter(Boolean).join(" "),
     alumno_documento: r.alumno_documento || null,
-    plan: r.plan_descripcion || null,
-    usuario_cobro: [r.usuario_nombre, r.usuario_apellido].filter(Boolean).join(" "),
+    plan:            r.plan_descripcion || null,
+    usuario_cobro:   [r.usuario_nombre, r.usuario_apellido].filter(Boolean).join(" "),
   }));
 
-  const total_dia = items.reduce((acc, it) => acc + Number(it.monto || 0), 0);
-
   return {
-    total_dia,
+    total_dia:      items.reduce((acc, it) => acc + Number(it.monto || 0), 0),
     cantidad_cobros: items.length,
     items,
   };
 }
 
-/**
- * =========================
- * 4) ALUMNOS NUEVOS
- * =========================
- */
 export async function obtenerAlumnosNuevos({ desde, hasta } = {}) {
   const hoy = new Date();
   const fechaDesde = desde ? new Date(desde) : new Date(hoy.getFullYear(), hoy.getMonth(), 1);
@@ -164,18 +115,17 @@ export async function obtenerAlumnosNuevos({ desde, hasta } = {}) {
 
   const sql = `
     SELECT
-      a.gym_alumno_id,
-      a.gym_alumno_fecharegistro,
-      p.gym_persona_nombre,
-      p.gym_persona_apellido,
-      p.gym_persona_documento,
-      p.gym_persona_email
-    FROM gym_alumno a
-    INNER JOIN gym_persona p
-      ON p.gym_persona_id = a.gym_alumno_rela_persona
-    WHERE a.gym_alumno_fecharegistro >= :desde
-      AND a.gym_alumno_fecharegistro < :hasta
-    ORDER BY a.gym_alumno_fecharegistro DESC;
+      a.id AS gym_alumno_id,
+      a.fecha_registro AS gym_alumno_fecharegistro,
+      p.nombre AS gym_persona_nombre,
+      p.apellido AS gym_persona_apellido,
+      p.documento AS gym_persona_documento,
+      p.email AS gym_persona_email
+    FROM alumno a
+    INNER JOIN persona p ON p.id = a.persona_id
+    WHERE a.fecha_registro >= :desde
+      AND a.fecha_registro < :hasta
+    ORDER BY a.fecha_registro DESC;
   `;
 
   const items = await sequelize.query(sql, {
@@ -186,50 +136,32 @@ export async function obtenerAlumnosNuevos({ desde, hasta } = {}) {
   return { items };
 }
 
-/**
- * =========================
- * 5) VENCIMIENTOS
- * =========================
- */
 export async function obtenerVencimientos({ dias = 7 } = {}) {
   const sql = `
     SELECT
-      a.gym_alumno_id AS alumno_id,
-      f.gym_fecha_id AS fecha_id,
-      p.gym_persona_nombre AS nombre,
-      p.gym_persona_apellido AS apellido,
-      p.gym_persona_documento AS documento,
-      tp.gym_cat_tipoplan_descripcion AS plan,
-      f.gym_fecha_inicio AS inicio,
-      f.gym_fecha_fin AS fin,
-      f.gym_fecha_ingresosdisponibles AS ingresos_disponibles
-    FROM gym_fecha_disponible f
-    INNER JOIN gym_alumno a
-      ON a.gym_alumno_id = f.gym_fecha_rela_alumno
-    INNER JOIN gym_persona p
-      ON p.gym_persona_id = a.gym_alumno_rela_persona
-    LEFT JOIN gym_cat_tipoplan tp
-      ON tp.gym_cat_tipoplan_id = f.gym_fecha_rela_tipoplan
-    WHERE f.gym_fecha_fin >= CURRENT_DATE
-      AND f.gym_fecha_fin <= CURRENT_DATE + (:dias::int)
-    ORDER BY f.gym_fecha_fin ASC;
+      a.id AS alumno_id,
+      f.id AS fecha_id,
+      p.nombre AS nombre,
+      p.apellido AS apellido,
+      p.documento AS documento,
+      tp.descripcion AS plan,
+      f.fecha_inicio AS inicio,
+      f.fecha_fin AS fin,
+      f.ingresos_disponibles
+    FROM membresia f
+    INNER JOIN alumno a ON a.id = f.alumno_id
+    INNER JOIN persona p ON p.id = a.persona_id
+    LEFT JOIN plan_tipo tp ON tp.id = f.plan_tipo_id
+    WHERE f.fecha_fin >= CURRENT_DATE
+      AND f.fecha_fin <= CURRENT_DATE + (:dias::int)
+    ORDER BY f.fecha_fin ASC;
   `;
 
-  const items = await sequelize.query(sql, {
-    type: QueryTypes.SELECT,
-    replacements: { dias },
-  });
-
-  return {
-    items,
-    total: items.length,
-  };
+  const items = await sequelize.query(sql, { type: QueryTypes.SELECT, replacements: { dias } });
+  return { items, total: items.length };
 }
-/**
- * =========================
- * 6) ASISTENCIAS POR DÍA
- * =========================
- */
+
+// Corregido: usaba gym_diaingreso_fechaingreso (typo) — ahora usa hora_ingreso correctamente
 export async function obtenerAsistencias({ desde, hasta } = {}) {
   const hoy = new Date();
   const fechaDesde = desde ? new Date(desde) : new Date(hoy.getFullYear(), hoy.getMonth(), 1);
@@ -237,11 +169,11 @@ export async function obtenerAsistencias({ desde, hasta } = {}) {
 
   const sql = `
     SELECT
-      DATE(di.gym_diaingreso_fechaingreso AT TIME ZONE '${TZ_AR}') AS dia,
+      DATE(di.hora_ingreso AT TIME ZONE '${TZ_AR}') AS dia,
       COUNT(*)::int AS total
-    FROM gym_dia_ingreso di
-    WHERE di.gym_diaingreso_fechaingreso >= :desde
-      AND di.gym_diaingreso_fechaingreso < :hasta
+    FROM ingreso di
+    WHERE di.hora_ingreso >= :desde
+      AND di.hora_ingreso < :hasta
     GROUP BY 1
     ORDER BY 1 ASC;
   `;
@@ -253,17 +185,13 @@ export async function obtenerAsistencias({ desde, hasta } = {}) {
 
   return {
     items: items.map((r) => ({
-      dia: String(r.dia).slice(0, 10),
+      dia:   String(r.dia).slice(0, 10),
       total: Number(r.total || 0),
     })),
   };
 }
 
-/**
- * =========================
- * 7) ASISTENCIAS POR HORA
- * =========================
- */
+// Corregido: mismo typo que obtenerAsistencias
 export async function obtenerAsistenciasHoras({ desde, hasta } = {}) {
   const hoy = new Date();
   const fechaDesde = desde ? new Date(desde) : new Date(hoy.getFullYear(), hoy.getMonth(), 1);
@@ -271,11 +199,11 @@ export async function obtenerAsistenciasHoras({ desde, hasta } = {}) {
 
   const sql = `
     SELECT
-      EXTRACT(HOUR FROM (di.gym_diaingreso_fechaingreso AT TIME ZONE '${TZ_AR}'))::int AS hora,
+      EXTRACT(HOUR FROM (di.hora_ingreso AT TIME ZONE '${TZ_AR}'))::int AS hora,
       COUNT(*)::int AS total
-    FROM gym_dia_ingreso di
-    WHERE di.gym_diaingreso_fechaingreso >= :desde
-      AND di.gym_diaingreso_fechaingreso < :hasta
+    FROM ingreso di
+    WHERE di.hora_ingreso >= :desde
+      AND di.hora_ingreso < :hasta
     GROUP BY 1
     ORDER BY 1 ASC;
   `;
@@ -288,38 +216,26 @@ export async function obtenerAsistenciasHoras({ desde, hasta } = {}) {
   return { items: rows };
 }
 
-/**
- * =========================
- * 8) ASISTENCIAS POR HORA Y DÍA DE SEMANA
- * =========================
- */
 export async function obtenerAsistenciasHoraDiaSemana({ desde, hasta } = {}) {
   const hoy = new Date();
-
   const fechaDesde = desde || new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);
   const fechaHasta = hasta || new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0).toISOString().slice(0, 10);
 
-  // gym_dia_fechaingreso = fecha local Argentina (YYYY-MM-DD)
-  // gym_dia_horaingreso  = hora local Argentina (HH:MM:SS)
-  // ::date cast en WHERE para comparación robusta sin problemas de timezone
   const sql = `
     SELECT
-      EXTRACT(DOW FROM di.gym_dia_fechaingreso::date)::int AS dia_semana,
-      EXTRACT(HOUR FROM di.gym_dia_horaingreso)::int       AS hora,
-      COUNT(*)::int                                         AS total
-    FROM gym_dia_ingreso di
-    WHERE di.gym_dia_fechaingreso::date >= :desde::date
-      AND di.gym_dia_fechaingreso::date <= :hasta::date
+      EXTRACT(DOW FROM di.fecha_ingreso::date)::int AS dia_semana,
+      EXTRACT(HOUR FROM di.hora_ingreso)::int       AS hora,
+      COUNT(*)::int                                  AS total
+    FROM ingreso di
+    WHERE di.fecha_ingreso::date >= :desde::date
+      AND di.fecha_ingreso::date <= :hasta::date
     GROUP BY 1, 2
     ORDER BY 1 ASC, 2 ASC;
   `;
 
   const items = await sequelize.query(sql, {
     type: QueryTypes.SELECT,
-    replacements: {
-      desde: fechaDesde,
-      hasta: fechaHasta,
-    },
+    replacements: { desde: fechaDesde, hasta: fechaHasta },
   });
 
   return { items };

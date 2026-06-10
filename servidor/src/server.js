@@ -1,7 +1,8 @@
 import { createApp } from "./app.js";
 import { sequelize } from "./database/sequelize.js";
+import { runMigraciones } from "./database/migration_runner.js";
 import { iniciarCronEstadoAlumnos } from "./cron/estado_alumno_cron.js";
-// import { iniciarSyncQueueCron } from "./cron/sync_queue_cron.js"; // Cola offline (desactivada)
+// import { iniciarSyncQueueCron } from "./cron/sync_queue_cron.js";
 import "./models/index.js";
 import { env } from "./configuracion_servidor/env.js";
 
@@ -12,10 +13,12 @@ async function main() {
   await sequelize.query(`SET TIME ZONE 'America/Argentina/Cordoba'`);
   console.log("✅ Base de datos conectada");
 
+  // Renombra tablas/columnas al esquema nuevo si aún no se hizo (idempotente)
+  await runMigraciones();
+  console.log("✅ Migraciones aplicadas");
+
   iniciarCronEstadoAlumnos();
   console.log("✅ Cron de estados iniciado");
-
-  // iniciarSyncQueueCron(); // Descomentar para activar cola offline
 
   const app = createApp();
 

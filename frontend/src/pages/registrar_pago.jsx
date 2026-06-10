@@ -64,14 +64,14 @@ export default function RegistrarPagoPage() {
       const lista = Array.isArray(r?.data) ? r.data : [];
       setPlanes(
         lista
-          .filter((p) => p.gym_cat_tipoplan_activo)
+          .filter((p) => p.activo)
           .map((p) => ({
-            value:        p.gym_cat_tipoplan_id,
-            label:        `${p.gym_cat_tipoplan_descripcion}`,
-            descripcion:  p.gym_cat_tipoplan_descripcion,
-            dias_totales: p.gym_cat_tipoplan_dias_totales,
-            ingresos:     p.gym_cat_tipoplan_ingresos,
-            precio:       Number(p.gym_cat_tipoplan_precio),
+            value:        p.id,
+            label:        `${p.descripcion}`,
+            descripcion:  p.descripcion,
+            dias_totales: p.dias_totales,
+            ingresos:     p.ingresos,
+            precio:       Number(p.precio),
           }))
       );
     } catch { setPlanes([]); }

@@ -1,62 +1,41 @@
-import {
-  GymCatTipoDocumento,
-  GymCatSexo,
-  GymCatTipoPersona,
-  GymCatTipoPlan,
+﻿import {
+  TipoDocumento,
+  Sexo,
+  TipoPersona,
+  PlanTipo,
 } from "../models/index.js";
 
 export async function obtenerCatalogos() {
   const [tiposDocumento, sexos, tiposPersona, tiposPlan] = await Promise.all([
-    GymCatTipoDocumento.findAll({
-      attributes: [
-        "gym_cat_tipodocumento_id",
-        "gym_cat_tipodocumento_descripcion",
-      ],
-      order: [["gym_cat_tipodocumento_descripcion", "ASC"]],
+    TipoDocumento.findAll({
+      attributes: ["id", "descripcion"],
+      order: [["descripcion", "ASC"]],
     }),
-    GymCatSexo.findAll({
-      attributes: ["gym_cat_sexo_id", "gym_cat_sexo_descripcion"],
-      order: [["gym_cat_sexo_descripcion", "ASC"]],
+    Sexo.findAll({
+      attributes: ["id", "descripcion"],
+      order: [["descripcion", "ASC"]],
     }),
-    GymCatTipoPersona.findAll({
-      attributes: ["gym_cat_tipopersona_id", "gym_cat_tipopersona_descripcion"],
-      order: [["gym_cat_tipopersona_descripcion", "ASC"]],
+    TipoPersona.findAll({
+      attributes: ["id", "descripcion"],
+      order: [["descripcion", "ASC"]],
     }),
-    GymCatTipoPlan.findAll({
-      attributes: [
-        "gym_cat_tipoplan_id",
-        "gym_cat_tipoplan_descripcion",
-        "gym_cat_tipoplan_dias_totales",
-        "gym_cat_tipoplan_ingresos",
-        "gym_cat_tipoplan_precio",
-      ],
-      where: {
-        gym_cat_tipoplan_activo: true,
-      },
-      order: [["gym_cat_tipoplan_descripcion", "ASC"]],
+    PlanTipo.findAll({
+      attributes: ["id", "descripcion", "dias_totales", "ingresos", "precio"],
+      where: { activo: true },
+      order: [["descripcion", "ASC"]],
     }),
-    
   ]);
 
   return {
-    tiposDocumento: tiposDocumento.map((x) => ({
-      value: x.gym_cat_tipodocumento_id,
-      label: x.gym_cat_tipodocumento_descripcion,
-    })),
-    sexos: sexos.map((x) => ({
-      value: x.gym_cat_sexo_id,
-      label: x.gym_cat_sexo_descripcion,
-    })),
-    tiposPersona: tiposPersona.map((x) => ({
-      value: x.gym_cat_tipopersona_id,
-      label: x.gym_cat_tipopersona_descripcion,
-    })),
-    tiposPlan: tiposPlan.map((x) => ({
-      value: x.gym_cat_tipoplan_id,
-      label: x.gym_cat_tipoplan_descripcion,
-      dias_totales: x.gym_cat_tipoplan_dias_totales,
-      ingresos: x.gym_cat_tipoplan_ingresos,
-      precio: Number(x.gym_cat_tipoplan_precio),
+    tiposDocumento: tiposDocumento.map((x) => ({ value: x.id, label: x.descripcion })),
+    sexos:          sexos.map((x) => ({ value: x.id, label: x.descripcion })),
+    tiposPersona:   tiposPersona.map((x) => ({ value: x.id, label: x.descripcion })),
+    tiposPlan:      tiposPlan.map((x) => ({
+      value:       x.id,
+      label:       x.descripcion,
+      dias_totales: x.dias_totales,
+      ingresos:    x.ingresos,
+      precio:      Number(x.precio),
     })),
   };
 }
