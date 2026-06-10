@@ -172,9 +172,42 @@ BEGIN
 END $$;
 
 -- =============================================================================
--- TRIGGERS: eliminar triggers con referencias a columnas viejas
--- Se ejecuta SIEMPRE (idempotente con IF EXISTS) para corregir instalaciones
--- que ya tenían la migración aplicada pero conservan triggers obsoletos.
+-- TRIGGERS: eliminar todos los triggers/funciones con nombres gym_* en las
+-- tablas renombradas. Se ejecuta SIEMPRE (idempotente). Las columnas fueron
+-- renombradas y cualquier trigger que referencie nombres viejos fallaría.
 -- =============================================================================
-DROP TRIGGER IF EXISTS trg_log_estado_gym_alumno ON alumno;
-DROP FUNCTION IF EXISTS trg_log_estado_gym_alumno();
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT DISTINCT trigger_name, event_object_table
+    FROM information_schema.triggers
+    WHERE trigger_schema = 'public'
+      AND (trigger_name LIKE '%gym_%' OR trigger_name LIKE 'trg_%')
+      AND event_object_table IN (
+        'alumno', 'persona', 'usuario', 'membresia', 'ingreso',
+        'plan_tipo', 'alumno_estado', 'rol', 'usuario_rol',
+        'sexo', 'tipo_documento', 'tipo_persona', 'alumno_estado_log'
+      )
+  LOOP
+    EXECUTE format('DROP TRIGGER IF EXISTS %I ON %I', r.trigger_name, r.event_object_table);
+    RAISE NOTICE 'Trigger eliminado: % en tabla %', r.trigger_name, r.event_object_table;
+  END LOOP;
+END $$;
+
+-- Eliminar funciones de trigger huérfanas con nombres gym_*
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN
+    SELECT proname
+    FROM pg_proc
+    WHERE proname LIKE '%gym_%'
+      AND prokind = 'f'
+  LOOP
+    EXECUTE format('DROP FUNCTION IF EXISTS %I() CASCADE', r.proname);
+    RAISE NOTICE 'Función de trigger eliminada: %', r.proname;
+  END LOOP;
+END $$;
