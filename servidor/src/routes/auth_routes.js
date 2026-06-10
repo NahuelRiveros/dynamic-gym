@@ -1,5 +1,5 @@
 import { Router } from "express";
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { loginController, meController, logoutController, resetPasswordController } from "../controllers/auth_controller.js";
 import { requireAuth } from "../middleware/auth_middleware.js";
 import { seedAdmin, seedStaff } from "../controllers/auth_seed_controller.js";
@@ -12,7 +12,7 @@ const loginLimiter = rateLimit({
   max: 10,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => `${req.ip}:${req.body?.usuario || req.body?.email || ""}`,
+  keyGenerator: (req) => `${ipKeyGenerator(req)}:${req.body?.usuario || req.body?.email || ""}`,
   message: { ok: false, codigo: "DEMASIADOS_INTENTOS", mensaje: "Demasiados intentos. Intentá en 15 minutos." },
 });
 
