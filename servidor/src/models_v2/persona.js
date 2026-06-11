@@ -1,0 +1,46 @@
+import { DataTypes } from "sequelize";
+import { sequelize } from "../database/sequelize.js";
+
+/**
+ * Datos personales de cualquier individuo del sistema.
+ * Una persona puede tener un alumno asociado, un usuario asociado, o ambos.
+ * La búsqueda por documento es la operación más frecuente (kiosco de ingresos).
+ */
+export const Persona = sequelize.define("Persona", {
+  id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+
+  tipo_documento_id: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    references: { model: "tipo_documento", key: "id" },
+  },
+  sexo_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: "sexo", key: "id" },
+  },
+  tipo_persona_id: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    references: { model: "tipo_persona", key: "id" },
+  },
+
+  nombre:             { type: DataTypes.STRING(100), allowNull: false },
+  apellido:           { type: DataTypes.STRING(100), allowNull: false },
+  fecha_nacimiento:   { type: DataTypes.DATEONLY, allowNull: true },
+  documento:          { type: DataTypes.STRING(20), allowNull: false, unique: true },
+  email:              { type: DataTypes.STRING(150), allowNull: true, unique: true },
+  celular:            { type: DataTypes.STRING(30), allowNull: true },
+  celular_emergencia: { type: DataTypes.STRING(30), allowNull: true },
+
+  creado_en:     { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  actualizado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+}, {
+  tableName:  "persona",
+  timestamps: false,
+  indexes: [
+    { fields: ["documento"] },
+    { fields: ["email"] },
+    { fields: ["apellido", "nombre"] },
+  ],
+});
