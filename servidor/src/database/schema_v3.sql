@@ -45,8 +45,53 @@ CREATE TABLE IF NOT EXISTS rol (
   descripcion VARCHAR(150) NOT NULL,
   creado_en   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
 );
-COMMENT ON TABLE  rol IS 'Roles del sistema: admin, staff.';
-COMMENT ON COLUMN rol.codigo IS 'Identificador de negocio: admin | staff. Se usa en el JWT.';
+COMMENT ON TABLE  rol IS 'Roles del sistema. El código se embebe en el JWT y se usa en los guards de ruta.';
+COMMENT ON COLUMN rol.codigo IS 'Identificador de negocio: admin | staff | custom. Se usa en el JWT y en requirePermiso().';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- MÓDULOS — Secciones funcionales del sistema
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS modulo (
+  id          SERIAL       PRIMARY KEY,
+  codigo      VARCHAR(50)  NOT NULL UNIQUE,
+  descripcion VARCHAR(150) NOT NULL,
+  orden       SMALLINT     NOT NULL DEFAULT 0,
+  creado_en   TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+COMMENT ON TABLE  modulo IS 'Secciones del sistema (alumnos, pagos, estadisticas, etc.). Agrupa permisos para la UI.';
+COMMENT ON COLUMN modulo.orden IS 'Orden de aparición en el panel de gestión de roles.';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- PERMISO — Acción específica dentro de un módulo
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS permiso (
+  id          SERIAL        PRIMARY KEY,
+  modulo_id   INT           NOT NULL REFERENCES modulo(id),
+  codigo      VARCHAR(100)  NOT NULL UNIQUE,
+  accion      VARCHAR(50)   NOT NULL,
+  descripcion VARCHAR(200)  NOT NULL,
+  creado_en   TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
+  UNIQUE (modulo_id, accion)
+);
+COMMENT ON TABLE  permiso IS 'Permiso atómico del sistema. codigo = ''modulo:accion'', ej: ''alumnos:editar''.';
+COMMENT ON COLUMN permiso.codigo IS 'Formato modulo:accion. Es el valor que el middleware evalúa en requirePermiso().';
+COMMENT ON COLUMN permiso.accion IS 'Acción dentro del módulo: leer | crear | editar | registrar | gestionar | enviar, etc.';
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- ROL_PERMISO — Asignación de permisos a roles
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS rol_permiso (
+  id         SERIAL      PRIMARY KEY,
+  rol_id     INT         NOT NULL REFERENCES rol(id) ON DELETE CASCADE,
+  permiso_id INT         NOT NULL REFERENCES permiso(id) ON DELETE CASCADE,
+  creado_en  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (rol_id, permiso_id)
+);
+COMMENT ON TABLE  rol_permiso IS 'Asigna permisos a roles. ON DELETE CASCADE: al borrar un rol/permiso se limpia la asignación.';
+COMMENT ON COLUMN rol_permiso.rol_id IS 'Todos los usuarios con este rol heredan el permiso.';
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- PERSONA — Datos personales de cualquier individuo en el sistema
@@ -216,6 +261,11 @@ CREATE INDEX IF NOT EXISTS idx_usuario_rol_usuario_id ON usuario_rol(usuario_id)
 -- log: búsqueda por alumno para ver historial
 CREATE INDEX IF NOT EXISTS idx_estado_log_alumno_id ON alumno_estado_log(alumno_id);
 
+-- permisos: FK + búsqueda por módulo
+CREATE INDEX IF NOT EXISTS idx_permiso_modulo_id    ON permiso(modulo_id);
+CREATE INDEX IF NOT EXISTS idx_rol_permiso_rol_id   ON rol_permiso(rol_id);
+CREATE INDEX IF NOT EXISTS idx_rol_permiso_perm_id  ON rol_permiso(permiso_id);
+
 -- =============================================================================
 -- TRIGGER: auto-actualizar actualizado_en al hacer UPDATE
 -- =============================================================================
@@ -265,6 +315,73 @@ INSERT INTO rol (codigo, descripcion) VALUES
   ('admin', 'Administrador — acceso total'),
   ('staff', 'Personal — registro de pagos y consulta de alumnos')
   ON CONFLICT (codigo) DO NOTHING;
+
+-- ─── Módulos ─────────────────────────────────────────────────────────────────
+INSERT INTO modulo (codigo, descripcion, orden) VALUES
+  ('alumnos',      'Gestión de Alumnos',            10),
+  ('pagos',        'Registro de Pagos',              20),
+  ('ingresos',     'Control de Ingresos',            30),
+  ('estadisticas', 'Estadísticas y Reportes',        40),
+  ('recaudacion',  'Recaudación',                    50),
+  ('planes',       'Gestión de Planes',              60),
+  ('staff',        'Gestión de Personal',            70),
+  ('admin',        'Administración del Sistema',     80),
+  ('promociones',  'Comunicaciones y Promociones',   90)
+ON CONFLICT (codigo) DO NOTHING;
+
+-- ─── Permisos ─────────────────────────────────────────────────────────────────
+INSERT INTO permiso (modulo_id, codigo, accion, descripcion)
+SELECT m.id, p.codigo, p.accion, p.descripcion
+FROM (VALUES
+  -- alumnos
+  ('alumnos', 'alumnos:leer',          'leer',        'Ver lista y detalle de alumnos'),
+  ('alumnos', 'alumnos:crear',         'crear',        'Registrar nuevos alumnos'),
+  ('alumnos', 'alumnos:editar',        'editar',       'Modificar datos de alumnos'),
+  -- pagos
+  ('pagos',   'pagos:leer',            'leer',         'Ver historial de pagos'),
+  ('pagos',   'pagos:registrar',       'registrar',    'Registrar nuevos pagos / membresías'),
+  -- ingresos
+  ('ingresos','ingresos:leer',         'leer',         'Ver registro de ingresos al gym'),
+  -- estadisticas
+  ('estadisticas','estadisticas:leer', 'leer',         'Ver estadísticas, gráficos y métricas'),
+  -- recaudacion
+  ('recaudacion','recaudacion:leer',   'leer',         'Ver calendario de recaudación mensual'),
+  -- planes
+  ('planes',  'planes:leer',           'leer',         'Ver catálogo de planes disponibles'),
+  ('planes',  'planes:gestionar',      'gestionar',    'Crear, editar y desactivar planes'),
+  -- staff
+  ('staff',   'staff:leer',            'leer',         'Ver lista de personal del sistema'),
+  ('staff',   'staff:gestionar',       'gestionar',    'Crear y gestionar cuentas de personal'),
+  -- admin
+  ('admin',   'admin:usuarios',        'usuarios',     'Gestión completa de usuarios y roles'),
+  ('admin',   'admin:roles',           'roles',        'Crear roles y asignar / quitar permisos'),
+  ('admin',   'admin:suscripcion',     'suscripcion',  'Ver y gestionar la suscripción del software'),
+  -- promociones
+  ('promociones','promociones:enviar', 'enviar',       'Enviar emails masivos a alumnos activos')
+) AS p(modulo_codigo, codigo, accion, descripcion)
+JOIN modulo m ON m.codigo = p.modulo_codigo
+ON CONFLICT (codigo) DO NOTHING;
+
+-- ─── Asignar permisos a roles ─────────────────────────────────────────────────
+
+-- admin: TODOS los permisos
+INSERT INTO rol_permiso (rol_id, permiso_id)
+SELECT r.id, p.id
+FROM rol r, permiso p
+WHERE r.codigo = 'admin'
+ON CONFLICT (rol_id, permiso_id) DO NOTHING;
+
+-- staff: permisos operativos del día a día
+INSERT INTO rol_permiso (rol_id, permiso_id)
+SELECT r.id, p.id
+FROM rol r
+JOIN permiso p ON p.codigo IN (
+  'alumnos:leer', 'alumnos:crear', 'alumnos:editar',
+  'pagos:leer',   'pagos:registrar',
+  'ingresos:leer'
+)
+WHERE r.codigo = 'staff'
+ON CONFLICT (rol_id, permiso_id) DO NOTHING;
 
 -- =============================================================================
 -- FIN

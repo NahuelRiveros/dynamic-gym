@@ -8,18 +8,21 @@
  *   import "../models_v2/index.js";  // efectos colaterales: registra asociaciones
  */
 
-import { Sexo }           from "./sexo.js";
-import { TipoDocumento }  from "./tipo_documento.js";
-import { TipoPersona }    from "./tipo_persona.js";
-import { AlumnoEstado }   from "./alumno_estado.js";
-import { Rol }            from "./rol.js";
-import { Persona }        from "./persona.js";
-import { Usuario }        from "./usuario.js";
-import { UsuarioRol }     from "./usuario_rol.js";
-import { PlanTipo }       from "./plan_tipo.js";
-import { Alumno }         from "./alumno.js";
-import { Membresia }      from "./membresia.js";
-import { Ingreso }        from "./ingreso.js";
+import { Sexo }            from "./sexo.js";
+import { TipoDocumento }   from "./tipo_documento.js";
+import { TipoPersona }     from "./tipo_persona.js";
+import { AlumnoEstado }    from "./alumno_estado.js";
+import { Rol }             from "./rol.js";
+import { Modulo }          from "./modulo.js";
+import { Permiso }         from "./permiso.js";
+import { RolPermiso }      from "./rol_permiso.js";
+import { Persona }         from "./persona.js";
+import { Usuario }         from "./usuario.js";
+import { UsuarioRol }      from "./usuario_rol.js";
+import { PlanTipo }        from "./plan_tipo.js";
+import { Alumno }          from "./alumno.js";
+import { Membresia }       from "./membresia.js";
+import { Ingreso }         from "./ingreso.js";
 import { AlumnoEstadoLog } from "./alumno_estado_log.js";
 
 // ─── Persona ↔ Catálogos ────────────────────────────────────────────────────
@@ -53,6 +56,24 @@ Rol.belongsToMany(Usuario, {
   as:          "usuarios",
 });
 
+// ─── Módulo ↔ Permiso (1:N) ───────────────────────────────────────────────────
+Modulo.hasMany(Permiso,    { foreignKey: "modulo_id", as: "permisos" });
+Permiso.belongsTo(Modulo,  { foreignKey: "modulo_id", as: "modulo" });
+
+// ─── Rol ↔ Permiso (N:N vía RolPermiso) ──────────────────────────────────────
+Rol.belongsToMany(Permiso, {
+  through:    RolPermiso,
+  foreignKey: "rol_id",
+  otherKey:   "permiso_id",
+  as:         "permisos",
+});
+Permiso.belongsToMany(Rol, {
+  through:    RolPermiso,
+  foreignKey: "permiso_id",
+  otherKey:   "rol_id",
+  as:         "roles",
+});
+
 // ─── Alumno ↔ Membresia (1:N) ────────────────────────────────────────────────
 Alumno.hasMany(Membresia,    { foreignKey: "alumno_id", as: "membresias" });
 Membresia.belongsTo(Alumno,  { foreignKey: "alumno_id", as: "alumno" });
@@ -76,7 +97,8 @@ AlumnoEstadoLog.belongsTo(Usuario,      { foreignKey: "modificado_por",     as: 
 Alumno.hasMany(AlumnoEstadoLog,         { foreignKey: "alumno_id",          as: "estado_logs" });
 
 export {
-  Sexo, TipoDocumento, TipoPersona, AlumnoEstado, Rol,
+  Sexo, TipoDocumento, TipoPersona, AlumnoEstado,
+  Rol, Modulo, Permiso, RolPermiso,
   Persona, Usuario, UsuarioRol,
   PlanTipo, Alumno, Membresia, Ingreso, AlumnoEstadoLog,
 };
