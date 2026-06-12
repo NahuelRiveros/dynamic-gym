@@ -5,9 +5,8 @@ const normalizarDni = (doc) => String(doc ?? "").replace(/[.\s]/g, "").trim();
 
 export async function consultarPlanPorDni(dni) {
   const dniNorm = normalizarDni(dni);
-  const dniNum  = Number(dniNorm);
 
-  if (!Number.isFinite(dniNum) || dniNum <= 0)
+  if (!dniNorm || !/^\d+$/.test(dniNorm))
     return { ok: false, codigo: "VALIDACION", mensaje: "DNI inválido" };
 
   const sqlAlumno = `
@@ -26,7 +25,7 @@ export async function consultarPlanPorDni(dni) {
   `;
 
   const rows = await sequelize.query(sqlAlumno, {
-    replacements: { dni: dniNum },
+    replacements: { dni: dniNorm },
     type: QueryTypes.SELECT,
   });
 

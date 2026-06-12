@@ -33,16 +33,15 @@ function obtenerFechaHoraSistema() {
 
 export async function registrarIngresoPorDni({ dni }) {
   const dniNormalizado = normalizarDocumento(dni);
-  const dniNum = Number(dniNormalizado);
 
   const { fecha: hoy, hora, fechaHora } = obtenerFechaHoraSistema();
 
-  if (!Number.isFinite(dniNum) || dniNum <= 0)
+  if (!dniNormalizado || !/^\d+$/.test(dniNormalizado))
     return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
 
   return sequelize.transaction(async (t) => {
     const persona = await Persona.findOne({
-      where: { documento: dniNum },
+      where: { documento: dniNormalizado },
       transaction: t,
     });
     if (!persona)

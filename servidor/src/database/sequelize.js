@@ -1,9 +1,11 @@
 import { Sequelize } from "sequelize";
 import { env } from "../configuracion_servidor/env.js";
 
-const sslOptions = env.DB_SSL
-  ? { ssl: { require: true, rejectUnauthorized: false } }
-  : {};
+const dialectOptions = {
+  // Establece search_path en cada nueva conexión antes de cualquier query
+  options: "-c search_path=gym_v3,public",
+  ...(env.DB_SSL ? { ssl: { require: true, rejectUnauthorized: false } } : {}),
+};
 
 // ── Pool de conexiones ────────────────────────────────────────────────────
 // Evita abrir/cerrar la DB en cada request.
@@ -13,16 +15,12 @@ const poolConfig = {
   min: 1,
   acquire: 30000,
   idle: 10000,
-  // Establece search_path en cada nueva conexión del pool
-  afterCreate: (conn, done) => {
-    conn.query("SET search_path = gym_v3, public", (err) => done(err, conn));
-  },
 };
 
 const baseConfig = {
   dialect: "postgres",
   logging: false,
-  dialectOptions: sslOptions,
+  dialectOptions,
   pool: poolConfig,
 };
 

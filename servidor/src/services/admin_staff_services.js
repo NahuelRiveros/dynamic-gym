@@ -77,7 +77,7 @@ export async function crearStaff({ email, password, nombre, apellido, documento 
       return { ok: false, codigo: "SIN_ROL_STAFF", mensaje: "No existe el rol 'staff' en la tabla rol" };
 
     let persona = await Persona.findOne({
-      where: { [Op.or]: [{ email: emailN }, { documento: Number(doc) }] },
+      where: { [Op.or]: [{ email: emailN }, { documento: doc }] },
       transaction: t,
     });
 
@@ -127,7 +127,7 @@ export async function crearStaff({ email, password, nombre, apellido, documento 
     }
 
     persona = await Persona.create(
-      { nombre: nombreN, apellido: apellidoN, email: emailN, documento: Number(doc), actualizado_en: ahoraArgentina() },
+      { nombre: nombreN, apellido: apellidoN, email: emailN, documento: doc, actualizado_en: ahoraArgentina() },
       { transaction: t }
     );
 
@@ -177,14 +177,14 @@ export async function actualizarStaff(usuarioId, data) {
       return { ok: false, codigo: "EMAIL_DUPLICADO", mensaje: "Ya existe una persona con ese email" };
 
     const otraConDoc = await Persona.findOne({
-      where: { documento: Number(doc), id: { [Op.ne]: usuario.persona.id } },
+      where: { documento: doc, id: { [Op.ne]: usuario.persona.id } },
       transaction: t,
     });
     if (otraConDoc)
       return { ok: false, codigo: "DOCUMENTO_DUPLICADO", mensaje: "Ya existe una persona con ese documento" };
 
     await usuario.persona.update(
-      { nombre: nombreN, apellido: apellidoN, email: emailN, documento: Number(doc), actualizado_en: ahoraArgentina() },
+      { nombre: nombreN, apellido: apellidoN, email: emailN, documento: doc, actualizado_en: ahoraArgentina() },
       { transaction: t }
     );
     await usuario.update({ actualizado_en: ahoraArgentina() }, { transaction: t });

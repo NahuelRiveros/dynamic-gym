@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { fetchSelectOpstions } from "../api/Selects_api.js";
+import { getCatalogos } from "../api/catalogos_api.js";
 
 export function useCatalogos() {
   const [data, setData] = useState(null);
@@ -11,7 +11,7 @@ export function useCatalogos() {
 
     (async () => {
       try {
-        const r = await fetchSelectOpstions();
+        const r = await getCatalogos();
         if (!alive) return;
         setData(r);
       } catch (e) {

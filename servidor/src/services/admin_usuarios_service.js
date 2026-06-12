@@ -43,7 +43,7 @@ export async function crearUsuarioConRoles(data) {
           return { ok: false, codigo: "FALTAN_DATOS_PERSONA", mensaje: "Si no existe persona, enviá nombre y apellido" };
 
         persona = await Persona.create(
-          { nombre, apellido, email: email || null, documento: documento ? Number(documento) : null },
+          { nombre, apellido, email: email || null, documento: documento ? String(documento) : null },
           { transaction: t }
         );
       }

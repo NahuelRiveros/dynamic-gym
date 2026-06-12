@@ -1,9 +1,10 @@
 import { http } from "./http";
+import { authConfig } from "../config/auth_config";
 
 export async function authLogin(data) {
   const r = await http.post("/auth/login", data);
   const token = r.data?.token;
-  if (token) localStorage.setItem("token", token);
+  if (token) localStorage.setItem(authConfig.storageKey, token);
   return r.data;
 }
 
@@ -16,6 +17,6 @@ export async function authLogout() {
   try {
     await http.post("/auth/logout");
   } finally {
-    localStorage.removeItem("token");
+    localStorage.removeItem(authConfig.storageKey);
   }
 }

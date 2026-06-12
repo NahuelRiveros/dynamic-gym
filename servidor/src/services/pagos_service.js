@@ -38,9 +38,8 @@ export async function registrarPagoPorDni({
   modificado_por = "SYSTEM",
 }) {
   const dni = normalizarDocumento(documento);
-  const dniNum = Number(dni);
 
-  if (!Number.isFinite(dniNum) || dniNum <= 0)
+  if (!dni || !/^\d+$/.test(dni))
     return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
   if (!Number.isFinite(Number(tipo_plan_id)) || Number(tipo_plan_id) <= 0)
     return { ok: false, codigo: "VALIDACION", mensaje: "tipo_plan_id inválido" };
@@ -55,7 +54,7 @@ export async function registrarPagoPorDni({
 
   return sequelize.transaction(async (t) => {
     const persona = await Persona.findOne({
-      where: { documento: dniNum },
+      where: { documento: dni },
       transaction: t,
     });
     if (!persona)
@@ -189,9 +188,8 @@ export async function registrarPagoPorDni({
 
 export async function previewPagoPorDni({ documento }) {
   const dni = normalizarDocumento(documento);
-  const dniNum = Number(dni);
 
-  if (!Number.isFinite(dniNum) || dniNum <= 0)
+  if (!dni || !/^\d+$/.test(dni))
     return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
 
   const sql = `
@@ -233,7 +231,7 @@ export async function previewPagoPorDni({ documento }) {
 
   const rows = await sequelize.query(sql, {
     type: QueryTypes.SELECT,
-    replacements: { dniNum },
+    replacements: { dniNum: dni },
   });
 
   const it = rows?.[0];

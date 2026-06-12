@@ -28,7 +28,7 @@ export const registroAlumnoConfig = {
     { name: "fecha_nacimiento", label: "Fecha nacimiento", type: "date",  },
     { name: "email", label: "Email (opcional)", placeholder: "juan@mail.com" },
     { name: "celular", label: "Celular", placeholder: "3705..." },
-    { name: "celular", label: "Celular (Emergencia)", placeholder: "3705..." },
+    { name: "celular_emergencia", label: "Celular (Emergencia)", placeholder: "3705..." },
   ],
 
   // valores fijos (porque tu service los usa)

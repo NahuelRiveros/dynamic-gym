@@ -1,9 +1,10 @@
 import axios from "axios";
 import { authConfig } from "../config/auth_config";
 
-export const http = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3001/api",
-});
+const API_URL = import.meta.env.VITE_API_URL
+  ?? (import.meta.env.DEV ? "http://localhost:3001/api" : "https://dynamic-gym.onrender.com/api");
+
+export const http = axios.create({ baseURL: API_URL });
 
 http.interceptors.request.use((config) => {
   const token = localStorage.getItem(authConfig.storageKey);

@@ -16,9 +16,9 @@ function normalizarDocumento(doc) {
 }
 
 export async function obtenerPlanVigentePorDni({ documento }) {
-  const dni = Number(normalizarDocumento(documento));
+  const dni = normalizarDocumento(documento);
 
-  if (!Number.isFinite(dni) || dni <= 0)
+  if (!dni || !/^\d+$/.test(dni))
     return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
 
   const persona = await Persona.findOne({ where: { documento: dni } });
@@ -29,10 +29,23 @@ export async function obtenerPlanVigentePorDni({ documento }) {
   if (!alumno)
     return { ok: false, codigo: "NO_ES_ALUMNO", mensaje: "La persona existe pero no es alumno" };
 
-  const plan = await Membresia.findOne({
+  // Busca el plan más reciente en gym_v3 primero, luego en public como fallback
+  let plan = await Membresia.findOne({
     where: { alumno_id: alumno.id },
     order: [["fecha_fin", "DESC"], ["id", "DESC"]],
   });
+  if (!plan) {
+    const rows = await sequelize.query(
+      `SELECT id, alumno_id, plan_tipo_id, fecha_inicio, fecha_fin,
+              monto_pagado, ingresos_disponibles, metodo_pago
+       FROM public.membresia
+       WHERE alumno_id = :alumno_id
+       ORDER BY fecha_fin DESC, id DESC
+       LIMIT 1`,
+      { replacements: { alumno_id: alumno.id }, type: QueryTypes.SELECT }
+    );
+    plan = rows[0] ?? null;
+  }
   if (!plan)
     return { ok: false, codigo: "PLAN_NO_EXISTE", mensaje: "El alumno no tiene plan registrado" };
 
@@ -75,9 +88,9 @@ export async function actualizarPlanVigentePorDni({
   ingresos_disponibles,
   modificado_por = "SYSTEM",
 }) {
-  const dni = Number(normalizarDocumento(documento));
+  const dni = normalizarDocumento(documento);
 
-  if (!Number.isFinite(dni) || dni <= 0)
+  if (!dni || !/^\d+$/.test(dni))
     return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
   if (fecha_fin < fecha_inicio)
     return { ok: false, codigo: "VALIDACION", mensaje: "fecha_fin no puede ser menor a fecha_inicio" };
@@ -99,23 +112,29 @@ export async function actualizarPlanVigentePorDni({
     if (!tipoPlan)
       return { ok: false, codigo: "PLAN_NO_EXISTE", mensaje: "El tipo de plan no existe" };
 
-    const plan = await Membresia.findOne({
+    let plan = await Membresia.findOne({
       where: { alumno_id: alumno.id },
       order: [["fecha_fin", "DESC"], ["id", "DESC"]],
       transaction: t,
       lock: t.LOCK.UPDATE,
     });
-    if (!plan)
-      return { ok: false, codigo: "PLAN_NO_EXISTE", mensaje: "El alumno no tiene plan registrado" };
 
     const nuevosIngresos = ingresos_disponibles == null
-      ? plan.ingresos_disponibles
+      ? (plan?.ingresos_disponibles ?? tipoPlan.ingresos_habilitados ?? 0)
       : ingresos_disponibles;
 
-    await plan.update(
-      { plan_tipo_id: tipo_plan_id, fecha_inicio, fecha_fin, ingresos_disponibles: nuevosIngresos },
-      { transaction: t }
-    );
+    if (plan) {
+      await plan.update(
+        { plan_tipo_id: tipo_plan_id, fecha_inicio, fecha_fin, ingresos_disponibles: nuevosIngresos },
+        { transaction: t }
+      );
+    } else {
+      plan = await Membresia.create(
+        { alumno_id: alumno.id, plan_tipo_id: tipo_plan_id, fecha_inicio, fecha_fin,
+          ingresos_disponibles: nuevosIngresos, cobrado_por_id: null },
+        { transaction: t }
+      );
+    }
 
     const hoy = new Date().toLocaleDateString("en-CA");
     const estadoNuevo = fecha_fin >= hoy && Number(nuevosIngresos ?? 0) > 0
@@ -180,9 +199,9 @@ export async function actualizarPersonaAlumnoPorDni({
   email,
   fecha_nacimiento,
 }) {
-  const dni = Number(normalizarDocumento(documento));
+  const dni = normalizarDocumento(documento);
 
-  if (!Number.isFinite(dni) || dni <= 0)
+  if (!dni || !/^\d+$/.test(dni))
     return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
 
   return sequelize.transaction(async (t) => {
@@ -195,7 +214,7 @@ export async function actualizarPersonaAlumnoPorDni({
       return { ok: false, codigo: "NO_EXISTE", mensaje: "No existe una persona con ese documento" };
 
     const nuevoDoc = nuevo_documento != null && String(nuevo_documento).trim() !== ""
-      ? Number(nuevo_documento)
+      ? String(nuevo_documento).replace(/[.\s]/g, "").trim()
       : null;
 
     if (nuevoDoc && nuevoDoc !== dni) {

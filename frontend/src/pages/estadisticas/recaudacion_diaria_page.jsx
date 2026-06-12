@@ -126,10 +126,11 @@ export default function RecaudacionDiariaPage() {
               <button
                 type="button"
                 onClick={() => nav("/estadisticas/recaudaciones-mensual")}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition shadow-sm"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-3 py-2 text-sm font-bold text-white shadow-sm shadow-blue-500/20 hover:bg-blue-500 active:scale-95 transition-all"
+                title="Volver a vista mensual"
               >
-                <ArrowLeft size={14} />
-                <span className="hidden sm:inline">Meses</span>
+                <ArrowLeft size={15} />
+                <span>Volver</span>
               </button>
               <div className="flex items-center gap-1">
                 <button
