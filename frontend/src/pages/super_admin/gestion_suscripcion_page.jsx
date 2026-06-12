@@ -7,6 +7,18 @@ import {
 
 const OPCIONES_DIAS = [30, 60, 90, 180, 365];
 
+// Mismo cálculo que el backend: base + N días → 1ro del mes siguiente
+function calcularNuevoVencimiento(fechaVenc, dias) {
+  const hoy  = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const base = new Date(fechaVenc);
+  base.setHours(0, 0, 0, 0);
+  const desde = base > hoy ? base : hoy;
+  const calculada = new Date(desde);
+  calculada.setDate(calculada.getDate() + dias);
+  return new Date(calculada.getFullYear(), calculada.getMonth() + 1, 1);
+}
+
 function fmtFecha(f) {
   if (!f) return "—";
   return new Date(f).toLocaleDateString("es-AR", {
@@ -189,7 +201,7 @@ export default function GestionSuscripcionPage() {
                   Nuevo vencimiento estimado:{" "}
                   <span className="font-bold text-slate-800">
                     {estado.fecha_vencimiento
-                      ? fmtFecha(new Date(new Date(estado.fecha_vencimiento).getTime() + diasSel * 86400000).toISOString())
+                      ? fmtFecha(calcularNuevoVencimiento(estado.fecha_vencimiento, diasSel))
                       : "—"}
                   </span>
                 </div>

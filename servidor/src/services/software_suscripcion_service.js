@@ -129,9 +129,11 @@ export async function extenderSuscripcion(dias = 30) {
   const hoy     = new Date();
 
   // Si el plan ya vencio, el nuevo período empieza desde hoy
-  const desde   = base > hoy ? base : hoy;
-  const nuevaFecha = new Date(desde);
-  nuevaFecha.setDate(nuevaFecha.getDate() + dias);
+  const desde = base > hoy ? base : hoy;
+  const calculada = new Date(desde);
+  calculada.setDate(calculada.getDate() + dias);
+  // Redondear al 1ro del mes siguiente al resultado (ciclo mensual limpio)
+  const nuevaFecha    = new Date(calculada.getFullYear(), calculada.getMonth() + 1, 1);
   const nuevaFechaStr = nuevaFecha.toISOString().slice(0, 10);
 
   await sequelize.query(
