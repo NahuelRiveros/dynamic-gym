@@ -110,7 +110,9 @@ CREATE TABLE IF NOT EXISTS persona (
   celular             VARCHAR(30),
   celular_emergencia  VARCHAR(30),
   creado_en           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-  actualizado_en      TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  actualizado_en      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  -- NULL = activo en el sistema. Fecha = dado de baja definitiva (soft delete).
+  eliminado_en        TIMESTAMPTZ  NULL
 );
 COMMENT ON TABLE  persona IS 'Datos personales base. Una persona puede ser alumno y/o usuario del sistema.';
 COMMENT ON COLUMN persona.documento IS 'Número de documento. Único por tipo — índice para búsqueda en kiosco.';
@@ -124,10 +126,13 @@ CREATE TABLE IF NOT EXISTS usuario (
   id             SERIAL       PRIMARY KEY,
   persona_id     INT          NOT NULL UNIQUE REFERENCES persona(id),
   contrasena     VARCHAR(255) NOT NULL,
+  -- activo=false: acceso suspendido temporalmente (puede reactivarse)
   activo         BOOLEAN      NOT NULL DEFAULT TRUE,
   ultimo_login   TIMESTAMPTZ,
   creado_en      TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-  actualizado_en TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+  actualizado_en TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+  -- eliminado_en no null: baja definitiva del sistema (soft delete)
+  eliminado_en   TIMESTAMPTZ  NULL
 );
 COMMENT ON TABLE  usuario IS 'Credenciales de acceso. Relación 1:1 con persona. Solo tiene entrada si puede iniciar sesión.';
 COMMENT ON COLUMN usuario.contrasena IS 'Hash bcrypt. Nunca almacenar texto plano.';
@@ -170,7 +175,9 @@ CREATE TABLE IF NOT EXISTS alumno (
   fecha_registro         DATE        NOT NULL DEFAULT CURRENT_DATE,
   certificado_apt_fisica BOOLEAN     NOT NULL DEFAULT FALSE,
   creado_en              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  actualizado_en         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  actualizado_en         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  -- NULL = activo/inactivo (según estado_id). Fecha = baja definitiva del gym.
+  eliminado_en           TIMESTAMPTZ NULL
 );
 COMMENT ON TABLE  alumno IS 'Extiende persona con datos específicos del rol alumno. Relación 1:1 con persona.';
 COMMENT ON COLUMN alumno.estado_id IS 'Estado actual: Activo=1 (determinado por cron o pago registrado).';

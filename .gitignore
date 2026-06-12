@@ -23,6 +23,7 @@ pnpm-debug.log*
 # ── Backups / SQL dumps ───────────────────────
 *.sql
 !servidor/src/database/*.sql
+!servidor/scripts/*.sql
 *.dump
 *.bak
 

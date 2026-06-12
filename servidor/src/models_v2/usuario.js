@@ -23,8 +23,12 @@ export const Usuario = sequelize.define("Usuario", {
 
   creado_en:     { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
   actualizado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  // activo=false: suspendido temporalmente (puede reactivarse)
+  // eliminado_en no null: baja definitiva — no puede iniciar sesión ni reactivarse
+  eliminado_en:  { type: DataTypes.DATE, allowNull: true },
 }, {
   tableName:  "usuario",
+  schema:     "gym_v3",
   timestamps: false,
   indexes: [
     { fields: ["persona_id"] },

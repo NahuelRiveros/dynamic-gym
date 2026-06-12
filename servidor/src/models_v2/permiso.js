@@ -30,6 +30,7 @@ export const Permiso = sequelize.define("Permiso", {
   creado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName:  "permiso",
+  schema:     "gym_v3",
   timestamps: false,
   indexes: [
     { fields: ["modulo_id"] },

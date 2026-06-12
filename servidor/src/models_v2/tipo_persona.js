@@ -8,5 +8,6 @@ export const TipoPersona = sequelize.define("TipoPersona", {
   creado_en:   { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName:  "tipo_persona",
+  schema:     "gym_v3",
   timestamps: false,
 });

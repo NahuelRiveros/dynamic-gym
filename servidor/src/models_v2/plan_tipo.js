@@ -33,5 +33,6 @@ export const PlanTipo = sequelize.define("PlanTipo", {
   actualizado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName:  "plan_tipo",
+  schema:     "gym_v3",
   timestamps: false,
 });

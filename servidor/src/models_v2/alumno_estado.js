@@ -12,5 +12,6 @@ export const AlumnoEstado = sequelize.define("AlumnoEstado", {
   creado_en:   { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName:  "alumno_estado",
+  schema:     "gym_v3",
   timestamps: false,
 });

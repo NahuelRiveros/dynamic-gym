@@ -12,5 +12,6 @@ export const Rol = sequelize.define("Rol", {
   creado_en:   { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName:  "rol",
+  schema:     "gym_v3",
   timestamps: false,
 });

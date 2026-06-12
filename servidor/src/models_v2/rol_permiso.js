@@ -30,6 +30,7 @@ export const RolPermiso = sequelize.define("RolPermiso", {
   creado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName:  "rol_permiso",
+  schema:     "gym_v3",
   timestamps: false,
   indexes: [
     { unique: true, fields: ["rol_id", "permiso_id"] },

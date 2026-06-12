@@ -20,6 +20,7 @@ export const Ingreso = sequelize.define("Ingreso", {
   creado_en:     { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName:  "ingreso",
+  schema:     "gym_v3",
   timestamps: false,
   indexes: [
     { fields: ["membresia_id"] },

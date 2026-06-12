@@ -35,8 +35,12 @@ export const Persona = sequelize.define("Persona", {
 
   creado_en:     { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
   actualizado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  // Soft delete: NULL = activo. Fecha = dado de baja definitiva del sistema.
+  // Todas las queries deben filtrar: WHERE eliminado_en IS NULL
+  eliminado_en:  { type: DataTypes.DATE, allowNull: true },
 }, {
   tableName:  "persona",
+  schema:     "gym_v3",
   timestamps: false,
   indexes: [
     { fields: ["documento"] },

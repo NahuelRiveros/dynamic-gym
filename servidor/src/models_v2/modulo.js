@@ -15,6 +15,7 @@ export const Modulo = sequelize.define("Modulo", {
   creado_en:   { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName:  "modulo",
+  schema:     "gym_v3",
   timestamps: false,
   indexes: [
     { fields: ["orden"] },

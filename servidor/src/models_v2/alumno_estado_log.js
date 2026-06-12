@@ -37,6 +37,7 @@ export const AlumnoEstadoLog = sequelize.define("AlumnoEstadoLog", {
   creado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName:  "alumno_estado_log",
+  schema:     "gym_v3",
   timestamps: false,
   indexes: [
     { fields: ["alumno_id"] },

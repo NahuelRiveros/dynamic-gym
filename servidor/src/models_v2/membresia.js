@@ -44,6 +44,7 @@ export const Membresia = sequelize.define("Membresia", {
   actualizado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName:  "membresia",
+  schema:     "gym_v3",
   timestamps: false,
   indexes: [
     { fields: ["alumno_id"] },

@@ -24,6 +24,7 @@ export const UsuarioRol = sequelize.define("UsuarioRol", {
   creado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
 }, {
   tableName:  "usuario_rol",
+  schema:     "gym_v3",
   timestamps: false,
   indexes: [
     { unique: true, fields: ["usuario_id", "rol_id"] },

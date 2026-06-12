@@ -29,8 +29,12 @@ export const Alumno = sequelize.define("Alumno", {
 
   creado_en:     { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
   actualizado_en: { type: DataTypes.DATE, allowNull: false, defaultValue: DataTypes.NOW },
+  // NULL = activo/inactivo según estado_id (el cron lo maneja)
+  // Fecha = baja definitiva del gym (distinto a Inactivo, que puede volver)
+  eliminado_en:  { type: DataTypes.DATE, allowNull: true },
 }, {
   tableName:  "alumno",
+  schema:     "gym_v3",
   timestamps: false,
   indexes: [
     { fields: ["persona_id"] },
