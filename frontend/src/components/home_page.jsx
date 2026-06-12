@@ -15,13 +15,13 @@ const slides = [
     subtitle: "Consultas, horarios y asesoramiento",
     image: images.principal2,
     points: [
-      {
-        icon: Phone,
-        label: "WhatsApp",
-        description: "Respuesta inmediata",
-        href: "https://wa.me/543705023131",
-        external: true,
-      },
+      // {
+      //   icon: Phone,
+      //   label: "WhatsApp",
+      //   description: "Respuesta inmediata",
+      //   href: "https://wa.me/543705023131",
+      //   external: true,
+      // },
       {
         icon: MapPin,
         label: "Ver ubicación",
@@ -97,17 +97,17 @@ const FEATURES = [
 ];
 
 const CONTACTS = [
-  {
-    icon: Phone,
-    label: "WhatsApp",
-    desc: "Respuesta inmediata",
-    sub: "+54 370 502-3131",
-    href: "https://wa.me/543705023131",
-    iconCls: "text-emerald-400 bg-emerald-500/10 group-hover:bg-emerald-500/25",
-    hoverBorder: "hover:border-emerald-500/50",
-    accentCls: "text-emerald-400",
-    glowCls: "hover:shadow-emerald-500/10",
-  },
+  // {
+  //   icon: Phone,
+  //   label: "WhatsApp",
+  //   desc: "Respuesta inmediata",
+  //   sub: "+54 370 502-3131",
+  //   href: "https://wa.me/543705023131",
+  //   iconCls: "text-emerald-400 bg-emerald-500/10 group-hover:bg-emerald-500/25",
+  //   hoverBorder: "hover:border-emerald-500/50",
+  //   accentCls: "text-emerald-400",
+  //   glowCls: "hover:shadow-emerald-500/10",
+  // },
   {
     icon: MapPin,
     label: "Ubicación",
@@ -198,7 +198,7 @@ export default function HomePage() {
           </p>
 
           <div className="dg-a4 mt-11 flex flex-col sm:flex-row items-center justify-center gap-4">
-            <a
+            {/* <a
               href="https://wa.me/543705023131"
               target="_blank"
               rel="noopener noreferrer"
@@ -206,7 +206,7 @@ export default function HomePage() {
             >
               Contactar ahora
               <ArrowRight size={15} className="group-hover:translate-x-1.5 transition-transform" />
-            </a>
+            </a> */}
             <a
               href="#gimnasio"
               className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/5 px-8 py-4 text-sm font-bold uppercase tracking-wider text-white backdrop-blur-sm hover:bg-white/10 hover:border-white/28 transition-all duration-200"
@@ -369,7 +369,7 @@ export default function HomePage() {
           <p className="text-gray-500 mb-10 text-base tracking-wide">
             Comenzá hoy. Sin excusas.
           </p>
-          <a
+          {/* <a
             href="https://wa.me/543705023131"
             target="_blank"
             rel="noopener noreferrer"
@@ -377,7 +377,7 @@ export default function HomePage() {
           >
             <Phone size={18} />
             Empezar ahora
-          </a>
+          </a> */}
         </div>
       </section>
 
