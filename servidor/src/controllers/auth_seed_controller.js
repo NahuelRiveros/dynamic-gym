@@ -25,7 +25,7 @@ async function crearUsuarioConRol({ email, password, nombre, apellido, documento
 
     if (!persona) {
       persona = await Persona.create(
-        { nombre, apellido, email: emailN, documento: doc, actualizado_en: new Date() },
+        { nombre, apellido, email: emailN, documento: doc, tipo_documento_id: 1, actualizado_en: new Date() },
         { transaction: t }
       );
     }
