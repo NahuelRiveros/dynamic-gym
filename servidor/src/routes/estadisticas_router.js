@@ -6,6 +6,7 @@ import {
   Asistencias,
   AsistenciasHoras,
   AsistenciasHorasDia,
+  PlanesPopulares,
 } from "../controllers/estadisticas_controller.js";
 
 export const estadisticasRouter = Router();
@@ -44,3 +45,10 @@ estadisticasRouter.get("/asistencias_horas", AsistenciasHoras);
  * =========================
  */
 estadisticasRouter.get("/asistencias_horas_dia", AsistenciasHorasDia);
+
+/**
+ * =========================
+ * PLANES MÁS POPULARES
+ * =========================
+ */
+estadisticasRouter.get("/planes-populares", PlanesPopulares);

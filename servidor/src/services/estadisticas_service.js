@@ -242,6 +242,52 @@ export async function obtenerAsistenciasHoras({ desde, hasta } = {}) {
   return { items: rows };
 }
 
+export async function obtenerPlanesPopulares({ anio } = {}) {
+  const anioNum = anio ? Number.parseInt(anio, 10) : null;
+  if (anioNum !== null && (!Number.isFinite(anioNum) || anioNum < 2000 || anioNum > 2100)) {
+    throw new Error("Año inválido");
+  }
+
+  const filtroAnio = anioNum ? `AND EXTRACT(YEAR FROM fecha_inicio) = ${anioNum}` : "";
+
+  const sql = `
+    SELECT
+      COALESCE(tp.descripcion, 'Sin plan') AS plan,
+      COUNT(*)::int                         AS total_ventas,
+      COALESCE(SUM(m.monto_pagado::numeric), 0) AS total_recaudado
+    FROM (
+      SELECT plan_tipo_id, monto_pagado
+      FROM public.membresia
+      WHERE TRUE ${filtroAnio}
+      UNION ALL
+      SELECT plan_tipo_id, monto_pagado
+      FROM gym_v3.membresia
+      WHERE TRUE ${filtroAnio}
+        AND id NOT IN (
+          SELECT id FROM public.membresia
+          WHERE TRUE ${filtroAnio}
+        )
+    ) m
+    LEFT JOIN (
+      SELECT id, descripcion FROM public.plan_tipo
+      UNION ALL
+      SELECT id, descripcion FROM gym_v3.plan_tipo
+      WHERE id NOT IN (SELECT id FROM public.plan_tipo)
+    ) tp ON tp.id = m.plan_tipo_id
+    GROUP BY tp.descripcion
+    ORDER BY total_ventas DESC;
+  `;
+
+  const rows = await sequelize.query(sql, { type: QueryTypes.SELECT });
+  return {
+    items: rows.map((r) => ({
+      plan:            r.plan,
+      total_ventas:    Number(r.total_ventas),
+      total_recaudado: Number(r.total_recaudado),
+    })),
+  };
+}
+
 export async function obtenerAsistenciasHoraDiaSemana({ desde, hasta } = {}) {
   const hoy = new Date();
   const fechaDesde = desde || new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().slice(0, 10);

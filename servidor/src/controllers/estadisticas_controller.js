@@ -4,6 +4,7 @@ import {
   obtenerAsistencias,
   obtenerAsistenciasHoras,
   obtenerAsistenciasHoraDiaSemana,
+  obtenerPlanesPopulares,
 } from "../services/estadisticas_service.js";
 
 /**
@@ -149,7 +150,28 @@ export async function AsistenciasHoras(req, res) {
 
 /**
  * =========================
- * 5) ASISTENCIAS POR HORA Y DÍA (Heatmap)
+ * 5) PLANES MÁS POPULARES
+ * GET /estadisticas/planes-populares?anio=2026
+ * =========================
+ */
+export async function PlanesPopulares(req, res) {
+  try {
+    const anio = req.query.anio ?? new Date().getFullYear();
+    const data = await obtenerPlanesPopulares({ anio });
+    return res.json({ ok: true, anio: Number(anio), ...data });
+  } catch (error) {
+    console.error("PlanesPopulares:", error);
+    return res.status(500).json({
+      ok: false,
+      codigo: "ERROR_PLANES_POPULARES",
+      mensaje: "No se pudo obtener popularidad de planes",
+    });
+  }
+}
+
+/**
+ * =========================
+ * 6) ASISTENCIAS POR HORA Y DÍA (Heatmap)
  * GET /estadisticas/asistencias_horas_dia?desde=YYYY-MM-DD&hasta=YYYY-MM-DD
  * =========================
  */

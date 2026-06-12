@@ -54,3 +54,10 @@ export function getHeatmapAsistencias(params) {
   return getAsistenciasHorasDia(params);
 }
 
+export async function getPlanesPopulares({ anio } = {}) {
+  const r = await http.get("/estadisticas/planes-populares", {
+    params: anio ? { anio } : undefined,
+  });
+  return r.data;
+}
+

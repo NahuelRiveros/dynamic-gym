@@ -7,7 +7,10 @@ import {
   actualizarPlan,
   cambiarEstadoPlan,
 } from "../../api/planes_api.js";
-import { Layers, Plus, Edit2, ToggleLeft, ToggleRight, RefreshCw } from "lucide-react";
+import { getPlanesPopulares } from "../../api/estadisticas_api.js";
+import { Layers, Plus, Edit2, ToggleLeft, ToggleRight, RefreshCw, BarChart2 } from "lucide-react";
+
+const ANIO_ACTUAL = new Date().getFullYear();
 
 function formatearFecha(fecha) {
   if (!fecha) return "—";
@@ -38,6 +41,10 @@ export default function PlanesPage() {
   const [planSeleccionado, setPlanSeleccionado] = useState(null);
   const [guardando, setGuardando]     = useState(false);
 
+  const [anioStats, setAnioStats]         = useState(ANIO_ACTUAL);
+  const [popularidad, setPopularidad]     = useState([]);
+  const [cargandoStats, setCargandoStats] = useState(true);
+
   async function cargarPlanes() {
     try {
       setCargando(true);
@@ -51,7 +58,20 @@ export default function PlanesPage() {
     }
   }
 
+  async function cargarPopularidad(anio) {
+    try {
+      setCargandoStats(true);
+      const resp = await getPlanesPopulares({ anio });
+      setPopularidad(resp.items || []);
+    } catch {
+      setPopularidad([]);
+    } finally {
+      setCargandoStats(false);
+    }
+  }
+
   useEffect(() => { cargarPlanes(); }, []);
+  useEffect(() => { cargarPopularidad(anioStats); }, [anioStats]);
 
   function abrirNuevo()       { setPlanSeleccionado(null); setModalAbierto(true); }
   function abrirEditar(plan)  { setPlanSeleccionado(plan); setModalAbierto(true); }
@@ -215,6 +235,43 @@ export default function PlanesPage() {
           <StatCard label="Inactivos" value={String(inactivos)} />
         </div>
 
+        {/* ── POPULARIDAD ── */}
+        <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+          <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100">
+            <div className="flex items-center gap-2">
+              <BarChart2 size={16} className="text-blue-600" />
+              <span className="text-sm font-bold text-slate-800">Planes más solicitados</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              {[ANIO_ACTUAL - 1, ANIO_ACTUAL].map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => setAnioStats(a)}
+                  className={[
+                    "rounded-lg px-3 py-1 text-xs font-bold transition",
+                    anioStats === a
+                      ? "bg-blue-600 text-white shadow-sm shadow-blue-500/20"
+                      : "border border-slate-200 text-slate-500 hover:bg-slate-50",
+                  ].join(" ")}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="px-5 py-4">
+            {cargandoStats ? (
+              <div className="flex items-center justify-center py-8 text-sm text-slate-400">Cargando…</div>
+            ) : popularidad.length === 0 ? (
+              <div className="flex items-center justify-center py-8 text-sm text-slate-400">Sin datos para {anioStats}</div>
+            ) : (
+              <GraficoPopularidad items={popularidad} />
+            )}
+          </div>
+        </div>
+
         {/* ── ERROR ── */}
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
@@ -245,6 +302,53 @@ export default function PlanesPage() {
         planEditar={planSeleccionado}
         cargando={guardando}
       />
+    </div>
+  );
+}
+
+function GraficoPopularidad({ items }) {
+  const totalVentas = items.reduce((acc, i) => acc + i.total_ventas, 0);
+  const max = Math.max(...items.map((i) => i.total_ventas));
+
+  const COLORES = [
+    "bg-blue-600",
+    "bg-blue-500",
+    "bg-blue-400",
+    "bg-sky-500",
+    "bg-sky-400",
+    "bg-cyan-500",
+    "bg-cyan-400",
+    "bg-indigo-500",
+  ];
+
+  return (
+    <div className="space-y-3">
+      {items.map((item, idx) => {
+        const pct = totalVentas > 0 ? Math.round((item.total_ventas / totalVentas) * 100) : 0;
+        const anchoPct = max > 0 ? (item.total_ventas / max) * 100 : 0;
+        const color = COLORES[idx % COLORES.length];
+
+        return (
+          <div key={item.plan} className="flex items-center gap-3">
+            <div className="w-44 shrink-0 text-right text-xs font-medium text-slate-600 truncate" title={item.plan}>
+              {item.plan}
+            </div>
+            <div className="flex flex-1 items-center gap-2 overflow-hidden">
+              <div className="relative h-7 flex-1 rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all duration-700 ${color}`}
+                  style={{ width: `${anchoPct}%`, minWidth: anchoPct > 0 ? "6px" : "0" }}
+                />
+              </div>
+              <span className="w-6 text-right text-xs font-extrabold text-slate-800">{item.total_ventas}</span>
+              <span className="w-9 text-right text-[11px] font-medium text-slate-400">{pct}%</span>
+            </div>
+          </div>
+        );
+      })}
+      <div className="pt-1 text-right text-[11px] text-slate-400">
+        Total: <span className="font-bold text-slate-600">{totalVentas}</span> suscripciones
+      </div>
     </div>
   );
 }
