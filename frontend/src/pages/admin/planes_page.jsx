@@ -240,9 +240,9 @@ export default function PlanesPage() {
           <div className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center sm:justify-between border-b border-slate-100">
             <div className="flex items-center gap-2">
               <BarChart2 size={16} className="text-blue-600" />
-              <span className="text-sm font-bold text-slate-800">Planes más solicitados</span>
+              <span className="text-sm font-bold text-slate-800">Rendimiento de planes</span>
             </div>
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-1">
               {[ANIO_ACTUAL - 1, ANIO_ACTUAL].map((a) => (
                 <button
                   key={a}
@@ -261,11 +261,11 @@ export default function PlanesPage() {
             </div>
           </div>
 
-          <div className="px-5 py-4">
+          <div className="px-5 py-5">
             {cargandoStats ? (
-              <div className="flex items-center justify-center py-8 text-sm text-slate-400">Cargando…</div>
+              <div className="flex items-center justify-center py-10 text-sm text-slate-400">Cargando…</div>
             ) : popularidad.length === 0 ? (
-              <div className="flex items-center justify-center py-8 text-sm text-slate-400">Sin datos para {anioStats}</div>
+              <div className="flex items-center justify-center py-10 text-sm text-slate-400">Sin datos para {anioStats}</div>
             ) : (
               <GraficoPopularidad items={popularidad} />
             )}
@@ -306,49 +306,166 @@ export default function PlanesPage() {
   );
 }
 
+const fmtARS = (n) =>
+  new Intl.NumberFormat("es-AR", { style: "currency", currency: "ARS", minimumFractionDigits: 0 }).format(n);
+
 function GraficoPopularidad({ items }) {
-  const totalVentas = items.reduce((acc, i) => acc + i.total_ventas, 0);
-  const max = Math.max(...items.map((i) => i.total_ventas));
+  const totalVentas    = items.reduce((acc, i) => acc + i.total_ventas, 0);
+  const totalRecaudado = items.reduce((acc, i) => acc + i.total_recaudado, 0);
+  const maxVentas      = Math.max(...items.map((i) => i.total_ventas));
+
+  const estrella    = items[0];
+  const mayorRecaud = [...items].sort((a, b) => b.total_recaudado - a.total_recaudado)[0];
+  const mejorTicket = [...items]
+    .filter((i) => i.total_ventas > 0)
+    .sort((a, b) => b.total_recaudado / b.total_ventas - a.total_recaudado / a.total_ventas)[0];
 
   const COLORES = [
-    "bg-blue-600",
-    "bg-blue-500",
-    "bg-blue-400",
-    "bg-sky-500",
-    "bg-sky-400",
-    "bg-cyan-500",
-    "bg-cyan-400",
+    "bg-blue-600", "bg-blue-500", "bg-blue-400",
+    "bg-sky-500",  "bg-sky-400",
+    "bg-cyan-500", "bg-cyan-400",
     "bg-indigo-500",
   ];
 
   return (
-    <div className="space-y-3">
-      {items.map((item, idx) => {
-        const pct = totalVentas > 0 ? Math.round((item.total_ventas / totalVentas) * 100) : 0;
-        const anchoPct = max > 0 ? (item.total_ventas / max) * 100 : 0;
-        const color = COLORES[idx % COLORES.length];
+    <div className="space-y-5">
 
-        return (
-          <div key={item.plan} className="flex items-center gap-3">
-            <div className="w-44 shrink-0 text-right text-xs font-medium text-slate-600 truncate" title={item.plan}>
-              {item.plan}
-            </div>
-            <div className="flex flex-1 items-center gap-2 overflow-hidden">
-              <div className="relative h-7 flex-1 rounded-full bg-slate-100 overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all duration-700 ${color}`}
-                  style={{ width: `${anchoPct}%`, minWidth: anchoPct > 0 ? "6px" : "0" }}
-                />
-              </div>
-              <span className="w-6 text-right text-xs font-extrabold text-slate-800">{item.total_ventas}</span>
-              <span className="w-9 text-right text-[11px] font-medium text-slate-400">{pct}%</span>
-            </div>
-          </div>
-        );
-      })}
-      <div className="pt-1 text-right text-[11px] text-slate-400">
-        Total: <span className="font-bold text-slate-600">{totalVentas}</span> suscripciones
+      {/* ── RESUMEN EJECUTIVO ── */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <ResumenCard
+          icono="🏆"
+          titulo="Más vendido"
+          valor={estrella?.plan ?? "—"}
+          detalle={estrella ? `${estrella.total_ventas} suscripciones` : ""}
+          color="blue"
+        />
+        <ResumenCard
+          icono="💰"
+          titulo="Mayor recaudación"
+          valor={mayorRecaud ? fmtARS(mayorRecaud.total_recaudado) : "—"}
+          detalle={mayorRecaud?.plan ?? ""}
+          color="emerald"
+        />
+        <ResumenCard
+          icono="🎯"
+          titulo="Mejor ticket promedio"
+          valor={mejorTicket && mejorTicket.total_ventas > 0
+            ? fmtARS(Math.round(mejorTicket.total_recaudado / mejorTicket.total_ventas))
+            : "—"}
+          detalle={mejorTicket ? `${mejorTicket.plan} · por suscripción` : ""}
+          color="violet"
+        />
       </div>
+
+      {/* ── TABLA DE PLANES ── */}
+      <div className="overflow-x-auto rounded-xl border border-slate-100">
+        <table className="w-full text-xs">
+          <thead>
+            <tr className="border-b border-slate-100 bg-slate-50 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+              <th className="px-3 py-2 text-left w-6">#</th>
+              <th className="px-3 py-2 text-left">Plan</th>
+              <th className="px-3 py-2 text-left hidden sm:table-cell">Popularidad</th>
+              <th className="px-3 py-2 text-right">Suscripc.</th>
+              <th className="px-3 py-2 text-right hidden md:table-cell">Part. %</th>
+              <th className="px-3 py-2 text-right">Recaudado</th>
+              <th className="px-3 py-2 text-right hidden lg:table-cell">Ticket prom.</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50">
+            {items.map((item, idx) => {
+              const pctVentas    = totalVentas > 0    ? Math.round((item.total_ventas    / totalVentas)    * 100) : 0;
+              const pctRecaudado = totalRecaudado > 0 ? Math.round((item.total_recaudado / totalRecaudado) * 100) : 0;
+              const anchoPct     = maxVentas > 0      ? (item.total_ventas / maxVentas) * 100 : 0;
+              const ticket       = item.total_ventas > 0 ? Math.round(item.total_recaudado / item.total_ventas) : 0;
+              const color        = COLORES[idx % COLORES.length];
+              const esTop        = idx === 0;
+
+              return (
+                <tr key={item.plan} className={`transition hover:bg-slate-50 ${esTop ? "bg-blue-50/40" : ""}`}>
+                  <td className="px-3 py-2.5 font-bold text-slate-400">{idx + 1}</td>
+                  <td className="px-3 py-2.5">
+                    <div className="flex items-center gap-1.5">
+                      {esTop && <span className="text-sm">🏆</span>}
+                      <span className={`font-semibold ${esTop ? "text-blue-700" : "text-slate-700"}`}>
+                        {item.plan}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 hidden sm:table-cell">
+                    <div className="flex items-center gap-2 min-w-[100px]">
+                      <div className="relative h-2 flex-1 rounded-full bg-slate-200 overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${color}`}
+                          style={{ width: `${anchoPct}%`, minWidth: anchoPct > 0 ? "4px" : "0" }}
+                        />
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-extrabold text-slate-800">
+                    {item.total_ventas}
+                  </td>
+                  <td className="px-3 py-2.5 text-right hidden md:table-cell">
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      pctVentas >= 30 ? "bg-blue-100 text-blue-700"
+                      : pctVentas >= 15 ? "bg-sky-100 text-sky-700"
+                      : "bg-slate-100 text-slate-500"
+                    }`}>
+                      {pctVentas}%
+                    </span>
+                  </td>
+                  <td className="px-3 py-2.5 text-right font-semibold text-emerald-700">
+                    {totalRecaudado > 0 ? fmtARS(item.total_recaudado) : <span className="text-slate-400">—</span>}
+                  </td>
+                  <td className="px-3 py-2.5 text-right hidden lg:table-cell text-slate-500">
+                    {ticket > 0 ? fmtARS(ticket) : <span className="text-slate-400">—</span>}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+          <tfoot>
+            <tr className="border-t-2 border-slate-200 bg-slate-50 font-bold">
+              <td colSpan={3} className="px-3 py-2 text-[11px] uppercase tracking-wider text-slate-400 hidden sm:table-cell">
+                Totales
+              </td>
+              <td colSpan={3} className="px-3 py-2 text-[11px] uppercase tracking-wider text-slate-400 sm:hidden">
+                Totales
+              </td>
+              <td className="px-3 py-2 text-right text-slate-800">{totalVentas}</td>
+              <td className="px-3 py-2 text-right hidden md:table-cell text-slate-400">100%</td>
+              <td className="px-3 py-2 text-right text-emerald-700">
+                {totalRecaudado > 0 ? fmtARS(totalRecaudado) : "—"}
+              </td>
+              <td className="px-3 py-2 text-right hidden lg:table-cell text-slate-500">
+                {totalVentas > 0 && totalRecaudado > 0 ? fmtARS(Math.round(totalRecaudado / totalVentas)) : "—"}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      {/* ── INSIGHT ── */}
+      {totalRecaudado === 0 && (
+        <p className="text-center text-[11px] text-slate-400">
+          Los precios de los planes están en $0 — actualizalos para ver recaudación real.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ResumenCard({ icono, titulo, valor, detalle, color }) {
+  const estilos = {
+    blue:   "border-blue-100   bg-blue-50   text-blue-700",
+    emerald:"border-emerald-100 bg-emerald-50 text-emerald-700",
+    violet: "border-violet-100 bg-violet-50 text-violet-700",
+  };
+  return (
+    <div className={`rounded-xl border px-4 py-3 ${estilos[color]}`}>
+      <div className="text-lg leading-none">{icono}</div>
+      <div className="mt-1.5 text-[10px] font-bold uppercase tracking-wider opacity-70">{titulo}</div>
+      <div className="mt-1 text-sm font-extrabold leading-tight truncate" title={valor}>{valor}</div>
+      {detalle && <div className="mt-0.5 text-[10px] opacity-60 truncate">{detalle}</div>}
     </div>
   );
 }
