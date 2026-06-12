@@ -167,6 +167,40 @@ suscripcionRouter.get(
 );
 
 // ════════════════════════════════════════════════════════════════════════════
+//  RUTAS SUPER_ADMIN — requieren JWT + rol super_admin
+//  Sin SEED_SECRET: usan el token de sesión normal
+// ════════════════════════════════════════════════════════════════════════════
+
+// GET /api/suscripcion/super/estado
+suscripcionRouter.get(
+  "/super/estado",
+  requireAuth, requireRole("super_admin"),
+  async (_req, res, next) => {
+    try {
+      const estado = await obtenerEstado();
+      return res.json(estado);
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/suscripcion/super/extender   Body: { "dias": 30 }
+suscripcionRouter.post(
+  "/super/extender",
+  requireAuth, requireRole("super_admin"),
+  async (req, res, next) => {
+    try {
+      const dias = Number(req.body?.dias);
+      if (!dias || dias <= 0 || dias > 365) {
+        return res.status(400).json({ ok: false, mensaje: "Enviá { \"dias\": N } con N entre 1 y 365" });
+      }
+      const r = await extenderSuscripcion(dias);
+      invalidarCacheSuscripcion();
+      return res.json({ ok: true, mensaje: `Plan extendido ${dias} día(s)`, nuevo_vencimiento: r.nuevo_vencimiento });
+    } catch (err) { next(err); }
+  }
+);
+
+// ════════════════════════════════════════════════════════════════════════════
 //  RUTAS DE ADMINISTRACIÓN — solo Nahuel (protegidas por SEED_SECRET)
 //  Usar vía Postman con header:  x-seed-token: <SEED_SECRET>
 // ════════════════════════════════════════════════════════════════════════════

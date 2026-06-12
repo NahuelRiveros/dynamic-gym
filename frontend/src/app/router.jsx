@@ -24,6 +24,7 @@ import SuscripcionPage from "../pages/admin/suscripcion_page.jsx";
 import PagoExitosoPage from "../pages/pago_exitoso_page.jsx";
 import PagoFallidoPage from "../pages/pago_fallido_page.jsx";
 import PromocionesPage from "../pages/admin/promociones_page.jsx";
+import GestionSuscripcionPage from "../pages/super_admin/gestion_suscripcion_page.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -214,6 +215,16 @@ export const router = createBrowserRouter([
     <AppLayout>
       <ProtectedRoute roles={["admin"]}>
         <PromocionesPage />
+      </ProtectedRoute>
+    </AppLayout>
+  ),
+},
+{
+  path: "/super-admin/suscripcion",
+  element: (
+    <AppLayout>
+      <ProtectedRoute roles={["super_admin"]}>
+        <GestionSuscripcionPage />
       </ProtectedRoute>
     </AppLayout>
   ),

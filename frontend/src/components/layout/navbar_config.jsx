@@ -107,5 +107,18 @@ export const navbar_config = {
         },
       ],
     },
+    {
+      id: "super_admin",
+      labelNoAuth: "Sistema",
+      labelAuth: "Sistema",
+      items: [
+        {
+          label: "🔑 Suscripción del sistema",
+          to: "/super-admin/suscripcion",
+          requiereAuth: true,
+          roles: ["super_admin"],
+        },
+      ],
+    },
   ],
 };

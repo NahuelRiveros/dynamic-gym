@@ -253,8 +253,9 @@ INSERT INTO gym_v3.alumno_estado (id, descripcion) VALUES
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO gym_v3.rol (id, codigo, descripcion) VALUES
-  (1, 'admin', 'Administrador'),
-  (2, 'staff', 'Staff')
+  (1, 'admin',       'Administrador'),
+  (2, 'staff',       'Staff'),
+  (3, 'super_admin', 'Super Administrador del sistema')
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO gym_v3.plan_tipo (id, descripcion, dias_totales, ingresos, precio, activo) VALUES
