@@ -5,7 +5,7 @@ import {
   Alumno,
   Membresia,
   PlanTipo,
-} from "../models/index.js";
+} from "../models_v2/index.js";
 
 const ESTADO_HABILITADO = 1;
 const TZ_BA = "America/Argentina/Buenos_Aires";

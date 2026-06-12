@@ -82,13 +82,13 @@ export async function listarAlumnos({
 
       CASE WHEN fvig.id IS NOT NULL THEN true ELSE false END AS tiene_plan_vigente
 
-    FROM public.alumno a
-    JOIN public.persona p ON p.id = a.persona_id
-    LEFT JOIN public.alumno_estado ea ON ea.id = a.estado_id
+    FROM alumno a
+    JOIN persona p ON p.id = a.persona_id
+    LEFT JOIN alumno_estado ea ON ea.id = a.estado_id
 
     LEFT JOIN LATERAL (
       SELECT f.id
-      FROM public.membresia f
+      FROM membresia f
       WHERE f.alumno_id = a.id
         AND f.fecha_inicio <= CURRENT_DATE
         AND f.fecha_fin >= CURRENT_DATE
@@ -106,13 +106,13 @@ export async function listarAlumnos({
         f.monto_pagado AS pago_monto,
         f.metodo_pago  AS pago_metodo,
         f.actualizado_en AS pago_fecha
-      FROM public.membresia f
+      FROM membresia f
       WHERE f.alumno_id = a.id
       ORDER BY f.id DESC
       LIMIT 1
     ) flast ON TRUE
 
-    LEFT JOIN public.plan_tipo tp ON tp.id = flast.pago_tipo_id
+    LEFT JOIN plan_tipo tp ON tp.id = flast.pago_tipo_id
 
     ${whereSQL}
     ORDER BY ${sortSQL} ${orderSQL}
@@ -121,11 +121,11 @@ export async function listarAlumnos({
 
   const sqlCount = `
     SELECT COUNT(*)::int AS total
-    FROM public.alumno a
-    JOIN public.persona p ON p.id = a.persona_id
+    FROM alumno a
+    JOIN persona p ON p.id = a.persona_id
     LEFT JOIN LATERAL (
       SELECT f.id
-      FROM public.membresia f
+      FROM membresia f
       WHERE f.alumno_id = a.id
         AND f.fecha_inicio <= CURRENT_DATE
         AND f.fecha_fin >= CURRENT_DATE

@@ -5,7 +5,7 @@ import {
   Alumno,
   Membresia,
   PlanTipo,
-} from "../models/index.js";
+} from "../models_v2/index.js";
 
 // import { agregarALaCola } from "./offline_queue_service.js";
 

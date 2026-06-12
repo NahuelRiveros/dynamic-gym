@@ -1,5 +1,5 @@
 ﻿import { sequelize } from "../database/sequelize.js";
-import { Persona, Alumno } from "../models/index.js";
+import { Persona, Alumno } from "../models_v2/index.js";
 
 const ESTADO_PENDIENTE = 3;
 

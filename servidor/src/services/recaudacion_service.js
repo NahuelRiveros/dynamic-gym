@@ -14,7 +14,7 @@ export async function obtenerRecaudacionMesesPorAnio({ anio }) {
     SELECT
       EXTRACT(MONTH FROM f.fecha_inicio)::int AS mes,
       COALESCE(SUM(f.monto_pagado::numeric), 0) AS total
-    FROM membresia f
+    FROM gym_v3.vista_recaudacion_completa f
     WHERE EXTRACT(YEAR FROM f.fecha_inicio) = :anio
       AND COALESCE(f.monto_pagado, 0) > 0
     GROUP BY 1
@@ -42,7 +42,7 @@ export async function obtenerRecaudacionDiasDeMes({ anio, mes }) {
     SELECT
       f.fecha_inicio AS dia,
       COALESCE(SUM(f.monto_pagado::numeric), 0) AS total
-    FROM membresia f
+    FROM gym_v3.vista_recaudacion_completa f
     WHERE f.fecha_inicio >= :desde::date
       AND f.fecha_inicio < :hasta::date
       AND COALESCE(f.monto_pagado, 0) > 0
@@ -72,23 +72,49 @@ export async function obtenerDetalleRecaudacionDia({ anio, mes, dia }) {
       f.actualizado_en AS gym_fecha_fechacambio,
       f.monto_pagado AS gym_fecha_montopagado,
       f.metodo_pago AS gym_fecha_metodopago,
-
       p_alumno.nombre AS alumno_nombre,
       p_alumno.apellido AS alumno_apellido,
-      p_alumno.documento AS alumno_documento,
-
+      p_alumno.documento::text AS alumno_documento,
       tp.descripcion AS plan_descripcion,
-
       p_usuario.nombre AS usuario_nombre,
       p_usuario.apellido AS usuario_apellido
-    FROM membresia f
-    LEFT JOIN alumno a ON a.id = f.alumno_id
-    LEFT JOIN persona p_alumno ON p_alumno.id = a.persona_id
-    LEFT JOIN plan_tipo tp ON tp.id = f.plan_tipo_id
-    LEFT JOIN usuario u ON u.id = f.cobrado_por_id
-    LEFT JOIN persona p_usuario ON p_usuario.id = u.persona_id
-    WHERE f.fecha_inicio = :fecha::date
-      AND COALESCE(f.monto_pagado, 0) > 0
+    FROM (
+      SELECT id, alumno_id, plan_tipo_id, cobrado_por_id,
+             monto_pagado, fecha_inicio, actualizado_en, metodo_pago
+      FROM public.membresia
+      WHERE fecha_inicio = :fecha::date AND COALESCE(monto_pagado, 0) > 0
+      UNION ALL
+      SELECT id, alumno_id, plan_tipo_id, cobrado_por_id,
+             monto_pagado, fecha_inicio, actualizado_en, metodo_pago
+      FROM gym_v3.membresia
+      WHERE fecha_inicio = :fecha::date AND COALESCE(monto_pagado, 0) > 0
+        AND id NOT IN (SELECT id FROM public.membresia WHERE fecha_inicio = :fecha::date)
+    ) f
+    LEFT JOIN (
+      SELECT a.id, a.persona_id FROM public.alumno a
+      UNION ALL
+      SELECT a.id, a.persona_id FROM gym_v3.alumno a WHERE a.id NOT IN (SELECT id FROM public.alumno)
+    ) a ON a.id = f.alumno_id
+    LEFT JOIN (
+      SELECT p.id, p.nombre, p.apellido, p.documento::text AS documento FROM public.persona p
+      UNION ALL
+      SELECT p.id, p.nombre, p.apellido, p.documento FROM gym_v3.persona p WHERE p.id NOT IN (SELECT id FROM public.persona)
+    ) p_alumno ON p_alumno.id = a.persona_id
+    LEFT JOIN (
+      SELECT pt.id, pt.descripcion FROM public.plan_tipo pt
+      UNION ALL
+      SELECT pt.id, pt.descripcion FROM gym_v3.plan_tipo pt WHERE pt.id NOT IN (SELECT id FROM public.plan_tipo)
+    ) tp ON tp.id = f.plan_tipo_id
+    LEFT JOIN (
+      SELECT u.id, u.persona_id FROM public.usuario u
+      UNION ALL
+      SELECT u.id, u.persona_id FROM gym_v3.usuario u WHERE u.id NOT IN (SELECT id FROM public.usuario)
+    ) u ON u.id = f.cobrado_por_id
+    LEFT JOIN (
+      SELECT p.id, p.nombre, p.apellido FROM public.persona p
+      UNION ALL
+      SELECT p.id, p.nombre, p.apellido FROM gym_v3.persona p WHERE p.id NOT IN (SELECT id FROM public.persona)
+    ) p_usuario ON p_usuario.id = u.persona_id
     ORDER BY f.actualizado_en ASC NULLS LAST, f.id ASC;
   `;
 

@@ -3,7 +3,7 @@
   Sexo,
   TipoPersona,
   PlanTipo,
-} from "../models/index.js";
+} from "../models_v2/index.js";
 
 export async function obtenerCatalogos() {
   const [tiposDocumento, sexos, tiposPersona, tiposPlan] = await Promise.all([

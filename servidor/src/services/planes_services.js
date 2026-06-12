@@ -1,4 +1,4 @@
-﻿import { PlanTipo, Membresia } from "../models/index.js";
+﻿import { PlanTipo, Membresia } from "../models_v2/index.js";
 import { Op } from "sequelize";
 import { sequelize } from "../database/sequelize.js";
 

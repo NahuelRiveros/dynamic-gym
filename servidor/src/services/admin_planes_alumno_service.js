@@ -6,7 +6,7 @@ import {
   Membresia,
   PlanTipo,
   AlumnoEstado,
-} from "../models/index.js";
+} from "../models_v2/index.js";
 
 const ESTADO_HABILITADO  = 1;
 const ESTADO_RESTRINGIDO = 2;

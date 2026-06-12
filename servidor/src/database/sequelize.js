@@ -9,10 +9,14 @@ const sslOptions = env.DB_SSL
 // Evita abrir/cerrar la DB en cada request.
 // En Render free tier el DB tiene límite de 25 conexiones → max: 5 es seguro.
 const poolConfig = {
-  max: 5,       // máximo de conexiones abiertas simultáneamente
-  min: 1,       // mantener al menos 1 conexión lista (evita reconexión en cada request)
-  acquire: 30000, // ms que espera antes de tirar error de timeout
-  idle: 10000,  // ms que una conexión puede estar sin usarse antes de cerrarse
+  max: 5,
+  min: 1,
+  acquire: 30000,
+  idle: 10000,
+  // Establece search_path en cada nueva conexión del pool
+  afterCreate: (conn, done) => {
+    conn.query("SET search_path = gym_v3, public", (err) => done(err, conn));
+  },
 };
 
 const baseConfig = {

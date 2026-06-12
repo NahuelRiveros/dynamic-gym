@@ -1,7 +1,7 @@
 ﻿import bcrypt from "bcrypt";
 import { Op } from "sequelize";
 import { sequelize } from "../database/sequelize.js";
-import { Persona, Usuario, UsuarioRol, Rol } from "../models/index.js";
+import { Persona, Usuario, UsuarioRol, Rol } from "../models_v2/index.js";
 
 const normalizarEmail = (v) => String(v ?? "").trim().toLowerCase();
 const normalizarDocumento = (v) => String(v ?? "").replace(/[.\s]/g, "").trim();

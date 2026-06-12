@@ -246,24 +246,25 @@ DO $$ BEGIN RAISE NOTICE '✅ Índices y triggers creados'; END $$;
 -- (ON CONFLICT DO NOTHING = idempotente)
 -- ─────────────────────────────────────────────────────────────────────────────
 
+-- Las tablas de public no tienen creado_en (solo actualizado_en) — usamos NOW() como fallback
 INSERT INTO gym_v3.sexo (id, descripcion, creado_en)
-  SELECT id, descripcion, creado_en FROM public.sexo
+  SELECT id, descripcion, COALESCE(actualizado_en, NOW()) FROM public.sexo
   ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO gym_v3.tipo_documento (id, descripcion, creado_en)
-  SELECT id, descripcion, creado_en FROM public.tipo_documento
+  SELECT id, descripcion, COALESCE(actualizado_en, NOW()) FROM public.tipo_documento
   ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO gym_v3.tipo_persona (id, descripcion, creado_en)
-  SELECT id, descripcion, creado_en FROM public.tipo_persona
+  SELECT id, descripcion, COALESCE(actualizado_en, NOW()) FROM public.tipo_persona
   ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO gym_v3.alumno_estado (id, descripcion, creado_en)
-  SELECT id, descripcion, creado_en FROM public.alumno_estado
+  SELECT id, descripcion, COALESCE(actualizado_en, NOW()) FROM public.alumno_estado
   ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO gym_v3.rol (id, codigo, descripcion, creado_en)
-  SELECT id, codigo, descripcion, actualizado_en FROM public.rol
+  SELECT id, codigo, descripcion, COALESCE(actualizado_en, NOW()) FROM public.rol
   ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO gym_v3.plan_tipo (id, descripcion, dias_totales, ingresos, precio, activo, creado_en, actualizado_en)
@@ -286,12 +287,13 @@ INSERT INTO gym_v3.persona (
 )
 SELECT DISTINCT ON (p.id)
   p.id,
-  p.tipo_documento_id,
+  -- Si el registro viejo no tiene tipo_documento, asignar DNI (id=1) como fallback
+  COALESCE(p.tipo_documento_id, 1),
   p.sexo_id,
   p.tipo_persona_id,
   p.nombre,
   p.apellido,
-  p.fecha_nacimiento,
+  p.fecha_nacimiento::date,
   p.documento,
   p.email,
   p.celular,
@@ -342,8 +344,9 @@ DO $$ BEGIN RAISE NOTICE '✅ Usuarios copiados: %', (SELECT COUNT(*) FROM gym_v
 
 INSERT INTO gym_v3.alumno (id, persona_id, estado_id, fecha_registro, certificado_apt_fisica, creado_en, actualizado_en)
   SELECT DISTINCT ON (a.id)
-    a.id, a.persona_id, a.estado_id, a.fecha_registro,
-    a.certificado_apt_fisica,
+    a.id, a.persona_id, a.estado_id, a.fecha_registro::date,
+    -- El campo era text en el schema viejo — castear a boolean de forma segura
+    CASE WHEN a.certificado_apt_fisica::text ILIKE ANY(ARRAY['true','t','1','si','sí','yes']) THEN TRUE ELSE FALSE END,
     COALESCE(a.actualizado_en, NOW()), COALESCE(a.actualizado_en, NOW())
   FROM public.alumno a
   WHERE EXISTS (
@@ -368,12 +371,15 @@ INSERT INTO gym_v3.membresia (
 )
 SELECT
   m.id, m.alumno_id, m.plan_tipo_id,
-  -- Si el cobrador no migró (raro) usar el primer usuario admin disponible
-  COALESCE(
-    NULLIF(EXISTS(SELECT 1 FROM gym_v3.usuario WHERE id = m.cobrado_por_id), false)::int * m.cobrado_por_id,
-    (SELECT id FROM gym_v3.usuario LIMIT 1)
-  ),
-  m.monto_pagado, m.metodo_pago, m.fecha_inicio, m.fecha_fin,
+  -- cobrado_por_id era nullable en el schema viejo; en gym_v3 es NOT NULL.
+  -- Si es NULL o el usuario no existe en gym_v3, usar el primer admin disponible.
+  CASE
+    WHEN m.cobrado_por_id IS NOT NULL
+         AND EXISTS(SELECT 1 FROM gym_v3.usuario WHERE id = m.cobrado_por_id)
+    THEN m.cobrado_por_id
+    ELSE (SELECT id FROM gym_v3.usuario ORDER BY id LIMIT 1)
+  END,
+  m.monto_pagado, m.metodo_pago, m.fecha_inicio::date, m.fecha_fin::date,
   m.dias_totales, m.ingresos_disponibles,
   COALESCE(m.actualizado_en, NOW()), COALESCE(m.actualizado_en, NOW())
 FROM public.membresia m
@@ -389,7 +395,9 @@ DO $$ BEGIN RAISE NOTICE '✅ Membresías copiadas: %', (SELECT COUNT(*) FROM gy
 -- ─────────────────────────────────────────────────────────────────────────────
 
 INSERT INTO gym_v3.ingreso (id, membresia_id, fecha_ingreso, hora_ingreso, creado_en)
-  SELECT i.id, i.membresia_id, i.fecha_ingreso, i.hora_ingreso, COALESCE(i.creado_en, NOW())
+  SELECT i.id, i.membresia_id, i.fecha_ingreso,
+         i.hora_ingreso,
+         (i.fecha_ingreso + COALESCE(i.creado_en, '00:00:00'::time)) AT TIME ZONE 'America/Argentina/Cordoba'
   FROM public.ingreso i
   WHERE i.fecha_ingreso >= CURRENT_DATE - INTERVAL '3 months'
     AND EXISTS (SELECT 1 FROM gym_v3.membresia gm WHERE gm.id = i.membresia_id)
@@ -487,10 +495,10 @@ CREATE OR REPLACE VIEW gym_v3.vista_recaudacion_completa AS
     'historico'                                  AS origen,
     m.id,
     p.apellido || ', ' || p.nombre               AS alumno,
-    p.documento                                  AS dni,
+    p.documento::TEXT                            AS dni,
     pt.descripcion                               AS plan,
     m.monto_pagado,
-    m.metodo_pago,
+    m.metodo_pago::TEXT,
     m.fecha_inicio,
     m.fecha_fin,
     m.dias_totales,
@@ -508,7 +516,7 @@ CREATE OR REPLACE VIEW gym_v3.vista_recaudacion_completa AS
     'actual'                                     AS origen,
     m.id,
     p.apellido || ', ' || p.nombre               AS alumno,
-    p.documento                                  AS dni,
+    p.documento::TEXT                            AS dni,
     pt.descripcion                               AS plan,
     m.monto_pagado,
     m.metodo_pago,

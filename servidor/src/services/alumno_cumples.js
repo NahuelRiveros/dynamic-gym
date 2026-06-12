@@ -32,8 +32,8 @@ export async function obtenerAlumnosCumples({ dias = 3, incluirMes = false } = {
       p.apellido,
       p.fecha_nacimiento,
       a.id AS alumno_id
-    FROM public.persona p
-    INNER JOIN public.alumno a ON a.persona_id = p.id
+    FROM persona p
+    INNER JOIN alumno a ON a.persona_id = p.id
     WHERE p.fecha_nacimiento IS NOT NULL
     ORDER BY p.nombre, p.apellido
     `,

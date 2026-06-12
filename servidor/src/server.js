@@ -3,7 +3,7 @@ import { sequelize } from "./database/sequelize.js";
 import { runMigraciones } from "./database/migration_runner.js";
 import { iniciarCronEstadoAlumnos } from "./cron/estado_alumno_cron.js";
 // import { iniciarSyncQueueCron } from "./cron/sync_queue_cron.js";
-import "./models/index.js";
+import "./models_v2/index.js";
 import { env } from "./configuracion_servidor/env.js";
 
 async function main() {

@@ -1,7 +1,7 @@
 ﻿import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import { env } from "../configuracion_servidor/env.js";
-import { Persona, Usuario } from "../models/index.js";
+import { Persona, Usuario } from "../models_v2/index.js";
 
 function safeStr(v) {
   return String(v ?? "").trim();

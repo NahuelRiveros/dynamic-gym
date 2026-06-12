@@ -22,7 +22,7 @@ const DIAS_GRACIA = 3;    // días de gracia después del vencimiento
 
 export async function setupTablas() {
   await sequelize.query(`
-    CREATE TABLE IF NOT EXISTS software_suscripcion (
+    CREATE TABLE IF NOT EXISTS public.software_suscripcion (
       id                SERIAL PRIMARY KEY,
       cliente_nombre    VARCHAR(200) NOT NULL DEFAULT 'Gym',
       plan_nombre       VARCHAR(100) NOT NULL DEFAULT 'Plan Mensual',
@@ -35,7 +35,7 @@ export async function setupTablas() {
   `);
 
   await sequelize.query(`
-    CREATE TABLE IF NOT EXISTS software_pago (
+    CREATE TABLE IF NOT EXISTS public.software_pago (
       id                SERIAL PRIMARY KEY,
       mp_payment_id     VARCHAR(100) UNIQUE,
       mp_preference_id  VARCHAR(300),
@@ -53,7 +53,7 @@ export async function setupTablas() {
 
 export async function crearSuscripcionInicial() {
   const existe = await sequelize.query(
-    `SELECT id FROM software_suscripcion LIMIT 1`,
+    `SELECT id FROM public.software_suscripcion LIMIT 1`,
     { type: QueryTypes.SELECT }
   );
   if (existe.length > 0) {
@@ -65,7 +65,7 @@ export async function crearSuscripcionInicial() {
   const venc = primerDiaSiguiente(hoy);
 
   await sequelize.query(
-    `INSERT INTO software_suscripcion
+    `INSERT INTO public.software_suscripcion
        (cliente_nombre, plan_nombre, precio, fecha_inicio, fecha_vencimiento)
      VALUES (:cliente, 'Plan Mensual', :precio, :inicio, :venc)`,
     {
@@ -86,7 +86,7 @@ export async function crearSuscripcionInicial() {
 
 export async function obtenerEstado() {
   const rows = await sequelize.query(
-    `SELECT * FROM software_suscripcion ORDER BY id LIMIT 1`,
+    `SELECT * FROM public.software_suscripcion ORDER BY id LIMIT 1`,
     { type: QueryTypes.SELECT }
   );
 
@@ -119,7 +119,7 @@ export async function obtenerEstado() {
 
 export async function extenderSuscripcion(dias = 30) {
   const rows = await sequelize.query(
-    `SELECT id, fecha_vencimiento FROM software_suscripcion ORDER BY id LIMIT 1`,
+    `SELECT id, fecha_vencimiento FROM public.software_suscripcion ORDER BY id LIMIT 1`,
     { type: QueryTypes.SELECT }
   );
   if (!rows.length) return { ok: false, mensaje: "Sin suscripción" };
@@ -135,7 +135,7 @@ export async function extenderSuscripcion(dias = 30) {
   const nuevaFechaStr = nuevaFecha.toISOString().slice(0, 10);
 
   await sequelize.query(
-    `UPDATE software_suscripcion
+    `UPDATE public.software_suscripcion
      SET fecha_vencimiento = :venc,
          actualizado_en    = NOW()
      WHERE id = :id`,
@@ -154,13 +154,13 @@ export async function extenderSuscripcion(dias = 30) {
 export async function registrarPago({ mpPaymentId, mpPreferenceId, monto, estado, detalle, desde, hasta }) {
   // Evitar duplicados (MP puede reenviar el webhook)
   const existe = await sequelize.query(
-    `SELECT id FROM software_pago WHERE mp_payment_id = :pid LIMIT 1`,
+    `SELECT id FROM public.software_pago WHERE mp_payment_id = :pid LIMIT 1`,
     { replacements: { pid: String(mpPaymentId) }, type: QueryTypes.SELECT }
   );
   if (existe.length > 0) return { ok: false, codigo: "DUPLICADO" };
 
   await sequelize.query(
-    `INSERT INTO software_pago
+    `INSERT INTO public.software_pago
        (mp_payment_id, mp_preference_id, monto, estado, detalle, periodo_desde, periodo_hasta)
      VALUES (:pid, :pref, :monto, :estado, :detalle, :desde, :hasta)`,
     {
@@ -185,7 +185,7 @@ export async function registrarPago({ mpPaymentId, mpPreferenceId, monto, estado
 export async function historialPagos(limit = 12) {
   return sequelize.query(
     `SELECT id, mp_payment_id, monto, estado, periodo_desde, periodo_hasta, creado_en
-     FROM software_pago
+     FROM public.software_pago
      ORDER BY creado_en DESC
      LIMIT :limit`,
     { replacements: { limit }, type: QueryTypes.SELECT }
