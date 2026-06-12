@@ -1,6 +1,6 @@
 ﻿import bcrypt from "bcrypt";
 import { login } from "../services/auth_service.js";
-import { Persona, Usuario } from "../models/index.js";
+import { Persona, Usuario } from "../models_v2/index.js";
 
 export async function loginController(req, res) {
   try {

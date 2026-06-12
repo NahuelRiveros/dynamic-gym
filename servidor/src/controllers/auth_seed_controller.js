@@ -1,6 +1,6 @@
 ﻿import bcrypt from "bcrypt";
 import { sequelize } from "../database/sequelize.js";
-import { Persona, Usuario, UsuarioRol, Rol } from "../models/index.js";
+import { Persona, Usuario, UsuarioRol, Rol } from "../models_v2/index.js";
 
 const normalizarEmail = (v) => String(v ?? "").trim().toLowerCase();
 const normalizarDocumento = (v) => String(v ?? "").replace(/[.\s]/g, "").trim();
@@ -21,11 +21,11 @@ async function crearUsuarioConRol({ email, password, nombre, apellido, documento
 
     let persona = await Persona.findOne({ where: { email: emailN }, transaction: t });
     if (!persona)
-      persona = await Persona.findOne({ where: { documento: Number(doc) }, transaction: t });
+      persona = await Persona.findOne({ where: { documento: doc }, transaction: t });
 
     if (!persona) {
       persona = await Persona.create(
-        { nombre, apellido, email: emailN, documento: Number(doc), actualizado_en: new Date() },
+        { nombre, apellido, email: emailN, documento: doc, actualizado_en: new Date() },
         { transaction: t }
       );
     }
