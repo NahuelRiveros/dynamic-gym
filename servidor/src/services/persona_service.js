@@ -49,10 +49,9 @@ export async function registrarPersonaConAlumno(data) {
 
     const alumno = await Alumno.create({
       persona_id:            persona.id,
-      plan_tipo_id:          null,
       estado_id:             ESTADO_PENDIENTE,
       fecha_registro:        hoy,
-      certificado_apt_fisica: null,
+      certificado_apt_fisica: false,
       actualizado_en:        hoy,
     }, { transaction: t });
 
