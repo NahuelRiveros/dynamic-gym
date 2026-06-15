@@ -35,7 +35,7 @@ export async function registrarPagoPorDni({
   monto_pagado,
   metodo_pago,
   usuario_id_cobro,
-  modificado_por = "SYSTEM",
+  modificado_por = null,
 }) {
   const dni = normalizarDocumento(documento);
 

@@ -102,7 +102,7 @@ export async function registrarPago(req, res, next) {
       monto_pagado: Number(monto_pagado),
       metodo_pago: metodo,
       usuario_id_cobro: req.user.usuario_id,
-      modificado_por: req.user?.email || "SYSTEM",
+      modificado_por: req.user?.usuario_id ?? null,
     });
 
     if (!resultado.ok) {
