@@ -58,6 +58,8 @@ export async function registrarIngresoPorDni({ dni }) {
     const planReciente = await Membresia.findOne({
       where: {
         alumno_id: alumno.id,
+        // fecha_fin >= hoy: el día de vencimiento es inclusive, el alumno
+        // mantiene acceso hasta el final de ese día (no hasta el día anterior).
         fecha_fin: { [Op.gte]: hoy },
       },
       order: [

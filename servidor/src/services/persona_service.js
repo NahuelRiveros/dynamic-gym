@@ -9,12 +9,7 @@ export async function registrarPersonaConAlumno(data) {
   const documento = normalizarDocumento(data.documento);
 
   return sequelize.transaction(async (t) => {
-    const wherePersona = { documento };
-    if (data.tipo_documento_id != null) {
-      wherePersona.tipo_documento_id = data.tipo_documento_id;
-    }
-
-    const existe = await Persona.findOne({ where: wherePersona, transaction: t });
+    const existe = await Persona.findOne({ where: { documento }, transaction: t });
     if (existe)
       return { ok: false, codigo: "DOCUMENTO_DUPLICADO", mensaje: "Ya existe una persona con ese documento" };
 

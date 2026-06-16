@@ -9,7 +9,6 @@ export function iniciarCronEstadoAlumnos() {
 
       const r = await actualizarEstadosAlumnosAutomatico({
         fuente: "AUTO_CRON",
-        modificado_por: "SYSTEM",
       });
 
       console.log(`✔ Estados actualizados. Cambios: ${r.total_cambios}`);
@@ -18,5 +17,5 @@ export function iniciarCronEstadoAlumnos() {
     }
   });
 
-  console.log("🟢 Cron de estados de alumnos iniciado (cada 1 hora)");
+  console.log("🟢 Cron de estados de alumnos iniciado (cada 10 minutos)");
 }

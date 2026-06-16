@@ -122,7 +122,7 @@ export async function registrarPagoPorDni({
     const estadoAnterior = Number(alumno.estado_id);
 
     await alumno.update(
-      { plan_tipo_id: tipoPlan.id, estado_id: ESTADO_HABILITADO },
+      { estado_id: ESTADO_HABILITADO },
       { transaction: t }
     );
 

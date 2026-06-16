@@ -31,6 +31,8 @@ function hoyArgentinaSoloDia() {
 function calcularVigencia(plan_fin) {
   const fechaFin = normalizarFechaSoloDia(plan_fin);
   if (!fechaFin) return false;
+  // El día de vencimiento (fecha_fin) cuenta como vigente: el alumno
+  // mantiene acceso hasta el final de ese día, no hasta el día anterior.
   return fechaFin >= hoyArgentinaSoloDia();
 }
 
@@ -54,7 +56,7 @@ function motivoCambio({ plan_id, plan_fin, ingresos_disponibles, nuevoEstado }) 
 
 export async function actualizarEstadosAlumnosAutomatico({
   fuente = "AUTO_CRON",
-  modificado_por = "SYSTEM",
+  modificado_por = null,
   limit = 5000,
 } = {}) {
   const t = await sequelize.transaction();
