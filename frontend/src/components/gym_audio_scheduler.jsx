@@ -6,6 +6,7 @@ const HORA_APERTURA = 9;
 const HORA_CIERRE = 22;
 const CHECK_MS = 10000;
 const INTERVALO_ORDEN_MIN = 25;    // revisar cada 10 segundos
+const GANANCIA_AUDIO = 2;          // amplificación vía Web Audio API (1 = volumen original, 2 = 200%)
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -28,14 +29,41 @@ export default function GymAudioScheduler() {
   const ordenAudioRef = useRef(null);
   const cierreAudioRef = useRef(null);
 
+  const audioCtxRef = useRef(null);
+  const ordenGainRef = useRef(null);
+  const cierreGainRef = useRef(null);
+
   const [audioHabilitado, setAudioHabilitado] = useState(false);
 
   const ultimaMarcaOrdenRef = useRef(null);
   const ultimaMarcaCierreRef = useRef(new Set());
 
+  function getAudioContext() {
+    if (!audioCtxRef.current) {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      audioCtxRef.current = new AudioContextClass();
+    }
+    return audioCtxRef.current;
+  }
+
+  // Conecta el <audio> a un GainNode para poder amplificar más allá del 100% nativo
+  function conectarGanancia(audioRef, gainRef) {
+    if (!audioRef.current || gainRef.current) return;
+    const ctx = getAudioContext();
+    const source = ctx.createMediaElementSource(audioRef.current);
+    const gainNode = ctx.createGain();
+    gainNode.gain.value = GANANCIA_AUDIO;
+    source.connect(gainNode);
+    gainNode.connect(ctx.destination);
+    gainRef.current = gainNode;
+  }
+
   async function reproducir(audioRef) {
     try {
       if (!audioRef.current) return;
+      if (audioCtxRef.current?.state === "suspended") {
+        await audioCtxRef.current.resume();
+      }
       audioRef.current.currentTime = 0;
       await audioRef.current.play();
     } catch (error) {
@@ -45,6 +73,10 @@ export default function GymAudioScheduler() {
 
   async function desbloquearAudio() {
     try {
+      conectarGanancia(ordenAudioRef, ordenGainRef);
+      conectarGanancia(cierreAudioRef, cierreGainRef);
+      await audioCtxRef.current?.resume();
+
       if (ordenAudioRef.current) {
         ordenAudioRef.current.muted = true;
         await ordenAudioRef.current.play();
