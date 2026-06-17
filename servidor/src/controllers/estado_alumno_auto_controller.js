@@ -8,10 +8,9 @@ import {
 export async function ActualizarEstadosAutomatico(req, res) {
   try {
     // si querés, del req.user sacás email del admin:
-    const modificado_por = req.user?.email || "SYSTEM";
     const r = await actualizarEstadosAlumnosAutomatico({
       fuente: "ADMIN_PANEL",
-      modificado_por,
+      modificado_por: req.user?.usuario_id ?? null,
       limit: 10000,
     });
 
@@ -157,7 +156,7 @@ export async function actualizarPlanVigenteAlumno(req, res, next) {
       fecha_fin,
       ingresos_disponibles:
         ingresos_disponibles == null ? null : Number(ingresos_disponibles),
-      modificado_por: req.user?.email || "SYSTEM",
+      modificado_por: req.user?.usuario_id ?? null,
     });
 
     if (!resultado.ok) {

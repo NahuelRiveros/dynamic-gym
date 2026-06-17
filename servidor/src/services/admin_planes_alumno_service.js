@@ -86,7 +86,7 @@ export async function actualizarPlanVigentePorDni({
   fecha_inicio,
   fecha_fin,
   ingresos_disponibles,
-  modificado_por = "SYSTEM",
+  modificado_por = null,
 }) {
   const dni = normalizarDocumento(documento);
 
