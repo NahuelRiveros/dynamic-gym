@@ -120,11 +120,15 @@ export default function PromocionesPage() {
   }
 
   async function handleCopiarNumeros() {
-    const r = await getNumerosWhatsApp(filtro);
-    if (r.numeros?.length > 0) {
-      navigator.clipboard.writeText(r.numeros.join("\n"));
-      setCopiado(true);
-      setTimeout(() => setCopiado(false), 2500);
+    try {
+      const r = await getNumerosWhatsApp(filtro);
+      if (r.numeros?.length > 0) {
+        await navigator.clipboard.writeText(r.numeros.join("\n"));
+        setCopiado(true);
+        setTimeout(() => setCopiado(false), 2500);
+      }
+    } catch {
+      // silencioso: el botón simplemente no cambia a "¡Copiado!"
     }
   }
 

@@ -88,7 +88,7 @@ export default function PlanesPage() {
       cerrarModal();
       await cargarPlanes();
     } catch (err) {
-      alert(err?.response?.data?.mensaje || "No se pudo guardar el plan");
+      setError(err?.response?.data?.mensaje || "No se pudo guardar el plan");
     } finally {
       setGuardando(false);
     }
@@ -102,7 +102,7 @@ export default function PlanesPage() {
       await cambiarEstadoPlan(plan.id, nuevoEstado);
       await cargarPlanes();
     } catch (err) {
-      alert(err?.response?.data?.mensaje || `No se pudo ${accion} el plan`);
+      setError(err?.response?.data?.mensaje || `No se pudo ${accion} el plan`);
     }
   }
 

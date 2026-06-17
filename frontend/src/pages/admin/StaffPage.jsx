@@ -32,6 +32,7 @@ export default function StaffPage() {
   const [modalPasswordAbierto, setModalPasswordAbierto] = useState(false);
   const [staffSeleccionado, setStaffSeleccionado]       = useState(null);
   const [guardando, setGuardando]           = useState(false);
+  const [errorAccion, setErrorAccion]       = useState("");
 
   async function cargarStaff() {
     try {
@@ -57,6 +58,7 @@ export default function StaffPage() {
   async function guardarStaff(payload) {
     try {
       setGuardando(true);
+      setErrorAccion("");
       if (staffSeleccionado?.gym_usuario_id) {
         await actualizarStaff(staffSeleccionado.gym_usuario_id, payload);
       } else {
@@ -65,7 +67,7 @@ export default function StaffPage() {
       cerrarFormModal();
       await cargarStaff();
     } catch (err) {
-      alert(err?.response?.data?.mensaje || "No se pudo guardar el staff");
+      setErrorAccion(err?.response?.data?.mensaje || "No se pudo guardar el staff");
     } finally {
       setGuardando(false);
     }
@@ -74,11 +76,12 @@ export default function StaffPage() {
   async function guardarPassword(payload) {
     try {
       setGuardando(true);
+      setErrorAccion("");
       await cambiarPasswordStaff(staffSeleccionado.gym_usuario_id, payload.password);
       cerrarPasswordModal();
       await cargarStaff();
     } catch (err) {
-      alert(err?.response?.data?.mensaje || "No se pudo cambiar la contraseña");
+      setErrorAccion(err?.response?.data?.mensaje || "No se pudo cambiar la contraseña");
     } finally {
       setGuardando(false);
     }
@@ -89,10 +92,11 @@ export default function StaffPage() {
     const accion = nuevoEstado ? "activar" : "desactivar";
     if (!window.confirm(`¿Seguro que querés ${accion} a ${usuario.gym_persona_nombre} ${usuario.gym_persona_apellido}?`)) return;
     try {
+      setErrorAccion("");
       await cambiarEstadoStaff(usuario.gym_usuario_id, nuevoEstado);
       await cargarStaff();
     } catch (err) {
-      alert(err?.response?.data?.mensaje || `No se pudo ${accion} el staff`);
+      setErrorAccion(err?.response?.data?.mensaje || `No se pudo ${accion} el staff`);
     }
   }
 
@@ -230,6 +234,9 @@ export default function StaffPage() {
         {/* ── ERROR ── */}
         {error && (
           <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+        )}
+        {errorAccion && (
+          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorAccion}</div>
         )}
 
         {/* ── TABLA ── */}
