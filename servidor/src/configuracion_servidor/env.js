@@ -26,9 +26,9 @@ export const env = {
   NODE_ENV: process.env.NODE_ENV || "development",
 
   // ── Base de datos ──────────────────────────────────────────────
-  // Render provee DATABASE_URL automáticamente.
-  // En local usá las variables individuales en servidor/.env
-  DATABASE_URL: process.env.DATABASE_URL || "",
+  // DATABASE_URL1: si está seteada, tiene prioridad (útil para migrar a Neon
+  // sin downtime — una vez verificado, renombrá a DATABASE_URL y borrá esta).
+  DATABASE_URL: process.env.DATABASE_URL1 || process.env.DATABASE_URL || "",
   DB_HOST:      process.env.DB_HOST      || "localhost",
   DB_PORT:      Number(process.env.DB_PORT || 5432),
   DB_NAME:      process.env.DB_NAME      || "dynamicgym",
