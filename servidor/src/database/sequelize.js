@@ -1,9 +1,9 @@
 import { Sequelize } from "sequelize";
 import { env } from "../configuracion_servidor/env.js";
 
+// Neon pooler no soporta search_path como parámetro de startup.
+// Se establece vía afterConnect para compatibilidad con pooler y conexión directa.
 const dialectOptions = {
-  // Establece search_path en cada nueva conexión antes de cualquier query
-  options: "-c search_path=gym_v3,public",
   ...(env.DB_SSL ? { ssl: { require: true, rejectUnauthorized: false } } : {}),
 };
 
@@ -31,6 +31,10 @@ export const sequelize = env.DATABASE_URL
       host: env.DB_HOST,
       port: env.DB_PORT,
     });
+
+sequelize.afterConnect(async (connection) => {
+  await connection.query("SET search_path TO gym_v3, public");
+});
 
 export async function conectarDB() {
   try {
