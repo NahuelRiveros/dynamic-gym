@@ -104,7 +104,7 @@ export async function registrarIngresoPorDni({ dni }) {
 
     // Evitar doble check-in el mismo día
     const [yaHoy] = await sequelize.query(
-      `SELECT id FROM ingreso WHERE membresia_id = :membresia_id AND fecha_ingreso = :fecha LIMIT 1`,
+      `SELECT id FROM gym_v3.ingreso WHERE membresia_id = :membresia_id AND fecha_ingreso = :fecha LIMIT 1`,
       {
         replacements: { membresia_id: planReciente.id, fecha: hoy },
         type: QueryTypes.SELECT,
@@ -122,7 +122,7 @@ export async function registrarIngresoPorDni({ dni }) {
 
     const [rows] = await sequelize.query(
       `
-      INSERT INTO ingreso (membresia_id, fecha_ingreso, hora_ingreso, creado_en)
+      INSERT INTO gym_v3.ingreso (membresia_id, fecha_ingreso, hora_ingreso, creado_en)
       VALUES (:fecha_id, :fecha, :hora, :fechaHora)
       RETURNING id, fecha_ingreso, hora_ingreso
       `,
@@ -143,7 +143,7 @@ export async function registrarIngresoPorDni({ dni }) {
 
     await sequelize.query(
       `
-      UPDATE membresia
+      UPDATE gym_v3.membresia
       SET ingresos_disponibles = :restantes, actualizado_en = :fechaHora
       WHERE id = :fecha_id
       `,

@@ -70,10 +70,10 @@ export async function actualizarEstadosAlumnosAutomatico({
         ult.fecha_inicio AS plan_inicio,
         ult.fecha_fin AS plan_fin,
         ult.ingresos_disponibles
-      FROM alumno a
+      FROM gym_v3.alumno a
       LEFT JOIN LATERAL (
         SELECT f.id, f.fecha_inicio, f.fecha_fin, f.ingresos_disponibles
-        FROM membresia f
+        FROM gym_v3.membresia f
         WHERE f.alumno_id = a.id
         ORDER BY f.id DESC
         LIMIT 1
@@ -103,7 +103,7 @@ export async function actualizarEstadosAlumnosAutomatico({
 
       await sequelize.query(
         `
-        UPDATE alumno
+        UPDATE gym_v3.alumno
         SET estado_id = :nuevo, actualizado_en = (now() AT TIME ZONE '${TZ_BA}')
         WHERE id = :alumno_id;
         `,
@@ -112,7 +112,7 @@ export async function actualizarEstadosAlumnosAutomatico({
 
       await sequelize.query(
         `
-        INSERT INTO alumno_estado_log (
+        INSERT INTO gym_v3.alumno_estado_log (
           alumno_id, estado_anterior_id, estado_nuevo_id, creado_en,
           motivo, fuente, modificado_por
         ) VALUES (

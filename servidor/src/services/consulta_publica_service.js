@@ -17,9 +17,9 @@ export async function consultarPlanPorDni(dni) {
       p.nombre AS gym_persona_nombre,
       p.apellido AS gym_persona_apellido,
       p.documento AS gym_persona_documento
-    FROM alumno a
-    JOIN persona p ON p.id = a.persona_id
-    LEFT JOIN alumno_estado ea ON ea.id = a.estado_id
+    FROM gym_v3.alumno a
+    JOIN gym_v3.persona p ON p.id = a.persona_id
+    LEFT JOIN gym_v3.alumno_estado ea ON ea.id = a.estado_id
     WHERE p.documento = :dni
     LIMIT 1;
   `;
@@ -38,7 +38,7 @@ export async function consultarPlanPorDni(dni) {
   const sqlPlan = `
     WITH fvig AS (
       SELECT f.id
-      FROM   membresia f
+      FROM   gym_v3.membresia f
       WHERE  f.alumno_id = :alumno_id
         AND  f.fecha_inicio <= CURRENT_DATE
         AND  f.fecha_fin    >= CURRENT_DATE
@@ -47,7 +47,7 @@ export async function consultarPlanPorDni(dni) {
     ),
     fult AS (
       SELECT f.id
-      FROM   membresia f
+      FROM   gym_v3.membresia f
       WHERE  f.alumno_id = :alumno_id
         AND  f.fecha_fin IS NOT NULL
       ORDER BY f.fecha_fin DESC, f.id DESC
@@ -63,8 +63,8 @@ export async function consultarPlanPorDni(dni) {
         ELSE false
       END AS vigente_hoy,
       (f.fecha_fin::date - CURRENT_DATE)::int AS dias_restantes
-    FROM   membresia f
-    LEFT JOIN plan_tipo tp ON tp.id = f.plan_tipo_id
+    FROM   gym_v3.membresia f
+    LEFT JOIN gym_v3.plan_tipo tp ON tp.id = f.plan_tipo_id
     WHERE  f.id = COALESCE((SELECT id FROM fvig),(SELECT id FROM fult))
     LIMIT 1;
   `;

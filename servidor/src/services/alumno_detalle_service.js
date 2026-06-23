@@ -16,9 +16,9 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
       p.email AS gym_persona_email,
       p.celular AS gym_persona_celular,
       p.fecha_nacimiento AS gym_persona_fechanacimiento
-    FROM alumno a
-    JOIN persona p ON p.id = a.persona_id
-    LEFT JOIN alumno_estado ea ON ea.id = a.estado_id
+    FROM gym_v3.alumno a
+    JOIN gym_v3.persona p ON p.id = a.persona_id
+    LEFT JOIN gym_v3.alumno_estado ea ON ea.id = a.estado_id
     WHERE a.id = :alumno_id
     LIMIT 1;
   `;
@@ -34,7 +34,7 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
   const sqlPlanActual = `
     WITH fvig AS (
       SELECT f.id
-      FROM membresia f
+      FROM gym_v3.membresia f
       WHERE f.alumno_id = :alumno_id
         AND f.fecha_inicio <= CURRENT_DATE
         AND f.fecha_fin >= CURRENT_DATE
@@ -43,7 +43,7 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
     ),
     fult AS (
       SELECT f.id
-      FROM membresia f
+      FROM gym_v3.membresia f
       WHERE f.alumno_id = :alumno_id
         AND f.fecha_fin IS NOT NULL
       ORDER BY f.fecha_fin DESC, f.id DESC
@@ -60,7 +60,7 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
       tp.descripcion AS tipoplan_desc,
       CASE WHEN (SELECT id FROM fvig) IS NOT NULL THEN true ELSE false END AS vigente_hoy
     FROM membresia f
-    LEFT JOIN plan_tipo tp ON tp.id = f.plan_tipo_id
+    LEFT JOIN gym_v3.plan_tipo tp ON tp.id = f.plan_tipo_id
     WHERE f.id = COALESCE((SELECT id FROM fvig),(SELECT id FROM fult))
     LIMIT 1;
   `;
@@ -82,7 +82,7 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
       f.plan_tipo_id AS tipoplan_id,
       tp.descripcion AS tipoplan_desc
     FROM membresia f
-    LEFT JOIN plan_tipo tp ON tp.id = f.plan_tipo_id
+    LEFT JOIN gym_v3.plan_tipo tp ON tp.id = f.plan_tipo_id
     WHERE f.alumno_id = :alumno_id
     ORDER BY f.fecha_fin DESC NULLS LAST, f.id DESC;
   `;

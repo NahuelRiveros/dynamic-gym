@@ -147,8 +147,8 @@ export async function obtenerAlumnosNuevos({ desde, hasta } = {}) {
       p.apellido AS gym_persona_apellido,
       p.documento AS gym_persona_documento,
       p.email AS gym_persona_email
-    FROM alumno a
-    INNER JOIN persona p ON p.id = a.persona_id
+    FROM gym_v3.alumno a
+    INNER JOIN gym_v3.persona p ON p.id = a.persona_id
     WHERE a.fecha_registro >= :desde
       AND a.fecha_registro < :hasta
     ORDER BY a.fecha_registro DESC;
@@ -174,10 +174,10 @@ export async function obtenerVencimientos({ dias = 7 } = {}) {
       f.fecha_inicio AS inicio,
       f.fecha_fin AS fin,
       f.ingresos_disponibles
-    FROM membresia f
-    INNER JOIN alumno a ON a.id = f.alumno_id
-    INNER JOIN persona p ON p.id = a.persona_id
-    LEFT JOIN plan_tipo tp ON tp.id = f.plan_tipo_id
+    FROM gym_v3.membresia f
+    INNER JOIN gym_v3.alumno a ON a.id = f.alumno_id
+    INNER JOIN gym_v3.persona p ON p.id = a.persona_id
+    LEFT JOIN gym_v3.plan_tipo tp ON tp.id = f.plan_tipo_id
     WHERE f.fecha_fin >= CURRENT_DATE
       AND f.fecha_fin <= CURRENT_DATE + (:dias::int)
     ORDER BY f.fecha_fin ASC;
@@ -197,7 +197,7 @@ export async function obtenerAsistencias({ desde, hasta } = {}) {
     SELECT
       di.fecha_ingreso AS dia,
       COUNT(*)::int AS total
-    FROM ingreso di
+    FROM gym_v3.ingreso di
     WHERE di.fecha_ingreso >= :desde::date
       AND di.fecha_ingreso < :hasta::date
     GROUP BY 1
@@ -227,7 +227,7 @@ export async function obtenerAsistenciasHoras({ desde, hasta } = {}) {
     SELECT
       EXTRACT(HOUR FROM di.hora_ingreso)::int AS hora,
       COUNT(*)::int AS total
-    FROM ingreso di
+    FROM gym_v3.ingreso di
     WHERE di.fecha_ingreso >= :desde::date
       AND di.fecha_ingreso < :hasta::date
     GROUP BY 1
@@ -298,7 +298,7 @@ export async function obtenerAsistenciasHoraDiaSemana({ desde, hasta } = {}) {
       EXTRACT(DOW FROM di.fecha_ingreso::date)::int AS dia_semana,
       EXTRACT(HOUR FROM di.hora_ingreso)::int       AS hora,
       COUNT(*)::int                                  AS total
-    FROM ingreso di
+    FROM gym_v3.ingreso di
     WHERE di.fecha_ingreso::date >= :desde::date
       AND di.fecha_ingreso::date <= :hasta::date
     GROUP BY 1, 2

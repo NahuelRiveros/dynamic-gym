@@ -147,7 +147,7 @@ export async function actualizarPlanVigentePorDni({
 
     await sequelize.query(
       `
-      INSERT INTO alumno_estado_log (
+      INSERT INTO gym_v3.alumno_estado_log (
         alumno_id, estado_anterior_id, estado_nuevo_id,
         motivo, fuente, modificado_por
       )

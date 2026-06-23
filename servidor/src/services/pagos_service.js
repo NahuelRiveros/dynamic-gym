@@ -129,7 +129,7 @@ export async function registrarPagoPorDni({
     if (estadoAnterior !== ESTADO_HABILITADO) {
       await sequelize.query(
         `
-        INSERT INTO alumno_estado_log (
+        INSERT INTO gym_v3.alumno_estado_log (
           alumno_id, estado_anterior_id, estado_nuevo_id,
           creado_en, motivo, fuente, modificado_por
         )
@@ -213,18 +213,18 @@ export async function previewPagoPorDni({ documento }) {
       flast.metodo_pago,
       flast.actualizado_en AS fecha_pago,
       tp.descripcion AS plan_tipo_desc
-    FROM persona p
-    LEFT JOIN alumno a ON a.persona_id = p.id
-    LEFT JOIN alumno_estado ea ON ea.id = a.estado_id
+    FROM gym_v3.persona p
+    LEFT JOIN gym_v3.alumno a ON a.persona_id = p.id
+    LEFT JOIN gym_v3.alumno_estado ea ON ea.id = a.estado_id
     LEFT JOIN LATERAL (
       SELECT f.id, f.fecha_inicio, f.fecha_fin, f.ingresos_disponibles,
              f.plan_tipo_id, f.monto_pagado, f.metodo_pago, f.actualizado_en
-      FROM membresia f
+      FROM gym_v3.membresia f
       WHERE f.alumno_id = a.id
       ORDER BY f.id DESC
       LIMIT 1
     ) flast ON TRUE
-    LEFT JOIN plan_tipo tp ON tp.id = flast.plan_tipo_id
+    LEFT JOIN gym_v3.plan_tipo tp ON tp.id = flast.plan_tipo_id
     WHERE p.documento = :dniNum
     LIMIT 1
   `;
