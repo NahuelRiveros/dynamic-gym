@@ -27,6 +27,7 @@ export async function registrarIngreso(req, res, next) {
         [
           "PLAN_VENCIDO_O_INEXISTENTE",
           "SIN_INGRESOS",
+          "YA_INGRESO_HOY",
         ].includes(r.codigo)
       ) {
         return res.status(409).json(r);

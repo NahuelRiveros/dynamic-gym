@@ -102,6 +102,24 @@ export async function registrarIngresoPorDni({ dni }) {
       };
     }
 
+    // Evitar doble check-in el mismo día
+    const [yaHoy] = await sequelize.query(
+      `SELECT id FROM ingreso WHERE membresia_id = :membresia_id AND fecha_ingreso = :fecha LIMIT 1`,
+      {
+        replacements: { membresia_id: planReciente.id, fecha: hoy },
+        type: QueryTypes.SELECT,
+        transaction: t,
+      }
+    );
+    if (yaHoy) {
+      return {
+        ok: false,
+        codigo: "YA_INGRESO_HOY",
+        mensaje: "El alumno ya registró su ingreso hoy",
+        alumno: { alumno_id: alumno.id, nombre: persona.nombre, apellido: persona.apellido },
+      };
+    }
+
     const [rows] = await sequelize.query(
       `
       INSERT INTO ingreso (membresia_id, fecha_ingreso, hora_ingreso, creado_en)

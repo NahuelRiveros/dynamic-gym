@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAlumnosListado, actualizarEstadosAlumnos } from "../../api/alumnos_api";
+import { useAuth } from "../../auth/auth_context.jsx";
 import { Users, RefreshCw, ChevronRight } from "lucide-react";
 import { formatearFechaAR } from "../../components/form/formatear_fecha";
 import DataGrid from "../../components/table/DataGrid";
@@ -106,6 +107,8 @@ const COLUMNS = [
 
 export default function ListaAlumnosPage() {
   const nav = useNavigate();
+  const { usuario } = useAuth();
+  const esAdmin = usuario?.roles?.includes("admin");
 
   const [planVigente, setPlanVigente] = useState("");
   const [busqueda, setBusqueda]       = useState("");
@@ -149,10 +152,8 @@ export default function ListaAlumnosPage() {
   async function actualizarYRecargar() {
     setCargando(true);
     setError(null);
-    try {
-      await actualizarEstadosAlumnos();
-    } catch {
-      // staff puede no tener permiso para actualizar estados; se recarga igual
+    if (esAdmin) {
+      try { await actualizarEstadosAlumnos(); } catch {}
     }
     try {
       await cargar();
