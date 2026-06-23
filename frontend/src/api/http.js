@@ -11,4 +11,19 @@ http.interceptors.request.use((config) => {
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+// Cuando el servidor responde 401 (token vencido o ausente), limpia la sesión
+// y redirige al login automáticamente desde cualquier página protegida.
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      localStorage.removeItem(authConfig.storageKey);
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.replace("/login");
+      }
+    }
+    return Promise.reject(error);
+  }
+);
  

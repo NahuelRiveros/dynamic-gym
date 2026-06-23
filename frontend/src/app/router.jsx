@@ -65,7 +65,9 @@ export const router = createBrowserRouter([
     path: "/register",
     element: (
       <AppLayout>
-        <RegisterAlumnoPage />
+        <ProtectedRoute roles={["admin", "staff"]}>
+          <RegisterAlumnoPage />
+        </ProtectedRoute>
       </AppLayout>
     ),
   },
