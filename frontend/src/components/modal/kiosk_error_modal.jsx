@@ -30,6 +30,11 @@ const MENSAJES = {
     titulo: "Ya ingresaste hoy",
     desc: "Tu ingreso ya fue registrado para el día de hoy.",
   },
+  // Errores técnicos — el cliente no necesita ver el detalle real
+  NO_AUTH:        { titulo: "Sistema no disponible", desc: "Consultá en recepción para registrar tu ingreso." },
+  TOKEN_INVALIDO: { titulo: "Sistema no disponible", desc: "Consultá en recepción para registrar tu ingreso." },
+  SIN_PERMISO:    { titulo: "Sistema no disponible", desc: "Consultá en recepción para registrar tu ingreso." },
+  ERROR:          { titulo: "Error del sistema",     desc: "No se pudo registrar el ingreso. Intentá de nuevo o consultá en recepción." },
 };
 
 export default function KioskErrorModal({ resp, onClose, autoCloseMs = 6000 }) {
@@ -56,7 +61,7 @@ export default function KioskErrorModal({ resp, onClose, autoCloseMs = 6000 }) {
   const porcentaje = (restante / totalSeg) * 100;
   const { titulo, desc } = MENSAJES[codigo] ?? {
     titulo: "Acceso denegado",
-    desc: resp.mensaje || "No se pudo registrar el ingreso.",
+    desc: "No se pudo registrar el ingreso. Consultá en recepción.",
   };
 
   return (

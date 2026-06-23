@@ -3,6 +3,7 @@ import { kioskIngreso } from "../api/kiosk_api.js";
 import { getAlumnosCumples } from "../api/alumnos_api.js";
 import KioskResultModal from "../components/modal/kiosk_result_modal.jsx";
 import KioskErrorModal from "../components/modal/kiosk_error_modal.jsx";
+import KioskLogModal, { guardarLogKiosk } from "../components/modal/kiosk_log_modal.jsx";
 import AlertasDropdown from "../components/alertas/AlertasDropdown.jsx";
 import { Dumbbell } from "lucide-react";
 
@@ -15,9 +16,12 @@ export default function KioskPage() {
   const [cargando, setCargando] = useState(false);
   const [mostrarOk, setMostrarOk] = useState(false);
   const [mostrarError, setMostrarError] = useState(false);
+  const [mostrarLog, setMostrarLog] = useState(false);
   const [hora, setHora] = useState("");
   const [cumples, setCumples] = useState({ hoy: [], proximos: [] });
   const inputRef = useRef(null);
+  const clicksBrandingRef = useRef(0);
+  const timerBrandingRef = useRef(null);
 
   const dniLimpio = dni.trim();
   const dniValido = dniLimpio.length >= 6;
@@ -61,6 +65,20 @@ export default function KioskPage() {
     return () => clearInterval(t);
   }, []);
 
+  // Activa el log con 5 clicks rápidos sobre el branding del pie
+  function onClickBranding() {
+    clicksBrandingRef.current += 1;
+    clearTimeout(timerBrandingRef.current);
+    if (clicksBrandingRef.current >= 5) {
+      clicksBrandingRef.current = 0;
+      setMostrarLog(true);
+    } else {
+      timerBrandingRef.current = setTimeout(() => {
+        clicksBrandingRef.current = 0;
+      }, 2000);
+    }
+  }
+
   function reproducirSonido(src) {
     try {
       const audio = new Audio(src);
@@ -86,18 +104,18 @@ export default function KioskPage() {
         setMostrarOk(true);
         setMostrarError(false);
       } else {
+        guardarLogKiosk({ dni: dniLimpio, codigo: r?.codigo || "ERROR", mensaje: r?.mensaje || "Respuesta negada" });
         reproducirSonido(sonidoError);
         setMostrarError(true);
         setMostrarOk(false);
       }
     } catch (err) {
       const data = err?.response?.data;
+      const codigo = data?.codigo || "ERROR";
+      const mensaje = data?.mensaje || err?.message || "Error inesperado";
+      guardarLogKiosk({ dni: dniLimpio, codigo, mensaje });
       reproducirSonido(sonidoError);
-      setResp({
-        ok: false,
-        codigo: data?.codigo || "ERROR",
-        mensaje: data?.mensaje || err?.message || "Error inesperado",
-      });
+      setResp({ ok: false, codigo, mensaje });
       setMostrarError(true);
       setMostrarOk(false);
       setDni("");
@@ -193,8 +211,12 @@ export default function KioskPage() {
 
         {/* ── BRANDING PIE ── */}
         <div className="pb-6 text-center">
-          <div className="h-px mx-8 bg-gradient-to-r from-transparent via-white/5 to-transparent mb-4" />
-          <span className="text-[11px] uppercase tracking-[0.3em] text-gray-700">
+          <div className="h-px mx-8 bg-linear-to-r from-transparent via-white/5 to-transparent mb-4" />
+          {/* 5 clicks rápidos abre el log de errores */}
+          <span
+            onClick={onClickBranding}
+            className="cursor-default text-[11px] uppercase tracking-[0.3em] text-gray-700 select-none"
+          >
             Dynamic Gym · Formosa
           </span>
         </div>
@@ -216,6 +238,10 @@ export default function KioskPage() {
           autoCloseMs={6000}
           onClose={() => { setMostrarError(false); setResp(null); }}
         />
+      )}
+
+      {mostrarLog && (
+        <KioskLogModal onClose={() => setMostrarLog(false)} />
       )}
     </>
   );
