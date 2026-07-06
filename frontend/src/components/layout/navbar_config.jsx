@@ -109,7 +109,7 @@ export const navbar_config = {
           label: "Volumen de avisos",
           to: "/admin/config-audio",
           requiereAuth: true,
-          roles: ["admin"],
+          roles: ["admin", "staff"],
         },
       ],
     },

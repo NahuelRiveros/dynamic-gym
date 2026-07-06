@@ -226,7 +226,7 @@ export const router = createBrowserRouter([
   path: "/admin/config-audio",
   element: (
     <AppLayout>
-      <ProtectedRoute roles={["admin"]}>
+      <ProtectedRoute roles={["admin", "staff"]}>
         <AudioConfigPage />
       </ProtectedRoute>
     </AppLayout>
