@@ -185,7 +185,7 @@ export default function HomePage() {
             Dynamic Gym · Formosa Capital
           </div>
 
-          <h1 className="dg-display dg-a2 text-[4.5rem] sm:text-8xl md:text-[9.5rem] lg:text-[11.5rem] font-black uppercase leading-[0.86] tracking-tight">
+          <h1 className="dg-display dg-a2 text-[3.35rem] sm:text-7xl md:text-[8rem] lg:text-[9.5rem] font-black uppercase leading-[0.86] tracking-tight">
             ROMPE
             <span className="block dg-shimmer-text drop-shadow-[0_0_50px_rgba(14,165,233,0.35)]">
               TUS LÍMITES
