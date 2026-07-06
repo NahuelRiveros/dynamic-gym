@@ -26,6 +26,7 @@ import {
   crearSuscripcionInicial,
   obtenerEstado,
   extenderSuscripcion,
+  fijarFechaVencimiento,
   registrarPago,
   historialPagos,
 } from "../services/software_suscripcion_service.js";
@@ -190,12 +191,29 @@ suscripcionRouter.post(
   async (req, res, next) => {
     try {
       const dias = Number(req.body?.dias);
-      if (!dias || dias <= 0 || dias > 365) {
-        return res.status(400).json({ ok: false, mensaje: "Enviá { \"dias\": N } con N entre 1 y 365" });
+      if (!dias || dias <= 0 || dias > 3650) {
+        return res.status(400).json({ ok: false, mensaje: "Enviá { \"dias\": N } con N entre 1 y 3650" });
       }
       const r = await extenderSuscripcion(dias);
       invalidarCacheSuscripcion();
       return res.json({ ok: true, mensaje: `Plan extendido ${dias} día(s)`, nuevo_vencimiento: r.nuevo_vencimiento });
+    } catch (err) { next(err); }
+  }
+);
+
+// POST /api/suscripcion/super/fijar   Body: { "fecha": "YYYY-MM-DD" }
+suscripcionRouter.post(
+  "/super/fijar",
+  requireAuth, requireRole("super_admin"),
+  async (req, res, next) => {
+    try {
+      const fecha = req.body?.fecha;
+      if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
+        return res.status(400).json({ ok: false, mensaje: "Enviá { \"fecha\": \"YYYY-MM-DD\" }" });
+      }
+      const r = await fijarFechaVencimiento(fecha);
+      invalidarCacheSuscripcion();
+      return res.json({ ok: true, mensaje: `Vencimiento fijado al ${fecha}`, nuevo_vencimiento: r.nuevo_vencimiento });
     } catch (err) { next(err); }
   }
 );

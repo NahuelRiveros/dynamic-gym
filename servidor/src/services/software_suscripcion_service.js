@@ -182,6 +182,27 @@ export async function registrarPago({ mpPaymentId, mpPreferenceId, monto, estado
   return { ok: true };
 }
 
+// ── Fijar fecha de vencimiento exacta ────────────────────────────────────────
+
+export async function fijarFechaVencimiento(fecha) {
+  const rows = await sequelize.query(
+    `SELECT id FROM public.software_suscripcion ORDER BY id LIMIT 1`,
+    { type: QueryTypes.SELECT }
+  );
+  if (!rows.length) return { ok: false, mensaje: "Sin suscripción" };
+
+  await sequelize.query(
+    `UPDATE public.software_suscripcion
+     SET fecha_vencimiento = :fecha,
+         actualizado_en    = NOW()
+     WHERE id = :id`,
+    { replacements: { fecha, id: rows[0].id }, type: QueryTypes.UPDATE }
+  );
+
+  console.log(`✅ Vencimiento fijado a: ${fecha}`);
+  return { ok: true, nuevo_vencimiento: fecha };
+}
+
 // ── Historial de pagos ────────────────────────────────────────────────────────
 
 export async function historialPagos(limit = 12) {

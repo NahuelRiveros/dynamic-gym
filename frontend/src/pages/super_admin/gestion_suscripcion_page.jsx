@@ -1,14 +1,23 @@
 import { useEffect, useState } from "react";
-import { Shield, RefreshCw, Clock, CalendarCheck, AlertTriangle, CheckCircle } from "lucide-react";
+import {
+  Shield, RefreshCw, Clock, CalendarCheck, AlertTriangle,
+  CheckCircle, Calendar, Plus,
+} from "lucide-react";
 import {
   getSuperEstadoSuscripcion,
   superExtenderSuscripcion,
+  superFijarFechaSuscripcion,
 } from "../../api/suscripcion_api.js";
 
-const OPCIONES_DIAS = [30, 60, 90, 180, 365];
+const OPCIONES_DIAS = [
+  { label: "30 días", dias: 30 },
+  { label: "60 días", dias: 60 },
+  { label: "90 días", dias: 90 },
+  { label: "6 meses", dias: 180 },
+  { label: "1 año",   dias: 365 },
+];
 
-// Mismo cálculo que el backend: base + N días → 1ro del mes siguiente
-function calcularNuevoVencimiento(fechaVenc, dias) {
+function calcularNuevoVencimientoExtender(fechaVenc, dias) {
   const hoy  = new Date();
   hoy.setHours(0, 0, 0, 0);
   const base = new Date(fechaVenc);
@@ -16,6 +25,7 @@ function calcularNuevoVencimiento(fechaVenc, dias) {
   const desde = base > hoy ? base : hoy;
   const calculada = new Date(desde);
   calculada.setDate(calculada.getDate() + dias);
+  // Redondea al 1ro del mes siguiente (igual que el backend)
   return new Date(calculada.getFullYear(), calculada.getMonth() + 1, 1);
 }
 
@@ -26,13 +36,29 @@ function fmtFecha(f) {
   });
 }
 
+function hoyISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
 export default function GestionSuscripcionPage() {
   const [estado, setEstado]       = useState(null);
   const [cargando, setCargando]   = useState(true);
   const [error, setError]         = useState("");
-  const [diasSel, setDiasSel]     = useState(30);
-  const [extendiendo, setExtendiendo] = useState(false);
   const [exito, setExito]         = useState("");
+
+  // Modo: "extender" | "fijar"
+  const [modo, setModo] = useState("extender");
+
+  // Extender
+  const [diasSel, setDiasSel]       = useState(30);
+  const [diasCustom, setDiasCustom] = useState("");
+  const [extendiendo, setExtendiendo] = useState(false);
+
+  // Fijar fecha
+  const [fechaFijar, setFechaFijar] = useState("");
+  const [fijando, setFijando]       = useState(false);
+
+  const diasEfectivos = diasCustom !== "" ? Number(diasCustom) : diasSel;
 
   async function cargarEstado() {
     try {
@@ -50,18 +76,42 @@ export default function GestionSuscripcionPage() {
   useEffect(() => { cargarEstado(); }, []);
 
   async function handleExtender() {
-    if (!window.confirm(`¿Extender la suscripción ${diasSel} días a partir del vencimiento actual?`)) return;
+    if (!diasEfectivos || diasEfectivos <= 0 || diasEfectivos > 3650) {
+      setError("Ingresá un número de días entre 1 y 3650");
+      return;
+    }
+    const previewFecha = estado?.fecha_vencimiento
+      ? fmtFecha(calcularNuevoVencimientoExtender(estado.fecha_vencimiento, diasEfectivos))
+      : "—";
+    if (!window.confirm(`¿Extender ${diasEfectivos} días? Nuevo vencimiento estimado: ${previewFecha}`)) return;
     try {
       setExtendiendo(true);
-      setExito("");
-      setError("");
-      const r = await superExtenderSuscripcion(diasSel);
+      setExito(""); setError("");
+      const r = await superExtenderSuscripcion(diasEfectivos);
       setExito(`Suscripción extendida. Nuevo vencimiento: ${fmtFecha(r.nuevo_vencimiento)}`);
+      setDiasCustom("");
       await cargarEstado();
     } catch (e) {
       setError(e?.response?.data?.mensaje || "Error al extender la suscripción");
     } finally {
       setExtendiendo(false);
+    }
+  }
+
+  async function handleFijar() {
+    if (!fechaFijar) { setError("Seleccioná una fecha"); return; }
+    if (!window.confirm(`¿Fijar el vencimiento exactamente al ${fmtFecha(fechaFijar)}?`)) return;
+    try {
+      setFijando(true);
+      setExito(""); setError("");
+      const r = await superFijarFechaSuscripcion(fechaFijar);
+      setExito(`Vencimiento fijado al ${fmtFecha(r.nuevo_vencimiento)}`);
+      setFechaFijar("");
+      await cargarEstado();
+    } catch (e) {
+      setError(e?.response?.data?.mensaje || "Error al fijar la fecha");
+    } finally {
+      setFijando(false);
     }
   }
 
@@ -98,7 +148,7 @@ export default function GestionSuscripcionPage() {
           </div>
         </div>
 
-        {/* ── ERROR / ÉXITO ── */}
+        {/* ── ALERTAS ── */}
         {error && (
           <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
             <AlertTriangle size={15} className="shrink-0" />
@@ -119,7 +169,6 @@ export default function GestionSuscripcionPage() {
           </div>
         ) : estado ? (
           <>
-            {/* alerta vencimiento próximo */}
             {(alertaDias || vencida) && (
               <div className={`flex items-start gap-3 rounded-2xl border px-4 py-3 ${
                 vencida
@@ -129,13 +178,12 @@ export default function GestionSuscripcionPage() {
                 <AlertTriangle size={16} className="mt-0.5 shrink-0" />
                 <div className="text-sm font-medium">
                   {vencida
-                    ? "La suscripción está VENCIDA. Los admins del gym ya no pueden registrar datos."
-                    : `Quedan solo ${diasRestantes} día(s) para el vencimiento. Extendé pronto.`}
+                    ? "La suscripción está VENCIDA."
+                    : `Quedan solo ${diasRestantes} día(s) para el vencimiento.`}
                 </div>
               </div>
             )}
 
-            {/* cards de estado */}
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               <InfoCard
                 icono={<CalendarCheck size={16} className="text-violet-600" />}
@@ -155,66 +203,169 @@ export default function GestionSuscripcionPage() {
                     : <CheckCircle size={16} className="text-emerald-500" />
                 }
                 titulo="Estado"
-                valor={vencida ? "Vencido" : (estado.estado ?? "Activo")}
+                valor={
+                  estado.estado === "activo"  ? "Activo"  :
+                  estado.estado === "aviso"   ? "Por vencer" :
+                  estado.estado === "gracia"  ? "En gracia" :
+                  estado.estado === "vencido" ? "Vencido" : (estado.estado ?? "—")
+                }
                 verde={!vencida}
                 rojo={vencida}
               />
             </div>
 
-            {/* datos del cliente */}
             {estado.cliente_nombre && (
               <div className="rounded-2xl border border-slate-200 bg-white px-5 py-3.5 text-sm text-slate-600 shadow-sm">
-                <span className="font-semibold text-slate-800">Cliente registrado: </span>
+                <span className="font-semibold text-slate-800">Cliente: </span>
                 {estado.cliente_nombre}
                 {estado.precio ? ` · $${Number(estado.precio).toLocaleString("es-AR")} / renovación` : ""}
               </div>
             )}
 
-            {/* ── EXTENDER ── */}
+            {/* ── PANEL DE RENOVACIÓN ── */}
             <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-              <div className="border-b border-slate-100 px-5 py-3.5">
-                <p className="text-sm font-bold text-slate-800">Extender suscripción</p>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Los días se suman al vencimiento actual, no a hoy.
-                </p>
-              </div>
-              <div className="px-5 py-4 space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {OPCIONES_DIAS.map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => setDiasSel(d)}
-                      className={[
-                        "rounded-xl px-4 py-2 text-sm font-bold transition",
-                        diasSel === d
-                          ? "bg-violet-600 text-white shadow-sm shadow-violet-500/30"
-                          : "border border-slate-200 text-slate-600 hover:bg-slate-50",
-                      ].join(" ")}
-                    >
-                      {d === 365 ? "1 año" : `${d} días`}
-                    </button>
-                  ))}
-                </div>
-
-                <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-xs text-slate-500">
-                  Nuevo vencimiento estimado:{" "}
-                  <span className="font-bold text-slate-800">
-                    {estado.fecha_vencimiento
-                      ? fmtFecha(calcularNuevoVencimiento(estado.fecha_vencimiento, diasSel))
-                      : "—"}
-                  </span>
-                </div>
-
+              {/* Tabs modo */}
+              <div className="flex border-b border-slate-100">
                 <button
                   type="button"
-                  onClick={handleExtender}
-                  disabled={extendiendo}
-                  className="w-full rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-violet-500/20 hover:bg-violet-500 transition disabled:opacity-60"
+                  onClick={() => { setModo("extender"); setError(""); setExito(""); }}
+                  className={[
+                    "flex flex-1 items-center justify-center gap-1.5 px-4 py-3 text-sm font-semibold transition",
+                    modo === "extender"
+                      ? "border-b-2 border-violet-600 text-violet-700 bg-violet-50/50"
+                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-50",
+                  ].join(" ")}
                 >
-                  {extendiendo ? "Extendiendo…" : `Extender ${diasSel === 365 ? "1 año" : `${diasSel} días`}`}
+                  <Plus size={13} />
+                  Extender días
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setModo("fijar"); setError(""); setExito(""); }}
+                  className={[
+                    "flex flex-1 items-center justify-center gap-1.5 px-4 py-3 text-sm font-semibold transition",
+                    modo === "fijar"
+                      ? "border-b-2 border-violet-600 text-violet-700 bg-violet-50/50"
+                      : "text-slate-500 hover:text-slate-700 hover:bg-slate-50",
+                  ].join(" ")}
+                >
+                  <Calendar size={13} />
+                  Fecha exacta
                 </button>
               </div>
+
+              {/* ── MODO EXTENDER ── */}
+              {modo === "extender" && (
+                <div className="px-5 py-4 space-y-4">
+                  <p className="text-xs text-slate-500">
+                    Los días se suman al vencimiento actual (o a hoy si ya venció).
+                    El sistema redondea al 1.° del mes siguiente.
+                  </p>
+
+                  {/* Presets */}
+                  <div className="flex flex-wrap gap-2">
+                    {OPCIONES_DIAS.map(({ label, dias }) => (
+                      <button
+                        key={dias}
+                        type="button"
+                        onClick={() => { setDiasSel(dias); setDiasCustom(""); }}
+                        className={[
+                          "rounded-xl px-4 py-2 text-sm font-bold transition",
+                          diasCustom === "" && diasSel === dias
+                            ? "bg-violet-600 text-white shadow-sm shadow-violet-500/30"
+                            : "border border-slate-200 text-slate-600 hover:bg-slate-50",
+                        ].join(" ")}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Custom días */}
+                  <div className="flex items-center gap-2">
+                    <label className="text-sm font-semibold text-slate-600 shrink-0">Otro:</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={3650}
+                      placeholder="ej. 45"
+                      value={diasCustom}
+                      onChange={(e) => setDiasCustom(e.target.value)}
+                      className={[
+                        "w-28 rounded-xl border px-3 py-2 text-sm font-semibold text-slate-800 outline-none transition",
+                        diasCustom !== ""
+                          ? "border-violet-400 ring-2 ring-violet-100"
+                          : "border-slate-200 focus:border-violet-400 focus:ring-2 focus:ring-violet-100",
+                      ].join(" ")}
+                    />
+                    <span className="text-sm text-slate-400">días</span>
+                  </div>
+
+                  {/* Preview */}
+                  <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-xs text-slate-500">
+                    Nuevo vencimiento estimado:{" "}
+                    <span className="font-bold text-slate-800">
+                      {estado.fecha_vencimiento && diasEfectivos > 0
+                        ? fmtFecha(calcularNuevoVencimientoExtender(estado.fecha_vencimiento, diasEfectivos))
+                        : "—"}
+                    </span>
+                    {diasEfectivos > 0 && (
+                      <span className="ml-2 text-violet-500 font-semibold">
+                        (+{diasEfectivos} días)
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleExtender}
+                    disabled={extendiendo || !diasEfectivos || diasEfectivos <= 0}
+                    className="w-full rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-violet-500/20 hover:bg-violet-500 transition disabled:opacity-60"
+                  >
+                    {extendiendo ? "Extendiendo…" : `Extender ${diasEfectivos > 0 ? diasEfectivos : "?"} días`}
+                  </button>
+                </div>
+              )}
+
+              {/* ── MODO FIJAR FECHA ── */}
+              {modo === "fijar" && (
+                <div className="px-5 py-4 space-y-4">
+                  <p className="text-xs text-slate-500">
+                    Fijá exactamente el día que vence la suscripción, sin redondeo.
+                  </p>
+
+                  <div className="space-y-2">
+                    <label className="block text-sm font-semibold text-slate-700">
+                      Fecha de vencimiento
+                    </label>
+                    <input
+                      type="date"
+                      min={hoyISO()}
+                      value={fechaFijar}
+                      onChange={(e) => setFechaFijar(e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 outline-none transition focus:border-violet-400 focus:ring-2 focus:ring-violet-100"
+                    />
+                  </div>
+
+                  {fechaFijar && (
+                    <div className="rounded-xl bg-slate-50 border border-slate-200 px-4 py-3 text-xs text-slate-500">
+                      Vencimiento exacto:{" "}
+                      <span className="font-bold text-slate-800">
+                        {fmtFecha(fechaFijar)}
+                      </span>
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={handleFijar}
+                    disabled={fijando || !fechaFijar}
+                    className="w-full rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-violet-500/20 hover:bg-violet-500 transition disabled:opacity-60"
+                  >
+                    {fijando ? "Fijando…" : "Fijar fecha"}
+                  </button>
+                </div>
+              )}
             </div>
           </>
         ) : null}

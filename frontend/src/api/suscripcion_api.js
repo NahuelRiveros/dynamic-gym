@@ -25,3 +25,8 @@ export async function superExtenderSuscripcion(dias) {
   const r = await http.post("/suscripcion/super/extender", { dias });
   return r.data;
 }
+
+export async function superFijarFechaSuscripcion(fecha) {
+  const r = await http.post("/suscripcion/super/fijar", { fecha });
+  return r.data;
+}
