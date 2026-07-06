@@ -15,10 +15,10 @@ export const SONIDOS_POR_DEFECTO = [
   { id: "ingreso_erroneo", nombre: "Alerta fuerte", src: ingresoErroneoSrc },
 ];
 
-export const GANANCIA_OPCIONES = [
-  { valor: 1, label: "x1", detalle: "Volumen nativo (100%)" },
-  { valor: 2, label: "x2", detalle: "Amplificado (200%)" },
-];
+// Volumen expresado como porcentaje: 100 = volumen nativo, 300 = amplificado x3.
+export const GANANCIA_MINIMO_PCT = 0;
+export const GANANCIA_MAXIMO_PCT = 300;
+export const GANANCIA_PASO_PCT = 5;
 
 export const INTERVALO_MINIMO_MIN = 1;
 export const INTERVALO_MAXIMO_MIN = 180;
@@ -26,7 +26,7 @@ export const INTERVALO_MAXIMO_MIN = 180;
 export const AVISO_CONFIG_DEFAULT = {
   habilitado: true,
   intervaloMinutos: 25,
-  ganancia: 2,
+  gananciaPct: 200,
   sonidoId: "orden_gym",       // referencia a SONIDOS_POR_DEFECTO, se usa si no hay sonido personalizado
   sonidoCustomNombre: null,
   sonidoCustomDataUrl: null,   // si está seteado, tiene prioridad sobre sonidoId
@@ -36,7 +36,15 @@ export function getAvisoConfig() {
   try {
     const raw = localStorage.getItem(AVISO_CONFIG_STORAGE_KEY);
     if (!raw) return { ...AVISO_CONFIG_DEFAULT };
-    return { ...AVISO_CONFIG_DEFAULT, ...JSON.parse(raw) };
+    const parsed = JSON.parse(raw);
+
+    // Migración: la config anterior guardaba "ganancia" como multiplicador (1 o 2).
+    if (parsed.gananciaPct === undefined && typeof parsed.ganancia === "number") {
+      parsed.gananciaPct = Math.round(parsed.ganancia * 100);
+      delete parsed.ganancia;
+    }
+
+    return { ...AVISO_CONFIG_DEFAULT, ...parsed };
   } catch {
     return { ...AVISO_CONFIG_DEFAULT };
   }

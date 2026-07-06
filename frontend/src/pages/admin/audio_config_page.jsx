@@ -3,7 +3,9 @@ import { Volume2, PlayCircle, Upload, Trash2, RotateCcw } from "lucide-react";
 import {
   AVISO_CONFIG_DEFAULT,
   SONIDOS_POR_DEFECTO,
-  GANANCIA_OPCIONES,
+  GANANCIA_MINIMO_PCT,
+  GANANCIA_MAXIMO_PCT,
+  GANANCIA_PASO_PCT,
   INTERVALO_MINIMO_MIN,
   INTERVALO_MAXIMO_MIN,
   getAvisoConfig,
@@ -41,8 +43,8 @@ export default function AudioConfigPage() {
   }
 
   useEffect(() => {
-    if (gainRef.current) gainRef.current.gain.value = config.ganancia;
-  }, [config.ganancia]);
+    if (gainRef.current) gainRef.current.gain.value = config.gananciaPct / 100;
+  }, [config.gananciaPct]);
 
   function actualizar(parcial) {
     setConfig(setAvisoConfig(parcial));
@@ -53,8 +55,8 @@ export default function AudioConfigPage() {
     actualizar({ sonidoId: id, sonidoCustomDataUrl: null, sonidoCustomNombre: null });
   }
 
-  function elegirGanancia(valor) {
-    actualizar({ ganancia: valor });
+  function onGananciaChange(event) {
+    actualizar({ gananciaPct: Number(event.target.value) });
   }
 
   function onIntervaloChange(event) {
@@ -105,7 +107,7 @@ export default function AudioConfigPage() {
   async function probarSonido() {
     try {
       conectarGanancia();
-      if (gainRef.current) gainRef.current.gain.value = config.ganancia;
+      if (gainRef.current) gainRef.current.gain.value = config.gananciaPct / 100;
       if (audioCtxRef.current?.state === "suspended") {
         await audioCtxRef.current.resume();
       }
@@ -244,26 +246,31 @@ export default function AudioConfigPage() {
 
         {/* ── VOLUMEN ── */}
         <div className="rounded-2xl border border-slate-200 bg-white p-5 space-y-4">
-          <h2 className="text-sm font-bold text-slate-700">Volumen</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-slate-700">Volumen</h2>
+            <span className="text-sm font-extrabold text-blue-700">
+              {config.gananciaPct}%
+              <span className="ml-1 text-xs font-medium text-slate-400">
+                (x{(config.gananciaPct / 100).toFixed(2)})
+              </span>
+            </span>
+          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {GANANCIA_OPCIONES.map((opcion) => {
-              const activo = config.ganancia === opcion.valor;
-              return (
-                <button
-                  key={opcion.valor}
-                  onClick={() => elegirGanancia(opcion.valor)}
-                  className={`rounded-xl border-2 px-4 py-4 text-center transition ${
-                    activo ? "border-blue-600 bg-blue-50" : "border-slate-200 hover:border-slate-300"
-                  }`}
-                >
-                  <span className={`block text-2xl font-extrabold ${activo ? "text-blue-700" : "text-slate-500"}`}>
-                    {opcion.label}
-                  </span>
-                  <span className="block text-xs font-medium text-slate-400 mt-1">{opcion.detalle}</span>
-                </button>
-              );
-            })}
+          <div className="space-y-1.5">
+            <input
+              type="range"
+              min={GANANCIA_MINIMO_PCT}
+              max={GANANCIA_MAXIMO_PCT}
+              step={GANANCIA_PASO_PCT}
+              value={config.gananciaPct}
+              onChange={onGananciaChange}
+              className="w-full accent-blue-600"
+            />
+            <div className="flex justify-between text-[10px] font-medium text-slate-400">
+              <span>0%</span>
+              <span>100% (nativo)</span>
+              <span>300%</span>
+            </div>
           </div>
 
           <button

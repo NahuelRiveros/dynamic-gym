@@ -54,7 +54,7 @@ export default function GymAudioScheduler() {
     const ctx = getAudioContext();
     const source = ctx.createMediaElementSource(ordenAudioRef.current);
     const gainNode = ctx.createGain();
-    gainNode.gain.value = config.ganancia;
+    gainNode.gain.value = config.gananciaPct / 100;
     source.connect(gainNode);
     gainNode.connect(ctx.destination);
     ordenGainRef.current = gainNode;
@@ -94,8 +94,8 @@ export default function GymAudioScheduler() {
 
   // Mantiene sincronizada la ganancia con lo elegido en el panel de Admin.
   useEffect(() => {
-    if (ordenGainRef.current) ordenGainRef.current.gain.value = config.ganancia;
-  }, [config.ganancia]);
+    if (ordenGainRef.current) ordenGainRef.current.gain.value = config.gananciaPct / 100;
+  }, [config.gananciaPct]);
 
   // Escucha cambios de configuración: en esta pestaña (evento custom) y en otras (evento storage).
   useEffect(() => {
