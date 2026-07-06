@@ -38,10 +38,8 @@ export async function verificarSuscripcion(req, res, next) {
       const authHeader = req.headers["authorization"] || "";
       if (authHeader.startsWith("Bearer ")) {
         try {
-          const payload = jwt.verify(authHeader.slice(7), env.JWT_SECRET);
-          if (Array.isArray(payload.roles) && payload.roles.includes("admin")) {
-            return next();
-          }
+          jwt.verify(authHeader.slice(7), env.JWT_SECRET);
+          return next();
         } catch {
           // token inválido/expirado → caer al bloqueo normal
         }
