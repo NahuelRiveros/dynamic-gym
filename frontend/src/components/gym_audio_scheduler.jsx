@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import ordenGymSrc from "../sounds/OrdenGym.m4a";
 //import cierreGymSrc from "../sounds/CierreGym.m4a";
+import {
+  AUDIO_GAIN_EVENT,
+  AUDIO_GAIN_STORAGE_KEY,
+  getGananciaAudio,
+} from "../config/audio_config";
 
 const HORA_APERTURA = 9;
 const HORA_CIERRE = 22;
 const CHECK_MS = 10000;
 const INTERVALO_ORDEN_MIN = 25;    // revisar cada 10 segundos
-const GANANCIA_AUDIO = 2;          // amplificación vía Web Audio API (1 = volumen original, 2 = 200%)
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -34,6 +38,7 @@ export default function GymAudioScheduler() {
   const cierreGainRef = useRef(null);
 
   const [audioHabilitado, setAudioHabilitado] = useState(false);
+  const [ganancia, setGanancia] = useState(getGananciaAudio());
 
   const ultimaMarcaOrdenRef = useRef(null);
   const ultimaMarcaCierreRef = useRef(new Set());
@@ -52,7 +57,7 @@ export default function GymAudioScheduler() {
     const ctx = getAudioContext();
     const source = ctx.createMediaElementSource(audioRef.current);
     const gainNode = ctx.createGain();
-    gainNode.gain.value = GANANCIA_AUDIO;
+    gainNode.gain.value = ganancia;
     source.connect(gainNode);
     gainNode.connect(ctx.destination);
     gainRef.current = gainNode;
@@ -98,6 +103,29 @@ export default function GymAudioScheduler() {
       console.warn("Audio bloqueado por el navegador:", error?.message);
     }
   }
+
+  // Mantiene sincronizada la ganancia con lo elegido en el panel de Admin,
+  // tanto en esta pestaña (evento custom) como en otras (evento storage).
+  useEffect(() => {
+    if (ordenGainRef.current) ordenGainRef.current.gain.value = ganancia;
+    if (cierreGainRef.current) cierreGainRef.current.gain.value = ganancia;
+  }, [ganancia]);
+
+  useEffect(() => {
+    const onGananciaChange = (event) => {
+      setGanancia(typeof event.detail === "number" ? event.detail : getGananciaAudio());
+    };
+    const onStorage = (event) => {
+      if (event.key === AUDIO_GAIN_STORAGE_KEY) setGanancia(getGananciaAudio());
+    };
+
+    window.addEventListener(AUDIO_GAIN_EVENT, onGananciaChange);
+    window.addEventListener("storage", onStorage);
+    return () => {
+      window.removeEventListener(AUDIO_GAIN_EVENT, onGananciaChange);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, []);
 
   useEffect(() => {
     const onFirstInteraction = () => {

@@ -25,6 +25,7 @@ import PagoExitosoPage from "../pages/pago_exitoso_page.jsx";
 import PagoFallidoPage from "../pages/pago_fallido_page.jsx";
 import PromocionesPage from "../pages/admin/promociones_page.jsx";
 import GestionSuscripcionPage from "../pages/super_admin/gestion_suscripcion_page.jsx";
+import AudioConfigPage from "../pages/admin/audio_config_page.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -217,6 +218,16 @@ export const router = createBrowserRouter([
     <AppLayout>
       <ProtectedRoute roles={["admin"]}>
         <PromocionesPage />
+      </ProtectedRoute>
+    </AppLayout>
+  ),
+},
+{
+  path: "/admin/config-audio",
+  element: (
+    <AppLayout>
+      <ProtectedRoute roles={["admin"]}>
+        <AudioConfigPage />
       </ProtectedRoute>
     </AppLayout>
   ),
