@@ -59,7 +59,7 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
       f.plan_tipo_id AS tipoplan_id,
       tp.descripcion AS tipoplan_desc,
       CASE WHEN (SELECT id FROM fvig) IS NOT NULL THEN true ELSE false END AS vigente_hoy
-    FROM membresia f
+    FROM gym_v3.membresia f
     LEFT JOIN gym_v3.plan_tipo tp ON tp.id = f.plan_tipo_id
     WHERE f.id = COALESCE((SELECT id FROM fvig),(SELECT id FROM fult))
     LIMIT 1;
@@ -81,7 +81,7 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
       f.ingresos_disponibles,
       f.plan_tipo_id AS tipoplan_id,
       tp.descripcion AS tipoplan_desc
-    FROM membresia f
+    FROM gym_v3.membresia f
     LEFT JOIN gym_v3.plan_tipo tp ON tp.id = f.plan_tipo_id
     WHERE f.alumno_id = :alumno_id
     ORDER BY f.fecha_fin DESC NULLS LAST, f.id DESC;

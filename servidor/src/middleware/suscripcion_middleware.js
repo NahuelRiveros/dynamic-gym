@@ -1,4 +1,6 @@
+import jwt from "jsonwebtoken";
 import { obtenerEstado } from "../services/software_suscripcion_service.js";
+import { env } from "../configuracion_servidor/env.js";
 
 // ── Cache en memoria — evita golpear la DB en cada request ───────────────────
 let _cache   = null;
@@ -32,6 +34,18 @@ export async function verificarSuscripcion(req, res, next) {
     }
 
     if (_cache?.bloqueado) {
+      // Admin siempre puede operar aunque la suscripción esté vencida
+      const authHeader = req.headers["authorization"] || "";
+      if (authHeader.startsWith("Bearer ")) {
+        try {
+          const payload = jwt.verify(authHeader.slice(7), env.JWT_SECRET);
+          if (Array.isArray(payload.roles) && payload.roles.includes("admin")) {
+            return next();
+          }
+        } catch {
+          // token inválido/expirado → caer al bloqueo normal
+        }
+      }
       return res.status(402).json({
         ok:      false,
         codigo:  "SUSCRIPCION_VENCIDA",
