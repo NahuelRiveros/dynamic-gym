@@ -1,23 +1,56 @@
-// Configuración del volumen de los avisos sonoros del gym.
+// Configuración del aviso sonoro periódico del gym: sonido, volumen y frecuencia.
 // Se guarda en localStorage porque es una preferencia por dispositivo
 // (el equipo físico que reproduce el sonido en el local), no del usuario logueado.
 
-export const AUDIO_GAIN_STORAGE_KEY = "gym_audio_ganancia";
-export const AUDIO_GAIN_EVENT = "gym-audio-ganancia-changed";
-export const AUDIO_GAIN_DEFAULT = 2;
+import ordenGymSrc from "../sounds/OrdenGym.m4a";
+import ingresoCorrectoSrc from "../sounds/IngresoCorrecto.m4a";
+import ingresoErroneoSrc from "../sounds/IngresoErroneo.m4a";
 
-export const AUDIO_GAIN_OPCIONES = [
+export const AVISO_CONFIG_STORAGE_KEY = "gym_aviso_config";
+export const AVISO_CONFIG_EVENT = "gym-aviso-config-changed";
+
+export const SONIDOS_POR_DEFECTO = [
+  { id: "orden_gym", nombre: "Orden del gym (clásico)", src: ordenGymSrc },
+  { id: "ingreso_correcto", nombre: "Campana suave", src: ingresoCorrectoSrc },
+  { id: "ingreso_erroneo", nombre: "Alerta fuerte", src: ingresoErroneoSrc },
+];
+
+export const GANANCIA_OPCIONES = [
   { valor: 1, label: "x1", detalle: "Volumen nativo (100%)" },
   { valor: 2, label: "x2", detalle: "Amplificado (200%)" },
 ];
 
-export function getGananciaAudio() {
-  const raw = Number(localStorage.getItem(AUDIO_GAIN_STORAGE_KEY));
-  const esValida = AUDIO_GAIN_OPCIONES.some((o) => o.valor === raw);
-  return esValida ? raw : AUDIO_GAIN_DEFAULT;
+export const INTERVALO_MINIMO_MIN = 1;
+export const INTERVALO_MAXIMO_MIN = 180;
+
+export const AVISO_CONFIG_DEFAULT = {
+  habilitado: true,
+  intervaloMinutos: 25,
+  ganancia: 2,
+  sonidoId: "orden_gym",       // referencia a SONIDOS_POR_DEFECTO, se usa si no hay sonido personalizado
+  sonidoCustomNombre: null,
+  sonidoCustomDataUrl: null,   // si está seteado, tiene prioridad sobre sonidoId
+};
+
+export function getAvisoConfig() {
+  try {
+    const raw = localStorage.getItem(AVISO_CONFIG_STORAGE_KEY);
+    if (!raw) return { ...AVISO_CONFIG_DEFAULT };
+    return { ...AVISO_CONFIG_DEFAULT, ...JSON.parse(raw) };
+  } catch {
+    return { ...AVISO_CONFIG_DEFAULT };
+  }
 }
 
-export function setGananciaAudio(valor) {
-  localStorage.setItem(AUDIO_GAIN_STORAGE_KEY, String(valor));
-  window.dispatchEvent(new CustomEvent(AUDIO_GAIN_EVENT, { detail: valor }));
+export function setAvisoConfig(parcial) {
+  const nuevo = { ...getAvisoConfig(), ...parcial };
+  localStorage.setItem(AVISO_CONFIG_STORAGE_KEY, JSON.stringify(nuevo));
+  window.dispatchEvent(new CustomEvent(AVISO_CONFIG_EVENT, { detail: nuevo }));
+  return nuevo;
+}
+
+export function getSonidoSrc(config) {
+  if (config.sonidoCustomDataUrl) return config.sonidoCustomDataUrl;
+  const encontrado = SONIDOS_POR_DEFECTO.find((s) => s.id === config.sonidoId);
+  return (encontrado || SONIDOS_POR_DEFECTO[0]).src;
 }

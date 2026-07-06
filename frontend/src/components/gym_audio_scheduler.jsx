@@ -1,16 +1,14 @@
 import { useEffect, useRef, useState } from "react";
-import ordenGymSrc from "../sounds/OrdenGym.m4a";
-//import cierreGymSrc from "../sounds/CierreGym.m4a";
 import {
-  AUDIO_GAIN_EVENT,
-  AUDIO_GAIN_STORAGE_KEY,
-  getGananciaAudio,
+  AVISO_CONFIG_EVENT,
+  AVISO_CONFIG_STORAGE_KEY,
+  getAvisoConfig,
+  getSonidoSrc,
 } from "../config/audio_config";
 
 const HORA_APERTURA = 9;
 const HORA_CIERRE = 22;
 const CHECK_MS = 10000;
-const INTERVALO_ORDEN_MIN = 25;    // revisar cada 10 segundos
 
 function pad(n) {
   return String(n).padStart(2, "0");
@@ -31,17 +29,16 @@ function getNowParts() {
 
 export default function GymAudioScheduler() {
   const ordenAudioRef = useRef(null);
-  const cierreAudioRef = useRef(null);
 
   const audioCtxRef = useRef(null);
   const ordenGainRef = useRef(null);
-  const cierreGainRef = useRef(null);
 
   const [audioHabilitado, setAudioHabilitado] = useState(false);
-  const [ganancia, setGanancia] = useState(getGananciaAudio());
+  const [config, setConfig] = useState(getAvisoConfig());
 
   const ultimaMarcaOrdenRef = useRef(null);
-  const ultimaMarcaCierreRef = useRef(new Set());
+
+  const sonidoSrc = getSonidoSrc(config);
 
   function getAudioContext() {
     if (!audioCtxRef.current) {
@@ -52,25 +49,25 @@ export default function GymAudioScheduler() {
   }
 
   // Conecta el <audio> a un GainNode para poder amplificar más allá del 100% nativo
-  function conectarGanancia(audioRef, gainRef) {
-    if (!audioRef.current || gainRef.current) return;
+  function conectarGanancia() {
+    if (!ordenAudioRef.current || ordenGainRef.current) return;
     const ctx = getAudioContext();
-    const source = ctx.createMediaElementSource(audioRef.current);
+    const source = ctx.createMediaElementSource(ordenAudioRef.current);
     const gainNode = ctx.createGain();
-    gainNode.gain.value = ganancia;
+    gainNode.gain.value = config.ganancia;
     source.connect(gainNode);
     gainNode.connect(ctx.destination);
-    gainRef.current = gainNode;
+    ordenGainRef.current = gainNode;
   }
 
-  async function reproducir(audioRef) {
+  async function reproducir() {
     try {
-      if (!audioRef.current) return;
+      if (!ordenAudioRef.current) return;
       if (audioCtxRef.current?.state === "suspended") {
         await audioCtxRef.current.resume();
       }
-      audioRef.current.currentTime = 0;
-      await audioRef.current.play();
+      ordenAudioRef.current.currentTime = 0;
+      await ordenAudioRef.current.play();
     } catch (error) {
       console.warn("No se pudo reproducir el audio:", error?.message);
     }
@@ -78,8 +75,7 @@ export default function GymAudioScheduler() {
 
   async function desbloquearAudio() {
     try {
-      conectarGanancia(ordenAudioRef, ordenGainRef);
-      conectarGanancia(cierreAudioRef, cierreGainRef);
+      conectarGanancia();
       await audioCtxRef.current?.resume();
 
       if (ordenAudioRef.current) {
@@ -90,39 +86,30 @@ export default function GymAudioScheduler() {
         ordenAudioRef.current.muted = false;
       }
 
-      if (cierreAudioRef.current) {
-        cierreAudioRef.current.muted = true;
-        await cierreAudioRef.current.play();
-        cierreAudioRef.current.pause();
-        cierreAudioRef.current.currentTime = 0;
-        cierreAudioRef.current.muted = false;
-      }
-
       setAudioHabilitado(true);
     } catch (error) {
       console.warn("Audio bloqueado por el navegador:", error?.message);
     }
   }
 
-  // Mantiene sincronizada la ganancia con lo elegido en el panel de Admin,
-  // tanto en esta pestaña (evento custom) como en otras (evento storage).
+  // Mantiene sincronizada la ganancia con lo elegido en el panel de Admin.
   useEffect(() => {
-    if (ordenGainRef.current) ordenGainRef.current.gain.value = ganancia;
-    if (cierreGainRef.current) cierreGainRef.current.gain.value = ganancia;
-  }, [ganancia]);
+    if (ordenGainRef.current) ordenGainRef.current.gain.value = config.ganancia;
+  }, [config.ganancia]);
 
+  // Escucha cambios de configuración: en esta pestaña (evento custom) y en otras (evento storage).
   useEffect(() => {
-    const onGananciaChange = (event) => {
-      setGanancia(typeof event.detail === "number" ? event.detail : getGananciaAudio());
+    const onConfigChange = (event) => {
+      setConfig(event.detail && typeof event.detail === "object" ? event.detail : getAvisoConfig());
     };
     const onStorage = (event) => {
-      if (event.key === AUDIO_GAIN_STORAGE_KEY) setGanancia(getGananciaAudio());
+      if (event.key === AVISO_CONFIG_STORAGE_KEY) setConfig(getAvisoConfig());
     };
 
-    window.addEventListener(AUDIO_GAIN_EVENT, onGananciaChange);
+    window.addEventListener(AVISO_CONFIG_EVENT, onConfigChange);
     window.addEventListener("storage", onStorage);
     return () => {
-      window.removeEventListener(AUDIO_GAIN_EVENT, onGananciaChange);
+      window.removeEventListener(AVISO_CONFIG_EVENT, onConfigChange);
       window.removeEventListener("storage", onStorage);
     };
   }, []);
@@ -148,89 +135,56 @@ export default function GymAudioScheduler() {
 
   useEffect(() => {
     function checkAudios() {
-  if (!audioHabilitado) return;
+      if (!audioHabilitado || !config.habilitado) return;
 
-  const { fechaKey, minutoDelDia, hora, minuto, now } = getNowParts();
+      const { fechaKey, minutoDelDia, hora, minuto, now } = getNowParts();
 
-  const aperturaMin = HORA_APERTURA * 60;
-  const cierreMin = HORA_CIERRE * 60;
+      const aperturaMin = HORA_APERTURA * 60;
+      const cierreMin = HORA_CIERRE * 60;
+      const intervaloMin = config.intervaloMinutos > 0 ? config.intervaloMinutos : 25;
 
-  // 🔥 LOG TIEMPO ACTUAL
-  console.log(
-    `🕒 Hora actual: ${hora}:${pad(minuto)} | Minuto del día: ${minutoDelDia}`
-  );
+      console.log(
+        `🕒 Hora actual: ${hora}:${pad(minuto)} | Minuto del día: ${minutoDelDia}`
+      );
 
-  if (minutoDelDia < aperturaMin || minutoDelDia >= cierreMin) {
-    console.log("🚫 Fuera de horario del gym");
-    return;
-  }
+      if (minutoDelDia < aperturaMin || minutoDelDia >= cierreMin) {
+        console.log("🚫 Fuera de horario del gym");
+        return;
+      }
 
-  const minutosDesdeApertura = minutoDelDia - aperturaMin;
+      const minutosDesdeApertura = minutoDelDia - aperturaMin;
 
-  // ⏳ CALCULAR CUÁNTO FALTA PARA EL PRÓXIMO ORDEN
-  const resto = minutosDesdeApertura % INTERVALO_ORDEN_MIN;
-  const faltanMin = resto === 0 ? 0 : INTERVALO_ORDEN_MIN - resto;
+      const resto = minutosDesdeApertura % intervaloMin;
+      const faltanMin = resto === 0 ? 0 : intervaloMin - resto;
 
-  const segundos = now.getSeconds();
-  const faltanSeg = faltanMin * 60 - segundos;
+      const segundos = now.getSeconds();
+      const faltanSeg = faltanMin * 60 - segundos;
 
-  console.log(
-    `⏳ Próximo audio en: ${faltanMin} min (${faltanSeg} seg)`
-  );
+      console.log(
+        `⏳ Próximo audio en: ${faltanMin} min (${faltanSeg} seg)`
+      );
 
-  // 🔔 AUDIO DE ORDEN
-  if (minutosDesdeApertura % INTERVALO_ORDEN_MIN === 0) {
-    const marcaOrden = `${fechaKey}-${minutoDelDia}-orden`;
+      if (minutosDesdeApertura % intervaloMin === 0) {
+        const marcaOrden = `${fechaKey}-${minutoDelDia}-orden`;
 
-    if (ultimaMarcaOrdenRef.current !== marcaOrden) {
-      console.log("🔊 Reproduciendo audio ORDEN");
-      ultimaMarcaOrdenRef.current = marcaOrden;
-      reproducir(ordenAudioRef);
-    }
-  }
-
-  // 🔔 AUDIO DE CIERRE
-  const marcasCierre = [
-    cierreMin - 30,
-    cierreMin - 15,
-    cierreMin - 5,
-  ];
-
-  marcasCierre.forEach((minutoObjetivo) => {
-    const diff = minutoObjetivo - minutoDelDia;
-
-    console.log(
-      `⏱ Falta para cierre (${minutoObjetivo}): ${diff} min`
-    );
-
-    if (minutoDelDia === minutoObjetivo) {
-      const marca = `${fechaKey}-${minutoObjetivo}-cierre`;
-
-      if (!ultimaMarcaCierreRef.current.has(marca)) {
-        console.log("🔊 Reproduciendo audio CIERRE");
-        ultimaMarcaCierreRef.current.add(marca);
-        reproducir(cierreAudioRef);
+        if (ultimaMarcaOrdenRef.current !== marcaOrden) {
+          console.log("🔊 Reproduciendo aviso");
+          ultimaMarcaOrdenRef.current = marcaOrden;
+          reproducir();
+        }
       }
     }
-  });
-
-  if (minutoDelDia < aperturaMin + 1) {
-    ultimaMarcaCierreRef.current = new Set();
-  }
-}
 
     checkAudios();
     const interval = setInterval(checkAudios, CHECK_MS);
-    console.log(interval)
     return () => clearInterval(interval);
-  }, [audioHabilitado]);
+  }, [audioHabilitado, config.habilitado, config.intervaloMinutos]);
 
   return (
     <>
-      <audio ref={ordenAudioRef} src={ordenGymSrc} preload="auto" />
-      {/* <audio ref={cierreAudioRef} src={cierreGymSrc} preload="auto" /> */}
+      <audio ref={ordenAudioRef} src={sonidoSrc} preload="auto" />
 
-      {!audioHabilitado && (
+      {!audioHabilitado && config.habilitado && (
         <button
           onClick={desbloquearAudio}
           className="fixed bottom-6 right-6 z-9998 flex items-center gap-2 rounded-2xl bg-orange-500 px-6 py-4 text-base font-bold text-white shadow-2xl ring-4 ring-orange-300 animate-pulse hover:bg-orange-600 hover:animate-none transition-colors"
