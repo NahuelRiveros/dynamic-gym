@@ -3,11 +3,11 @@
 ## Estado
 - [x] Cuenta Neon creada
 - [x] Proyecto creado en Neon (región: sa-east-1 São Paulo)
-- [ ] Schemas importados (`gym_v3` + `public`)
-- [ ] Variables de entorno actualizadas en Render
-- [ ] .env local actualizado
-- [ ] Verificación post-migración
-- [ ] Migración completada (fecha: _________)
+- [x] Schemas importados (`gym_v3` + `public`)
+- [x] Variables de entorno actualizadas en Render
+- [x] .env local actualizado
+- [x] Verificación post-migración
+- [x] Migración completada (fecha: 2026-06-22)
 
 ---
 
