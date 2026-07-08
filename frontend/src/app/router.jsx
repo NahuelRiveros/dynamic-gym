@@ -26,8 +26,7 @@ import PagoFallidoPage from "../pages/pago_fallido_page.jsx";
 import PromocionesPage from "../pages/admin/promociones_page.jsx";
 import GestionSuscripcionPage from "../pages/super_admin/gestion_suscripcion_page.jsx";
 import AudioConfigPage from "../pages/admin/audio_config_page.jsx";
-import StockPage from "../pages/admin/stock_page.jsx";
-import StockEstadisticasPage from "../pages/admin/stock_estadisticas_page.jsx";
+import VentasPage from "../pages/ventas/ventas_page.jsx";
 
 export const router = createBrowserRouter([
   {
@@ -235,21 +234,11 @@ export const router = createBrowserRouter([
   ),
 },
 {
-  path: "/admin/stock",
+  path: "/admin/ventas",
   element: (
     <AppLayout>
       <ProtectedRoute roles={["admin", "staff"]}>
-        <StockPage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-  path: "/admin/stock/estadisticas",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["admin"]}>
-        <StockEstadisticasPage />
+        <VentasPage />
       </ProtectedRoute>
     </AppLayout>
   ),
