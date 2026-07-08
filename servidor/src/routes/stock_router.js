@@ -8,6 +8,7 @@ import {
   registrarEntradaController,
   registrarVentaController,
   registrarBajaController,
+  listarMovimientosController,
   recaudacionMensualStockController,
   productosMasVendidosController,
   mermasDeStockController,
@@ -27,12 +28,15 @@ stockRouter.get("/estadisticas/mermas",                  requireRole("admin"), m
 stockRouter.get("/",    requireRole("admin", "staff"), listarProductosController);
 stockRouter.get("/:id", requireRole("admin", "staff"), obtenerProductoController);
 
+// Historial de movimientos (auditoría: fecha/hora y usuario): solo admin
+stockRouter.get("/:id/movimientos", requireRole("admin"), listarMovimientosController);
+
 // Catálogo: solo admin
 stockRouter.post("/",            requireRole("admin"), crearProductoController);
 stockRouter.put("/:id",          requireRole("admin"), actualizarProductoController);
 stockRouter.patch("/:id/estado", requireRole("admin"), cambiarEstadoProductoController);
 
-// Movimientos del día a día: admin y staff
+// Reponer y vender: admin y staff. Dar de baja: solo admin.
 stockRouter.post("/:id/entrada", requireRole("admin", "staff"), registrarEntradaController);
 stockRouter.post("/:id/venta",   requireRole("admin", "staff"), registrarVentaController);
-stockRouter.post("/:id/baja",    requireRole("admin", "staff"), registrarBajaController);
+stockRouter.post("/:id/baja",    requireRole("admin"), registrarBajaController);

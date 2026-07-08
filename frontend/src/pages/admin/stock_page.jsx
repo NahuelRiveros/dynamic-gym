@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../auth/auth_context.jsx";
 import ProductoFormModal from "../../components/modal/producto_form_modal";
 import MovimientoStockModal from "../../components/modal/movimiento_stock_modal";
+import HistorialStockModal from "../../components/modal/historial_stock_modal";
 import DataGrid from "../../components/table/DataGrid";
 import {
   listarProductos,
@@ -15,7 +16,7 @@ import {
 import { getCatalogos } from "../../api/catalogos_api.js";
 import {
   Package, Plus, Edit2, ToggleLeft, ToggleRight, RefreshCw,
-  PackagePlus, ShoppingCart, PackageMinus,
+  PackagePlus, ShoppingCart, PackageMinus, History,
 } from "lucide-react";
 
 function formatearPrecio(precio) {
@@ -44,6 +45,7 @@ export default function StockPage() {
   const [guardando, setGuardando] = useState(false);
 
   const [movimiento, setMovimiento] = useState(null); // { tipo, producto }
+  const [historialProducto, setHistorialProducto] = useState(null);
 
   async function cargarProductos() {
     try {
@@ -193,11 +195,19 @@ export default function StockPage() {
     },
     {
       key: "baja",
-      label: "Dar de baja",
+      label: "Baja",
       icon: <PackageMinus size={12} />,
       variant: "warning",
       onClick: (row) => abrirMovimiento("baja", row),
-      show: (row) => row.stock_actual > 0,
+      show: (row) => esAdmin && row.stock_actual > 0,
+    },
+    {
+      key: "historial",
+      label: "Historial",
+      icon: <History size={12} />,
+      variant: "default",
+      onClick: (row) => setHistorialProducto(row),
+      show: () => esAdmin,
     },
     {
       key: "editar",
@@ -308,6 +318,12 @@ export default function StockPage() {
         onClose={cerrarMovimiento}
         onConfirmar={confirmarMovimiento}
         cargando={guardando}
+      />
+
+      <HistorialStockModal
+        abierto={Boolean(historialProducto)}
+        producto={historialProducto}
+        onClose={() => setHistorialProducto(null)}
       />
     </div>
   );

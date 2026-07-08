@@ -1,5 +1,5 @@
 import { sequelize } from "../database/sequelize.js";
-import { Producto, MovimientoStock, CategoriaProducto } from "../models_v2/index.js";
+import { Producto, MovimientoStock, CategoriaProducto, Usuario, Persona } from "../models_v2/index.js";
 
 const includeCategoria = [{ model: CategoriaProducto, as: "categoria", attributes: ["id", "descripcion"] }];
 
@@ -116,6 +116,19 @@ export async function registrarVentaProducto({ producto_id, cantidad, metodo_pag
 
 export async function registrarBajaProducto({ producto_id, cantidad, motivo, usuario_id }) {
   return registrarMovimiento({ producto_id, tipo: "baja", cantidad, usuario_id, motivo });
+}
+
+export async function listarMovimientosProducto(producto_id) {
+  return MovimientoStock.findAll({
+    where: { producto_id },
+    include: [{
+      model: Usuario,
+      as: "registrado_por",
+      attributes: ["id"],
+      include: [{ model: Persona, as: "persona", attributes: ["nombre", "apellido", "email"] }],
+    }],
+    order: [["creado_en", "DESC"]],
+  });
 }
 
 export async function recaudacionMensualStock({ anio }) {

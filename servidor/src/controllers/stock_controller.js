@@ -7,6 +7,7 @@ import {
   registrarEntradaStock,
   registrarVentaProducto,
   registrarBajaProducto,
+  listarMovimientosProducto,
   recaudacionMensualStock,
   productosMasVendidos,
   mermasDeStock,
@@ -40,6 +41,29 @@ export async function obtenerProductoController(req, res) {
   } catch (error) {
     console.error("Error al obtener producto:", error);
     return res.status(500).json({ ok: false, mensaje: "Error interno al obtener producto" });
+  }
+}
+
+export async function listarMovimientosController(req, res) {
+  try {
+    const movimientos = await listarMovimientosProducto(req.params.id);
+    const data = movimientos.map((m) => {
+      const persona = m.registrado_por?.persona;
+      return {
+        id: m.id,
+        tipo: m.tipo,
+        cantidad: m.cantidad,
+        precio_unitario: m.precio_unitario,
+        metodo_pago: m.metodo_pago,
+        motivo: m.motivo,
+        creado_en: m.creado_en,
+        usuario: persona ? `${persona.nombre} ${persona.apellido}`.trim() : "—",
+      };
+    });
+    return res.json({ ok: true, data });
+  } catch (error) {
+    console.error("Error al listar movimientos de stock:", error);
+    return res.status(500).json({ ok: false, mensaje: "Error interno al listar movimientos" });
   }
 }
 

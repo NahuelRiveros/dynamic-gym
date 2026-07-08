@@ -48,6 +48,12 @@ export async function registrarBaja(id, { cantidad, motivo }) {
   return r.data;
 }
 
+// HISTORIAL DE MOVIMIENTOS (solo admin)
+export async function obtenerMovimientos(id) {
+  const r = await http.get(`/stock/${id}/movimientos`);
+  return r.data;
+}
+
 // ESTADÍSTICAS (solo admin)
 export async function getRecaudacionMensualStock(params = {}) {
   const r = await http.get("/stock/estadisticas/mensual", { params });
