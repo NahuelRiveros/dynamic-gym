@@ -10,7 +10,10 @@ export const Producto = sequelize.define("Producto", {
   id: { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
 
   nombre:       { type: DataTypes.STRING(120), allowNull: false },
-  categoria:    { type: DataTypes.STRING(60) },
+  categoria_id: {
+    type: DataTypes.INTEGER,
+    references: { model: "categoria_producto", key: "id" },
+  },
   precio_venta: { type: DataTypes.DECIMAL(10, 2), allowNull: false, defaultValue: 0, validate: { min: 0 } },
   stock_actual: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0, validate: { min: 0 } },
   stock_minimo: { type: DataTypes.INTEGER, allowNull: false, defaultValue: 0, validate: { min: 0 } },

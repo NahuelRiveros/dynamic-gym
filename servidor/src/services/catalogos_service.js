@@ -3,10 +3,11 @@
   Sexo,
   TipoPersona,
   PlanTipo,
+  CategoriaProducto,
 } from "../models_v2/index.js";
 
 export async function obtenerCatalogos() {
-  const [tiposDocumento, sexos, tiposPersona, tiposPlan] = await Promise.all([
+  const [tiposDocumento, sexos, tiposPersona, tiposPlan, categoriasProducto] = await Promise.all([
     TipoDocumento.findAll({
       attributes: ["id", "descripcion"],
       order: [["descripcion", "ASC"]],
@@ -24,6 +25,11 @@ export async function obtenerCatalogos() {
       where: { activo: true },
       order: [["descripcion", "ASC"]],
     }),
+    CategoriaProducto.findAll({
+      attributes: ["id", "descripcion"],
+      where: { activo: true },
+      order: [["descripcion", "ASC"]],
+    }),
   ]);
 
   return {
@@ -37,5 +43,6 @@ export async function obtenerCatalogos() {
       ingresos:    x.ingresos,
       precio:      Number(x.precio),
     })),
+    categoriasProducto: categoriasProducto.map((x) => ({ value: x.id, label: x.descripcion })),
   };
 }

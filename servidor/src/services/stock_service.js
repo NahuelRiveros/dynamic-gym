@@ -1,5 +1,7 @@
 import { sequelize } from "../database/sequelize.js";
-import { Producto, MovimientoStock } from "../models_v2/index.js";
+import { Producto, MovimientoStock, CategoriaProducto } from "../models_v2/index.js";
+
+const includeCategoria = [{ model: CategoriaProducto, as: "categoria", attributes: ["id", "descripcion"] }];
 
 export async function listarProductos({ incluirInactivos = true } = {}) {
   const where = {};
@@ -7,18 +9,19 @@ export async function listarProductos({ incluirInactivos = true } = {}) {
 
   return Producto.findAll({
     where,
+    include: includeCategoria,
     order: [["nombre", "ASC"]],
   });
 }
 
 export async function obtenerProductoPorId(id) {
-  return Producto.findByPk(id);
+  return Producto.findByPk(id, { include: includeCategoria });
 }
 
 export async function crearProducto(data) {
   return Producto.create({
     nombre:       data.nombre,
-    categoria:    data.categoria || null,
+    categoria_id: data.categoria_id || null,
     precio_venta: data.precio_venta,
     stock_minimo: data.stock_minimo,
     activo:       true,
@@ -31,7 +34,7 @@ export async function actualizarProducto(id, data) {
 
   await producto.update({
     nombre:       data.nombre,
-    categoria:    data.categoria || null,
+    categoria_id: data.categoria_id || null,
     precio_venta: data.precio_venta,
     stock_minimo: data.stock_minimo,
   });

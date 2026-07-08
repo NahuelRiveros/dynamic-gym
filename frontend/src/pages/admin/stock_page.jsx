@@ -12,6 +12,7 @@ import {
   registrarVenta,
   registrarBaja,
 } from "../../api/stock_api.js";
+import { getCatalogos } from "../../api/catalogos_api.js";
 import {
   Package, Plus, Edit2, ToggleLeft, ToggleRight, RefreshCw,
   PackagePlus, ShoppingCart, PackageMinus,
@@ -34,6 +35,7 @@ export default function StockPage() {
   const esAdmin = usuario?.roles?.includes("admin");
 
   const [productos, setProductos] = useState([]);
+  const [categorias, setCategorias] = useState([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
 
@@ -56,7 +58,12 @@ export default function StockPage() {
     }
   }
 
-  useEffect(() => { cargarProductos(); }, []);
+  useEffect(() => {
+    cargarProductos();
+    getCatalogos()
+      .then((resp) => setCategorias(resp.categoriasProducto || []))
+      .catch(() => setCategorias([]));
+  }, []);
 
   function abrirNuevo() { setProductoSeleccionado(null); setModalCatalogoAbierto(true); }
   function abrirEditar(producto) { setProductoSeleccionado(producto); setModalCatalogoAbierto(true); }
@@ -127,8 +134,8 @@ export default function StockPage() {
           </div>
           <div>
             <span className="font-semibold text-slate-900">{row.nombre}</span>
-            {row.categoria && (
-              <span className="block text-[11px] text-slate-400">{row.categoria}</span>
+            {row.categoria?.descripcion && (
+              <span className="block text-[11px] text-slate-400">{row.categoria.descripcion}</span>
             )}
           </div>
         </div>
@@ -290,6 +297,7 @@ export default function StockPage() {
         onClose={cerrarModalCatalogo}
         onGuardar={guardarProducto}
         productoEditar={productoSeleccionado}
+        categorias={categorias}
         cargando={guardando}
       />
 

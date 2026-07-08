@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 const estadoInicial = {
   nombre: "",
-  categoria: "",
+  categoria_id: "",
   precio_venta: 0,
   stock_minimo: 0,
 };
@@ -12,6 +12,7 @@ export default function ProductoFormModal({
   onClose,
   onGuardar,
   productoEditar = null,
+  categorias = [],
   cargando = false,
 }) {
   const [form, setForm] = useState(estadoInicial);
@@ -21,7 +22,7 @@ export default function ProductoFormModal({
     if (productoEditar) {
       setForm({
         nombre: productoEditar.nombre || "",
-        categoria: productoEditar.categoria || "",
+        categoria_id: productoEditar.categoria_id ?? "",
         precio_venta: Number(productoEditar.precio_venta ?? 0),
         stock_minimo: productoEditar.stock_minimo ?? 0,
       });
@@ -35,12 +36,7 @@ export default function ProductoFormModal({
     const { name, value } = e.target;
     setForm((prev) => ({
       ...prev,
-      [name]:
-        name === "nombre" || name === "categoria"
-          ? value
-          : value === ""
-          ? ""
-          : Number(value),
+      [name]: name === "nombre" ? value : value === "" ? "" : Number(value),
     }));
   }
 
@@ -69,7 +65,7 @@ export default function ProductoFormModal({
 
     await onGuardar({
       nombre: form.nombre.trim(),
-      categoria: form.categoria.trim() || null,
+      categoria_id: form.categoria_id === "" ? null : Number(form.categoria_id),
       precio_venta: Number(form.precio_venta),
       stock_minimo: Number(form.stock_minimo),
     });
@@ -105,14 +101,17 @@ export default function ProductoFormModal({
             <label className="mb-1 block text-sm font-medium text-gray-700">
               Categoría (opcional)
             </label>
-            <input
-              type="text"
-              name="categoria"
-              value={form.categoria}
+            <select
+              name="categoria_id"
+              value={form.categoria_id}
               onChange={manejarCambio}
               className="w-full rounded-lg border px-3 py-2 outline-none focus:border-blue-500"
-              placeholder="Ej: Bebidas, Suplementos..."
-            />
+            >
+              <option value="">Sin categoría</option>
+              {categorias.map((c) => (
+                <option key={c.value} value={c.value}>{c.label}</option>
+              ))}
+            </select>
           </div>
 
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
