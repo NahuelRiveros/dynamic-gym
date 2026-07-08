@@ -21,4 +21,7 @@ export async function runMigraciones() {
 
   const legacySql = readFileSync(join(__dirname, "migration_v2.sql"), "utf8");
   await sequelize.query(legacySql);
+
+  const stockSql = readFileSync(join(__dirname, "migration_v3_stock.sql"), "utf8");
+  await sequelize.query(stockSql);
 }

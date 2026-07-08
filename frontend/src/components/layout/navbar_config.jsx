@@ -68,6 +68,12 @@ export const navbar_config = {
           requiereAuth: true,
           roles: ["admin", "staff"],
         },
+        {
+          label: "Recaudación por stock",
+          to: "/admin/stock/estadisticas",
+          requiereAuth: true,
+          roles: ["admin"],
+        },
       ],
     },
     {
@@ -80,6 +86,12 @@ export const navbar_config = {
           to: "/admin/planesViews",
           requiereAuth: true,
           roles: ["admin"],
+        },
+        {
+          label: "Stock",
+          to: "/admin/stock",
+          requiereAuth: true,
+          roles: ["admin", "staff"],
         },
         {
           label: "Personal",

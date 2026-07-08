@@ -16,6 +16,7 @@ import { recaudacionRouter } from "./recaudacion_router.js";
 import { consultaPublicaRouter } from "./consulta_publica_router.js";
 import { suscripcionRouter } from "./suscripcion_router.js";
 import { promocionesRouter } from "./promociones_router.js";
+import { stockRouter } from "./stock_router.js";
 import { verificarSuscripcion } from "../middleware/suscripcion_middleware.js";
 
 const router = Router();
@@ -61,5 +62,6 @@ router.use("/recaudacion", recaudacionRouter);
 router.use("/consulta",    consultaPublicaRouter);  // ← público, sin auth
 router.use("/suscripcion", suscripcionRouter);       // ← plan del software
 router.use("/promociones", promocionesRouter);       // ← envío masivo de emails
+router.use("/stock", stockRouter);                   // ← productos y movimientos de stock
 
 export default router;

@@ -24,6 +24,8 @@ import { Alumno }          from "./alumno.js";
 import { Membresia }       from "./membresia.js";
 import { Ingreso }         from "./ingreso.js";
 import { AlumnoEstadoLog } from "./alumno_estado_log.js";
+import { Producto }         from "./producto.js";
+import { MovimientoStock }  from "./movimiento_stock.js";
 
 // ─── Persona ↔ Catálogos ────────────────────────────────────────────────────
 Persona.belongsTo(TipoDocumento, { foreignKey: "tipo_documento_id", as: "tipo_documento" });
@@ -96,9 +98,15 @@ AlumnoEstadoLog.belongsTo(AlumnoEstado, { foreignKey: "estado_nuevo_id",    as: 
 AlumnoEstadoLog.belongsTo(Usuario,      { foreignKey: "modificado_por",     as: "modificado_por_usuario" });
 Alumno.hasMany(AlumnoEstadoLog,         { foreignKey: "alumno_id",          as: "estado_logs" });
 
+// ─── Producto ↔ MovimientoStock (1:N) ────────────────────────────────────────
+Producto.hasMany(MovimientoStock,      { foreignKey: "producto_id", as: "movimientos" });
+MovimientoStock.belongsTo(Producto,    { foreignKey: "producto_id", as: "producto" });
+MovimientoStock.belongsTo(Usuario,     { foreignKey: "registrado_por_id", as: "registrado_por" });
+
 export {
   Sexo, TipoDocumento, TipoPersona, AlumnoEstado,
   Rol, Modulo, Permiso, RolPermiso,
   Persona, Usuario, UsuarioRol,
   PlanTipo, Alumno, Membresia, Ingreso, AlumnoEstadoLog,
+  Producto, MovimientoStock,
 };
