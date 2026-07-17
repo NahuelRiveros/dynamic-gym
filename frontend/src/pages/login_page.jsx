@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,7 +15,11 @@ import { authConfig } from "../config/auth_config.js";
 
 export default function LoginPage() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
   const { login, user } = useAuth();
+
+  const sesionExpirada = searchParams.get("expired") === "1";
+  const from = searchParams.get("from") || "/";
 
   const [error, setError] = useState(null);
   const [mostrarWelcome, setMostrarWelcome] = useState(false);
@@ -122,6 +126,12 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {sesionExpirada && (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+                Tu sesión expiró. Volvé a iniciar sesión para continuar.
+              </div>
+            )}
+
             <FormCard
               titulo="Iniciar sesión"
               subtitulo="Ingresá tus credenciales para continuar"
@@ -178,7 +188,7 @@ export default function LoginPage() {
           apellido={user?.apellido}
           onFinish={() => {
             setMostrarWelcome(false);
-            nav("/");
+            nav(from);
           }}
         />
       )}

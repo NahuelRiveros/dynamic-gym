@@ -12,15 +12,15 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
-// Cuando el servidor responde 401 (token vencido o ausente), limpia la sesión
-// y redirige al login automáticamente desde cualquier página protegida.
 http.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isLoginEndpoint = error?.config?.url?.includes("/auth/login");
+    if (error?.response?.status === 401 && !isLoginEndpoint) {
       localStorage.removeItem(authConfig.storageKey);
       if (!window.location.pathname.startsWith("/login")) {
-        window.location.replace("/login");
+        const from = encodeURIComponent(window.location.pathname);
+        window.location.replace(`/login?expired=1&from=${from}`);
       }
     }
     return Promise.reject(error);

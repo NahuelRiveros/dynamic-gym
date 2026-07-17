@@ -82,9 +82,18 @@ export async function registrarIngresoPorDni({ dni }) {
       };
     }
 
+    // Cargar tipo de plan para saber si es ilimitado (ingresos = 0 en plan_tipo)
+    let tipoPlanDesc = null;
+    let esIlimitado  = false;
+    if (planReciente.plan_tipo_id) {
+      const tipoPlan = await PlanTipo.findByPk(planReciente.plan_tipo_id, { transaction: t });
+      tipoPlanDesc = tipoPlan?.descripcion ?? null;
+      esIlimitado  = Number(tipoPlan?.ingresos ?? -1) === 0;
+    }
+
     const ingresosActuales = Number(planReciente.ingresos_disponibles ?? 0);
 
-    if (ingresosActuales <= 0) {
+    if (!esIlimitado && ingresosActuales <= 0) {
       if (Number(alumno.estado_id) !== ESTADO_RESTRINGIDO) {
         await alumno.update({ estado_id: ESTADO_RESTRINGIDO }, { transaction: t });
       }
@@ -94,9 +103,9 @@ export async function registrarIngresoPorDni({ dni }) {
         mensaje: "Alumno sin ingresos disponibles",
         alumno: { alumno_id: alumno.id, estado_id: ESTADO_RESTRINGIDO },
         plan: {
-          fecha_id:         planReciente.id,
-          inicio:           planReciente.fecha_inicio,
-          fin:              planReciente.fecha_fin,
+          fecha_id:           planReciente.id,
+          inicio:             planReciente.fecha_inicio,
+          fin:                planReciente.fecha_fin,
           ingresos_restantes: 0,
         },
       };
@@ -127,57 +136,56 @@ export async function registrarIngresoPorDni({ dni }) {
       RETURNING id, fecha_ingreso, hora_ingreso
       `,
       {
-        replacements: {
-          fecha_id: planReciente.id,
-          fecha: hoy,
-          hora,
-          fechaHora,
-        },
+        replacements: { fecha_id: planReciente.id, fecha: hoy, hora, fechaHora },
         type: QueryTypes.INSERT,
         transaction: t,
       }
     );
 
-    const ingresoDB = Array.isArray(rows) ? rows[0] : rows;
-    const ingresosRestantes = ingresosActuales - 1;
+    const ingresoDB      = Array.isArray(rows) ? rows[0] : rows;
+    // Planes ilimitados: no se descuenta ni se restringe por ingresos
+    const ingresosRestantes = esIlimitado ? null : ingresosActuales - 1;
 
-    await sequelize.query(
-      `
-      UPDATE gym_v3.membresia
-      SET ingresos_disponibles = :restantes, actualizado_en = :fechaHora
-      WHERE id = :fecha_id
-      `,
-      {
-        replacements: { restantes: ingresosRestantes, fechaHora, fecha_id: planReciente.id },
-        type: QueryTypes.UPDATE,
-        transaction: t,
-      }
-    );
+    if (!esIlimitado) {
+      await sequelize.query(
+        `
+        UPDATE gym_v3.membresia
+        SET ingresos_disponibles = :restantes, actualizado_en = :fechaHora
+        WHERE id = :fecha_id
+        `,
+        {
+          replacements: { restantes: ingresosRestantes, fechaHora, fecha_id: planReciente.id },
+          type: QueryTypes.UPDATE,
+          transaction: t,
+        }
+      );
+    }
 
     let estadoFinal = Number(alumno.estado_id);
 
-    if (estadoFinal === ESTADO_RESTRINGIDO && ingresosRestantes > 0) {
-      await alumno.update({ estado_id: ESTADO_HABILITADO }, { transaction: t });
-      estadoFinal = ESTADO_HABILITADO;
-    }
-
-    if (ingresosRestantes === 0) {
-      await alumno.update({ estado_id: ESTADO_RESTRINGIDO }, { transaction: t });
-      estadoFinal = ESTADO_RESTRINGIDO;
-    }
-
-    let tipoPlanDesc = null;
-    if (planReciente.plan_tipo_id) {
-      const tipoPlan = await PlanTipo.findByPk(planReciente.plan_tipo_id, { transaction: t });
-      tipoPlanDesc = tipoPlan?.descripcion ?? null;
+    if (esIlimitado) {
+      // Plan ilimitado: siempre habilitado mientras el plan esté vigente
+      if (estadoFinal !== ESTADO_HABILITADO) {
+        await alumno.update({ estado_id: ESTADO_HABILITADO }, { transaction: t });
+        estadoFinal = ESTADO_HABILITADO;
+      }
+    } else {
+      if (estadoFinal === ESTADO_RESTRINGIDO && ingresosRestantes > 0) {
+        await alumno.update({ estado_id: ESTADO_HABILITADO }, { transaction: t });
+        estadoFinal = ESTADO_HABILITADO;
+      }
+      if (ingresosRestantes === 0) {
+        await alumno.update({ estado_id: ESTADO_RESTRINGIDO }, { transaction: t });
+        estadoFinal = ESTADO_RESTRINGIDO;
+      }
     }
 
     return {
       ok: true,
       codigo: "OK",
-      mensaje: ingresosRestantes === 0
-        ? "Ingreso registrado - alumno quedó restringido"
-        : "Ingreso registrado",
+      mensaje: esIlimitado || ingresosRestantes > 0
+        ? "Ingreso registrado"
+        : "Ingreso registrado - alumno quedó restringido",
       alumno: {
         alumno_id:  alumno.id,
         persona_id: persona.id,
@@ -187,11 +195,11 @@ export async function registrarIngresoPorDni({ dni }) {
         estado_id:  estadoFinal,
       },
       plan: {
-        fecha_id:          planReciente.id,
-        inicio:            planReciente.fecha_inicio,
-        fin:               planReciente.fecha_fin,
-        tipo_plan:         tipoPlanDesc,
-        ingresos_restantes: ingresosRestantes,
+        fecha_id:           planReciente.id,
+        inicio:             planReciente.fecha_inicio,
+        fin:                planReciente.fecha_fin,
+        tipo_plan:          tipoPlanDesc,
+        ingresos_restantes: esIlimitado ? null : ingresosRestantes,
       },
       fecha_ingreso: ingresoDB?.fecha_ingreso ?? hoy,
       hora_ingreso:  ingresoDB?.hora_ingreso  ?? hora,

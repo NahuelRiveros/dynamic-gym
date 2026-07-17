@@ -36,21 +36,25 @@ function calcularVigencia(plan_fin) {
   return fechaFin >= hoyArgentinaSoloDia();
 }
 
-function calcularNuevoEstado({ plan_fin, ingresos_disponibles }) {
+function calcularNuevoEstado({ plan_fin, ingresos_disponibles, plan_ingresos_originales }) {
   if (!calcularVigencia(plan_fin)) return ESTADO.RESTRINGIDO;
+  // plan_ingresos_originales = 0 significa plan ilimitado (ej: "el día")
+  if (Number(plan_ingresos_originales ?? -1) === 0) return ESTADO.HABILITADO;
   const ing = Number(ingresos_disponibles ?? 0);
   if (!Number.isFinite(ing)) return ESTADO.RESTRINGIDO;
   return ing > 0 ? ESTADO.HABILITADO : ESTADO.RESTRINGIDO;
 }
 
-function motivoCambio({ plan_id, plan_fin, ingresos_disponibles, nuevoEstado }) {
+function motivoCambio({ plan_id, plan_fin, ingresos_disponibles, plan_ingresos_originales, nuevoEstado }) {
   if (!plan_id) return "Cambio automático: alumno sin plan registrado";
   const vigente = calcularVigencia(plan_fin);
   const ing = Number(ingresos_disponibles ?? 0);
+  const ilimitado = Number(plan_ingresos_originales ?? -1) === 0;
+  if (nuevoEstado === ESTADO.HABILITADO && ilimitado) return "Cambio automático: plan vigente ilimitado";
   if (nuevoEstado === ESTADO.HABILITADO) return `Cambio automático: plan vigente e ingresos disponibles (${ing})`;
-  if (!vigente)                          return "Cambio automático: plan vencido";
-  if (!Number.isFinite(ing))             return "Cambio automático: ingresos inválidos";
-  if (ing <= 0)                          return "Cambio automático: sin ingresos disponibles";
+  if (!vigente)          return "Cambio automático: plan vencido";
+  if (!Number.isFinite(ing)) return "Cambio automático: ingresos inválidos";
+  if (ing <= 0)          return "Cambio automático: sin ingresos disponibles";
   return "Cambio automático: estado recalculado";
 }
 
@@ -69,11 +73,14 @@ export async function actualizarEstadosAlumnosAutomatico({
         ult.id AS plan_id,
         ult.fecha_inicio AS plan_inicio,
         ult.fecha_fin AS plan_fin,
-        ult.ingresos_disponibles
+        ult.ingresos_disponibles,
+        ult.plan_ingresos_originales
       FROM gym_v3.alumno a
       LEFT JOIN LATERAL (
-        SELECT f.id, f.fecha_inicio, f.fecha_fin, f.ingresos_disponibles
+        SELECT f.id, f.fecha_inicio, f.fecha_fin, f.ingresos_disponibles,
+               pt.ingresos AS plan_ingresos_originales
         FROM gym_v3.membresia f
+        LEFT JOIN gym_v3.plan_tipo pt ON pt.id = f.plan_tipo_id
         WHERE f.alumno_id = a.id
         ORDER BY f.id DESC
         LIMIT 1
@@ -91,14 +98,21 @@ export async function actualizarEstadosAlumnosAutomatico({
     const cambios = [];
 
     for (const row of alumnos) {
-      const nuevo    = calcularNuevoEstado({ plan_fin: row.plan_fin, ingresos_disponibles: row.ingresos_disponibles });
+      const nuevo    = calcularNuevoEstado({
+        plan_fin:                 row.plan_fin,
+        ingresos_disponibles:     row.ingresos_disponibles,
+        plan_ingresos_originales: row.plan_ingresos_originales,
+      });
       const anterior = Number(row.estado_actual);
 
       if (anterior === nuevo) continue;
 
       const motivo = motivoCambio({
-        plan_id: row.plan_id, plan_fin: row.plan_fin,
-        ingresos_disponibles: row.ingresos_disponibles, nuevoEstado: nuevo,
+        plan_id:                  row.plan_id,
+        plan_fin:                 row.plan_fin,
+        ingresos_disponibles:     row.ingresos_disponibles,
+        plan_ingresos_originales: row.plan_ingresos_originales,
+        nuevoEstado:              nuevo,
       });
 
       await sequelize.query(

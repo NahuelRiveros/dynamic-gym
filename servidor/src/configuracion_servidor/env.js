@@ -38,7 +38,9 @@ export const env = {
 
   // ── Seguridad ──────────────────────────────────────────────────
   // En producción es OBLIGATORIO. En dev usa el valor del .env local.
-  JWT_SECRET:   requerirEnProd("JWT_SECRET", "DEV_SECRET_SOLO_LOCAL_NO_USAR_EN_PROD"),
+  JWT_SECRET:      requerirEnProd("JWT_SECRET", "DEV_SECRET_SOLO_LOCAL_NO_USAR_EN_PROD"),
+  // 7d por defecto: cubre toda la semana laboral sin forzar re-login en el kiosk.
+  JWT_EXPIRES_IN:  process.env.JWT_EXPIRES_IN || "7d",
 
   // ── CORS ───────────────────────────────────────────────────────
   // Ejemplo: "https://mi-gym.onrender.com"

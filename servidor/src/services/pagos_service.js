@@ -85,7 +85,7 @@ export async function registrarPagoPorDni({
 
     const [rowsFD] = await sequelize.query(
       `
-      INSERT INTO membresia (
+      INSERT INTO gym_v3.membresia (
         alumno_id, monto_pagado, fecha_inicio, fecha_fin,
         dias_totales, ingresos_disponibles, metodo_pago,
         actualizado_en, plan_tipo_id, cobrado_por_id
