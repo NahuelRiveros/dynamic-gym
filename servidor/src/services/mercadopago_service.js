@@ -14,14 +14,17 @@
 
 import { MercadoPagoConfig, Preference, Payment } from "mercadopago";
 import { env } from "../configuracion_servidor/env.js";
+import { ErrorApp } from "../nucleo/errores.js";
 
 // ── Cliente MP ───────────────────────────────────────────────────────────────
 
 function getCliente() {
   if (!env.MP_ACCESS_TOKEN) {
-    throw new Error(
-      "MP_ACCESS_TOKEN no configurado. Agregar en servidor/.env o en las variables de Render."
-    );
+    throw new ErrorApp({
+      status: 400,
+      codigo: "MP_NO_CONFIGURADO",
+      mensaje: "MP_ACCESS_TOKEN no configurado. Agregar en servidor/.env o en las variables de Render.",
+    });
   }
   return new MercadoPagoConfig({ accessToken: env.MP_ACCESS_TOKEN });
 }
@@ -35,9 +38,11 @@ export async function crearPreferencia({ suscripcionId, monto, clienteNombre }) 
   const precioUsar   = monto ?? env.SOFTWARE_PRECIO;
 
   if (!precioUsar || precioUsar <= 0) {
-    throw new Error(
-      "SOFTWARE_PRECIO no configurado o es 0. Definir en servidor/.env o Render."
-    );
+    throw new ErrorApp({
+      status: 400,
+      codigo: "PRECIO_NO_CONFIGURADO",
+      mensaje: "SOFTWARE_PRECIO no configurado o es 0. Definir en servidor/.env o Render.",
+    });
   }
 
   const backBase = env.FRONTEND_URL || "http://localhost:5173";

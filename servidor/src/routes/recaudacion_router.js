@@ -10,7 +10,8 @@ import { idPositivo, z } from "../nucleo/zod.js";
 
 export const recaudacionRouter = Router();
 
-const anio = () => idPositivo("anio es obligatorio");
+// Mismo rango que acepta recaudacion_service (fuera de él tiraba un error y respondía 500).
+const anio = () => idPositivo("anio es obligatorio").min(2000, "anio tiene que estar entre 2000 y 2100").max(2100, "anio tiene que estar entre 2000 y 2100");
 const mes = () => idPositivo("anio y mes son obligatorios (mes 1..12)").max(12, "anio y mes son obligatorios (mes 1..12)");
 const dia = () => idPositivo("anio, mes y dia son obligatorios").max(31, "anio, mes y dia son obligatorios");
 

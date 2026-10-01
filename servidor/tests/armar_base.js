@@ -19,6 +19,8 @@ export const ALUMNOS_TEST = {
   sinIngresos: { nombre: "Eva", apellido: "Agotada", documento: "30555666", dias_plan: 30, ingresos: 0 },
   // Para los E2E del kiosco, así no comparten el ingreso del día con los tests del servidor.
   kiosco: { nombre: "Franco", apellido: "Kiosco", documento: "30777888", dias_plan: 30, ingresos: 12 },
+  // Para los tests que editan el plan o los datos a mano (así no cambian los de arriba).
+  ajusteManual: { nombre: "Gustavo", apellido: "Ajuste", documento: "30999000", dias_plan: -1, ingresos: 12 },
 };
 
 /** Borra y vuelve a crear la base de test (solo si pasa el candado de base_test.js). */

@@ -1,9 +1,14 @@
 import nodemailer from "nodemailer";
 import { env } from "../configuracion_servidor/env.js";
+import { ErrorApp } from "../nucleo/errores.js";
 
 function crearTransporter() {
   if (!env.SMTP_USER || !env.SMTP_PASS) {
-    throw new Error("SMTP no configurado. Agregá SMTP_USER y SMTP_PASS en las variables de entorno.");
+    throw new ErrorApp({
+      status: 400,
+      codigo: "SMTP_NO_CONFIGURADO",
+      mensaje: "SMTP no configurado. Agregá SMTP_USER y SMTP_PASS en las variables de entorno.",
+    });
   }
   return nodemailer.createTransport({
     host:   env.SMTP_HOST,

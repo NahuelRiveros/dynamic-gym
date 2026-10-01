@@ -120,7 +120,7 @@ export async function actualizarPlanVigentePorDni({
     });
 
     const nuevosIngresos = ingresos_disponibles == null
-      ? (plan?.ingresos_disponibles ?? tipoPlan.ingresos_habilitados ?? 0)
+      ? (plan?.ingresos_disponibles ?? tipoPlan.ingresos ?? 0)
       : ingresos_disponibles;
 
     if (plan) {
@@ -136,11 +136,14 @@ export async function actualizarPlanVigentePorDni({
       );
     }
 
-    const hoy = new Date().toLocaleDateString("en-CA");
+    // "Hoy" en Argentina: el servidor (Render) está en UTC y desde las 21 h ya sería mañana.
+    const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
     const estadoNuevo = fecha_fin >= hoy && Number(nuevosIngresos ?? 0) > 0
       ? ESTADO_HABILITADO
       : ESTADO_RESTRINGIDO;
 
+    // Se guarda antes de actualizar: si no, el historial registraba el estado nuevo como "anterior".
+    const estadoAnterior = alumno.estado_id;
     if (Number(alumno.estado_id) !== estadoNuevo) {
       await alumno.update({ estado_id: estadoNuevo }, { transaction: t });
     }
@@ -156,7 +159,7 @@ export async function actualizarPlanVigentePorDni({
       {
         replacements: {
           alumno_id:      alumno.id,
-          estado_anterior: alumno.estado_id,
+          estado_anterior: estadoAnterior,
           estado_nuevo:   estadoNuevo,
           motivo:         "Ajuste manual de plan vigente por administrador",
           fuente:         "ADMIN_PANEL",
@@ -234,8 +237,10 @@ export async function actualizarPersonaAlumnoPorDni({
     if (nombre != null)                   updates.nombre              = nombre.trim();
     if (apellido != null)                 updates.apellido            = apellido.trim();
     if (nuevoDoc)                         updates.documento           = nuevoDoc;
-    if (celular !== undefined)            updates.celular             = celular === "" ? null : Number(celular) || null;
-    if (celular_emergencia !== undefined) updates.celular_emergencia  = celular_emergencia === "" ? null : Number(celular_emergencia) || null;
+    // Los celulares son texto (VARCHAR): antes se pasaban a Number y "+54 9 ..." o "370-..." quedaban en null.
+    const telefono = (v) => (v == null || String(v).trim() === "" ? null : String(v).trim());
+    if (celular !== undefined)            updates.celular             = telefono(celular);
+    if (celular_emergencia !== undefined) updates.celular_emergencia  = telefono(celular_emergencia);
     if (email !== undefined)              updates.email               = nuevoEmail === "" ? null : nuevoEmail;
     if (fecha_nacimiento !== undefined)   updates.fecha_nacimiento    = fecha_nacimiento === "" ? null : fecha_nacimiento;
 

@@ -131,6 +131,11 @@ export async function listarMovimientosProducto(producto_id) {
   });
 }
 
+// Filtro por año como rango de fechas (y no EXTRACT(YEAR ...) = anio): así Postgres usa el índice
+// de movimiento_stock.creado_en. Mismo resultado: las conexiones están en hora argentina.
+// `columna` es siempre un nombre fijo escrito acá, nunca un dato del usuario.
+const delAnio = (columna = "creado_en") => `${columna} >= make_date(:anio, 1, 1) AND ${columna} < make_date(:anio + 1, 1, 1)`;
+
 export async function recaudacionMensualStock({ anio }) {
   return sequelize.query(
     `
@@ -139,7 +144,7 @@ export async function recaudacionMensualStock({ anio }) {
       SUM(cantidad * precio_unitario)::numeric AS total_recaudado,
       SUM(cantidad)::int AS total_unidades
     FROM gym_v3.movimiento_stock
-    WHERE tipo = 'venta' AND EXTRACT(YEAR FROM creado_en) = :anio
+    WHERE tipo = 'venta' AND ${delAnio()}
     GROUP BY mes
     ORDER BY mes
     `,
@@ -157,7 +162,7 @@ export async function productosMasVendidos({ anio }) {
       SUM(m.cantidad * m.precio_unitario)::numeric AS total_recaudado
     FROM gym_v3.movimiento_stock m
     JOIN gym_v3.producto p ON p.id = m.producto_id
-    WHERE m.tipo = 'venta' AND EXTRACT(YEAR FROM m.creado_en) = :anio
+    WHERE m.tipo = 'venta' AND ${delAnio("m.creado_en")}
     GROUP BY p.id, p.nombre
     ORDER BY total_recaudado DESC
     `,
@@ -172,7 +177,7 @@ export async function mermasDeStock({ anio }) {
       COALESCE(motivo, 'Sin motivo') AS motivo,
       SUM(cantidad)::int AS total_unidades
     FROM gym_v3.movimiento_stock
-    WHERE tipo = 'baja' AND EXTRACT(YEAR FROM creado_en) = :anio
+    WHERE tipo = 'baja' AND ${delAnio()}
     GROUP BY motivo
     ORDER BY total_unidades DESC
     `,

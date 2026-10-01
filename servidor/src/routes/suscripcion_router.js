@@ -11,6 +11,9 @@
  * Rutas públicas:
  *   POST /api/suscripcion/webhook         — callback de MercadoPago
  *
+ * Rutas super_admin (sesión normal):
+ *   GET  /api/suscripcion/super/estado | POST /super/extender | POST /super/fijar
+ *
  * Rutas protegidas por SEED_SECRET (solo Nahuel vía Postman):
  *   POST /api/suscripcion/setup           — crea tablas + suscripcion inicial
  *   POST /api/suscripcion/admin/extender  — agrega N días al vencimiento
@@ -19,8 +22,10 @@
  */
 
 import { Router } from "express";
+import { QueryTypes } from "sequelize";
 import { requireAuth, requireRole } from "../middleware/auth_middleware.js";
-import { env } from "../configuracion_servidor/env.js";
+import { requireSeedToken, seedLimiter } from "../middleware/seed_token.js";
+import { sequelize } from "../database/sequelize.js";
 import {
   setupTablas,
   crearSuscripcionInicial,
@@ -35,65 +40,57 @@ import {
   verificarPago,
 } from "../services/mercadopago_service.js";
 import { invalidarCacheSuscripcion } from "../middleware/suscripcion_middleware.js";
+import { validar } from "../nucleo/validar.js";
+import { z } from "../nucleo/zod.js";
 
 export const suscripcionRouter = Router();
 
+const conDias = (max) =>
+  validar({
+    body: z.object({
+      dias: z.coerce
+        .number({ error: `Enviá { "dias": N } con N entre 1 y ${max}` })
+        .int(`Enviá { "dias": N } con N entre 1 y ${max}`)
+        .min(1, `Enviá { "dias": N } con N entre 1 y ${max}`)
+        .max(max, `Enviá { "dias": N } con N entre 1 y ${max}`),
+    }),
+  });
+const conFecha = validar({
+  body: z.object({ fecha: z.string({ error: "Enviá { \"fecha\": \"YYYY-MM-DD\" }" }).regex(/^\d{4}-\d{2}-\d{2}$/, "Enviá { \"fecha\": \"YYYY-MM-DD\" }") }),
+});
+const soloSeed = [seedLimiter, requireSeedToken];
+
 // ── Setup (una sola vez por instalación) ─────────────────────────────────────
-suscripcionRouter.post("/setup", async (req, res, next) => {
-  try {
-    const token = req.headers["x-seed-token"];
-    if (!env.SEED_SECRET || token !== env.SEED_SECRET) {
-      return res.status(403).json({ ok: false, mensaje: "No autorizado" });
-    }
-    await setupTablas();
-    const r = await crearSuscripcionInicial();
-    return res.json(r);
-  } catch (err) {
-    next(err);
-  }
+suscripcionRouter.post("/setup", ...soloSeed, async (_req, res) => {
+  await setupTablas();
+  const r = await crearSuscripcionInicial();
+  return res.json(r);
 });
 
 // ── Estado actual ─────────────────────────────────────────────────────────────
-suscripcionRouter.get(
-  "/estado",
-  requireAuth, requireRole("admin"),
-  async (_req, res, next) => {
-    try {
-      const estado = await obtenerEstado();
-      return res.json(estado);
-    } catch (err) {
-      next(err);
-    }
-  }
-);
+suscripcionRouter.get("/estado", requireAuth, requireRole("admin"), async (_req, res) => {
+  const estado = await obtenerEstado();
+  return res.json(estado);
+});
 
 // ── Crear preferencia de pago ─────────────────────────────────────────────────
-suscripcionRouter.post(
-  "/crear-pago",
-  requireAuth, requireRole("admin"),
-  async (_req, res, next) => {
-    try {
-      const estado = await obtenerEstado();
-      if (!estado.ok) return res.status(400).json(estado);
+// Si falta MP_ACCESS_TOKEN o SOFTWARE_PRECIO, mercadopago_service responde 400 con el detalle.
+suscripcionRouter.post("/crear-pago", requireAuth, requireRole("admin"), async (_req, res) => {
+  const estado = await obtenerEstado();
+  if (!estado.ok) return res.status(400).json(estado);
 
-      const pref = await crearPreferencia({
-        suscripcionId: estado.id,
-        monto:         estado.precio,
-        clienteNombre: estado.cliente_nombre,
-      });
+  const pref = await crearPreferencia({
+    suscripcionId: estado.id,
+    monto:         estado.precio,
+    clienteNombre: estado.cliente_nombre,
+  });
 
-      return res.json({ ok: true, ...pref });
-    } catch (err) {
-      // Error de configuración (MP_ACCESS_TOKEN faltante, etc.)
-      if (err.message?.includes("MP_ACCESS_TOKEN") || err.message?.includes("SOFTWARE_PRECIO")) {
-        return res.status(400).json({ ok: false, mensaje: err.message });
-      }
-      next(err);
-    }
-  }
-);
+  return res.json({ ok: true, ...pref });
+});
 
 // ── Webhook de MercadoPago (público) ──────────────────────────────────────────
+// El try/catch se queda: a Mercado Pago siempre se le responde 200, aunque algo falle,
+// para que no reintente indefinidamente.
 suscripcionRouter.post("/webhook", async (req, res) => {
   try {
     const { type, data } = req.body ?? {};
@@ -148,157 +145,76 @@ suscripcionRouter.post("/webhook", async (req, res) => {
     return res.sendStatus(200);
   } catch (err) {
     console.error("❌ Error en webhook MP:", err.message);
-    // Siempre responder 200 a MP para que no reintente indefinidamente
     return res.sendStatus(200);
   }
 });
 
 // ── Historial de pagos ────────────────────────────────────────────────────────
-suscripcionRouter.get(
-  "/pagos",
-  requireAuth, requireRole("admin"),
-  async (_req, res, next) => {
-    try {
-      const pagos = await historialPagos(24);
-      return res.json({ ok: true, pagos });
-    } catch (err) {
-      next(err);
-    }
-  }
-);
+suscripcionRouter.get("/pagos", requireAuth, requireRole("admin"), async (_req, res) => {
+  const pagos = await historialPagos(24);
+  return res.json({ ok: true, pagos });
+});
 
 // ════════════════════════════════════════════════════════════════════════════
 //  RUTAS SUPER_ADMIN — requieren JWT + rol super_admin
-//  Sin SEED_SECRET: usan el token de sesión normal
 // ════════════════════════════════════════════════════════════════════════════
 
-// GET /api/suscripcion/super/estado
-suscripcionRouter.get(
-  "/super/estado",
-  requireAuth, requireRole("super_admin"),
-  async (_req, res, next) => {
-    try {
-      const estado = await obtenerEstado();
-      return res.json(estado);
-    } catch (err) { next(err); }
-  }
-);
+suscripcionRouter.get("/super/estado", requireAuth, requireRole("super_admin"), async (_req, res) => {
+  const estado = await obtenerEstado();
+  return res.json(estado);
+});
 
-// POST /api/suscripcion/super/extender   Body: { "dias": 30 }
-suscripcionRouter.post(
-  "/super/extender",
-  requireAuth, requireRole("super_admin"),
-  async (req, res, next) => {
-    try {
-      const dias = Number(req.body?.dias);
-      if (!dias || dias <= 0 || dias > 3650) {
-        return res.status(400).json({ ok: false, mensaje: "Enviá { \"dias\": N } con N entre 1 y 3650" });
-      }
-      const r = await extenderSuscripcion(dias);
-      invalidarCacheSuscripcion();
-      return res.json({ ok: true, mensaje: `Plan extendido ${dias} día(s)`, nuevo_vencimiento: r.nuevo_vencimiento });
-    } catch (err) { next(err); }
-  }
-);
+// Body: { "dias": 30 }
+suscripcionRouter.post("/super/extender", requireAuth, requireRole("super_admin"), conDias(3650), async (req, res) => {
+  const { dias } = req.datos.body;
+  const r = await extenderSuscripcion(dias);
+  invalidarCacheSuscripcion();
+  return res.json({ ok: true, mensaje: `Plan extendido ${dias} día(s)`, nuevo_vencimiento: r.nuevo_vencimiento });
+});
 
-// POST /api/suscripcion/super/fijar   Body: { "fecha": "YYYY-MM-DD" }
-suscripcionRouter.post(
-  "/super/fijar",
-  requireAuth, requireRole("super_admin"),
-  async (req, res, next) => {
-    try {
-      const fecha = req.body?.fecha;
-      if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-        return res.status(400).json({ ok: false, mensaje: "Enviá { \"fecha\": \"YYYY-MM-DD\" }" });
-      }
-      const r = await fijarFechaVencimiento(fecha);
-      invalidarCacheSuscripcion();
-      return res.json({ ok: true, mensaje: `Vencimiento fijado al ${fecha}`, nuevo_vencimiento: r.nuevo_vencimiento });
-    } catch (err) { next(err); }
-  }
-);
+// Body: { "fecha": "YYYY-MM-DD" }
+suscripcionRouter.post("/super/fijar", requireAuth, requireRole("super_admin"), conFecha, async (req, res) => {
+  const { fecha } = req.datos.body;
+  const r = await fijarFechaVencimiento(fecha);
+  invalidarCacheSuscripcion();
+  return res.json({ ok: true, mensaje: `Vencimiento fijado al ${fecha}`, nuevo_vencimiento: r.nuevo_vencimiento });
+});
 
 // ════════════════════════════════════════════════════════════════════════════
 //  RUTAS DE ADMINISTRACIÓN — solo Nahuel (protegidas por SEED_SECRET)
 //  Usar vía Postman con header:  x-seed-token: <SEED_SECRET>
 // ════════════════════════════════════════════════════════════════════════════
 
-function verificarSeedToken(req, res) {
-  const token = req.headers["x-seed-token"];
-  if (!env.SEED_SECRET || token !== env.SEED_SECRET) {
-    res.status(403).json({ ok: false, mensaje: "Token de administración inválido" });
-    return false;
-  }
-  return true;
-}
-
-// ── Ver estado sin login ──────────────────────────────────────────────────────
-// GET /api/suscripcion/admin/estado
-suscripcionRouter.get("/admin/estado", async (req, res, next) => {
-  try {
-    if (!verificarSeedToken(req, res)) return;
-    const estado = await obtenerEstado();
-    return res.json(estado);
-  } catch (err) { next(err); }
+suscripcionRouter.get("/admin/estado", ...soloSeed, async (_req, res) => {
+  const estado = await obtenerEstado();
+  return res.json(estado);
 });
 
-// ── Extender N días a partir del vencimiento actual ───────────────────────────
-// POST /api/suscripcion/admin/extender
 // Body: { "dias": 30 }
-suscripcionRouter.post("/admin/extender", async (req, res, next) => {
-  try {
-    if (!verificarSeedToken(req, res)) return;
-
-    const dias = Number(req.body?.dias);
-    if (!dias || dias <= 0 || dias > 365) {
-      return res.status(400).json({
-        ok: false,
-        mensaje: "Enviá { \"dias\": N } con N entre 1 y 365",
-      });
-    }
-
-    const r = await extenderSuscripcion(dias);
-    invalidarCacheSuscripcion();
-    return res.json({
-      ok: true,
-      mensaje: `Plan extendido ${dias} día(s)`,
-      nuevo_vencimiento: r.nuevo_vencimiento,
-    });
-  } catch (err) { next(err); }
+suscripcionRouter.post("/admin/extender", ...soloSeed, conDias(365), async (req, res) => {
+  const { dias } = req.datos.body;
+  const r = await extenderSuscripcion(dias);
+  invalidarCacheSuscripcion();
+  return res.json({ ok: true, mensaje: `Plan extendido ${dias} día(s)`, nuevo_vencimiento: r.nuevo_vencimiento });
 });
 
-// ── Fijar fecha de vencimiento exacta (para pruebas o casos especiales) ───────
-// POST /api/suscripcion/admin/fijar
 // Body: { "fecha": "2026-12-31" }
-suscripcionRouter.post("/admin/fijar", async (req, res, next) => {
-  try {
-    if (!verificarSeedToken(req, res)) return;
+suscripcionRouter.post("/admin/fijar", ...soloSeed, conFecha, async (req, res) => {
+  const { fecha } = req.datos.body;
 
-    const fecha = req.body?.fecha;
-    if (!fecha || !/^\d{4}-\d{2}-\d{2}$/.test(fecha)) {
-      return res.status(400).json({
-        ok: false,
-        mensaje: "Enviá { \"fecha\": \"YYYY-MM-DD\" }",
-      });
-    }
+  await sequelize.query(
+    `UPDATE software_suscripcion
+     SET fecha_vencimiento = :fecha, actualizado_en = NOW()
+     WHERE id = (SELECT id FROM software_suscripcion ORDER BY id LIMIT 1)`,
+    { replacements: { fecha }, type: QueryTypes.UPDATE }
+  );
 
-    const { sequelize } = await import("../database/sequelize.js");
-    const { QueryTypes } = await import("sequelize");
-
-    await sequelize.query(
-      `UPDATE software_suscripcion
-       SET fecha_vencimiento = :fecha, actualizado_en = NOW()
-       WHERE id = (SELECT id FROM software_suscripcion ORDER BY id LIMIT 1)`,
-      { replacements: { fecha }, type: QueryTypes.UPDATE }
-    );
-
-    invalidarCacheSuscripcion();
-    const estado = await obtenerEstado();
-    return res.json({
-      ok:      true,
-      mensaje: `Vencimiento fijado a ${fecha}`,
-      estado:  estado.estado,
-      mensaje_estado: estado.mensaje,
-    });
-  } catch (err) { next(err); }
+  invalidarCacheSuscripcion();
+  const estado = await obtenerEstado();
+  return res.json({
+    ok:      true,
+    mensaje: `Vencimiento fijado a ${fecha}`,
+    estado:  estado.estado,
+    mensaje_estado: estado.mensaje,
+  });
 });

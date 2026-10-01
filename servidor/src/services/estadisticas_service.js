@@ -242,13 +242,10 @@ export async function obtenerAsistenciasHoras({ desde, hasta } = {}) {
   return { items: rows };
 }
 
-export async function obtenerPlanesPopulares({ anio } = {}) {
-  const anioNum = anio ? Number.parseInt(anio, 10) : null;
-  if (anioNum !== null && (!Number.isFinite(anioNum) || anioNum < 2000 || anioNum > 2100)) {
-    throw new Error("Año inválido");
-  }
-
-  const filtroAnio = anioNum ? `AND EXTRACT(YEAR FROM fecha_inicio) = ${anioNum}` : "";
+export async function obtenerPlanesPopulares({ anio }) {
+  // El año va como parámetro (:anio), nunca pegado en el SQL. Rango de fechas en vez de
+  // EXTRACT(YEAR ...): mismo resultado y Postgres puede usar el índice de fecha_inicio.
+  const filtroAnio = "AND fecha_inicio >= make_date(:anio, 1, 1) AND fecha_inicio < make_date(:anio + 1, 1, 1)";
 
   const sql = `
     SELECT
@@ -278,7 +275,7 @@ export async function obtenerPlanesPopulares({ anio } = {}) {
     ORDER BY total_ventas DESC;
   `;
 
-  const rows = await sequelize.query(sql, { type: QueryTypes.SELECT });
+  const rows = await sequelize.query(sql, { type: QueryTypes.SELECT, replacements: { anio } });
   return {
     items: rows.map((r) => ({
       plan:            r.plan,

@@ -14,6 +14,9 @@ La base está en producción (Neon) con datos reales. Por eso:
 - **Prohibido** crear o cambiar tablas, columnas, índices, triggers, vistas o modelos
   (`servidor/src/models_v2/`), y prohibido `sync()` en cualquier forma.
 - **Prohibido** agregar archivos a `servidor/src/database/*.sql` o tocar `migration_runner.js`.
+  En `database/sequelize.js` solo se ajusta la conexión (pool, `search_path`, zona horaria de la sesión).
+- Las relaciones entre modelos también están en `models_v2/index.js`: si falta una, se arma la
+  consulta desde otra relación que sí exista (ver `listarStaff`), no se agrega.
 - Sí se puede: optimizar **cómo se consulta** (menos consultas, `attributes` explícitos, evitar N+1,
   SQL con `replacements`), caché en memoria o en el frontend, y todo el código del frontend.
 - Si una mejora necesitara cambiar la base, **se propone y se pregunta**; nunca se aplica.
@@ -26,9 +29,17 @@ La base está en producción (Neon) con datos reales. Por eso:
   (`public.software_suscripcion`, `public.software_pago`).
 
 ### Neon (cobra por tiempo despierta; se duerme a los ~5 min sin consultas)
-- No agregar tareas periódicas que consulten la base sin necesidad.
-- Preferir caché (`suscripcion_middleware` guarda el estado 5 min; TanStack Query en el frontend)
-  antes que consultar de nuevo.
+- No agregar tareas periódicas que consulten la base sin necesidad. El cron de estados corre cada hora.
+- `/api/health` no consulta la base (`/api/health?bd=1` sí). El pool cierra las conexiones sin uso (`min: 0`).
+- Preferir caché antes que consultar de nuevo: `nucleo/cache.js` (catálogos, 10 min, se limpia al
+  editar un plan), `suscripcion_middleware` (estado 5 min), TanStack Query en el frontend.
+- Filtros por año como rango de fechas (`>= make_date(:anio,1,1) AND < make_date(:anio+1,1,1)`),
+  no `EXTRACT(YEAR ...)`: así se usan los índices.
+
+### Hora argentina
+Cada conexión del pool hace `SET TIME ZONE 'America/Argentina/Cordoba'` (`database/sequelize.js`):
+`CURRENT_DATE` y `now()` son de Argentina. En JavaScript, "hoy" siempre con
+`timeZone: "America/Argentina/Buenos_Aires"` (el servidor de Render está en UTC).
 
 ## Stack
 
@@ -61,8 +72,10 @@ npm run build         # build del frontend
 ### Bases de los tests (nunca Neon)
 - `servidor/.env.test` (no se sube; copiar `servidor/.env.test.example`): Postgres **local**.
 - Cada corrida **borra y rearma** `dynamicgym_auto_test` (Vitest) o `dynamicgym_e2e_auto_test`
-  (Playwright) con el SQL de `servidor/src/database/` y usuarios/alumnos de prueba
-  (`servidor/tests/armar_base.js`).
+  (Playwright) con el SQL de `servidor/src/database/`, la estructura (sin datos) de lo que
+  producción tiene aparte (`servidor/tests/estructura_produccion.sql`: esquema `public` y la vista
+  de recaudación) y usuarios/alumnos de prueba (`servidor/tests/armar_base.js`). Los tests
+  comparten la base: un test que modifica un alumno usa uno propio (ej. `ALUMNOS_TEST.ajusteManual`).
 - Candado (`servidor/tests/base_test.js`): si el host no es local o el nombre no termina en
   `_auto_test`, los tests no corren. `dynamicgym_test` tiene una **copia de datos reales**: no se toca.
 
@@ -79,8 +92,9 @@ npm run build         # build del frontend
 servidor/src/
   server.js / app.js           # arranque y app Express (createApp, usada también por los tests)
   routes/ → controllers/ → services/   # capas; la lógica y el SQL viven en services
+  nucleo/                      # errores, manejador_errores, validar (Zod), responder, consultas, cache, zod
   models_v2/                   # modelos Sequelize (schema gym_v3) — NO modificar
-  middleware/                  # auth (requireAuth, requireRole), suscripción
+  middleware/                  # auth (requireAuth, requireRole), suscripción, seed_token
   cron/                        # estados de alumnos
   configuracion_servidor/env.js# único lugar que lee process.env
   database/                    # conexión y SQL de arranque — NO modificar
@@ -93,9 +107,8 @@ frontend/src/
 e2e/                           # Playwright
 ```
 
-Hacia dónde va (por etapas, sin tocar la base): errores centralizados y validación Zod en el
-servidor; `components/ui/` como única fuente de primitivas (tabla, modal, inputs); pantallas por
-módulo con sus hooks de TanStack Query.
+Hacia dónde va (por etapas, sin tocar la base): `components/ui/` como única fuente de primitivas
+(tabla, modal, inputs); pantallas por módulo con sus hooks de TanStack Query.
 
 ---
 
@@ -124,9 +137,19 @@ módulo con sus hooks de TanStack Query.
 ## Reglas Node.js (`servidor/`)
 
 - Capas `routes → controllers → services`. El servicio tiene la lógica y es el único que usa modelos/SQL.
+- **Validación en la ruta**: `validar({ body, query, params })` de `nucleo/validar.js` con schemas
+  Zod (importar `z`, `dni()`, `idPositivo()` de `nucleo/zod.js`, mensajes en español). Responde
+  400 `VALIDACION`; el controlador lee los datos limpios de `req.datos.body/query/params`.
+- **Controladores sin try/catch** (Express 5 manda los errores al `nucleo/manejador_errores.js`,
+  que responde 500 sin detalles). Los servicios devuelven `{ ok: false, codigo, ... }` para errores
+  de negocio, y el controlador elige el status con `responderResultado(res, r, { NO_EXISTE: 404 })`.
+  Errores de configuración o de reglas: `throw new ErrorApp({ status, codigo, mensaje })`.
+- **No cambiar la forma de las respuestas OK**: el frontend las lee tal cual.
 - `process.env` solo en `configuracion_servidor/env.js`.
 - SQL crudo con `replacements`/`bind`. **Prohibido interpolar datos del usuario con `${}`**;
-  nombres de columnas u orden solo desde una lista blanca. Búsquedas "contiene" escapando `%` y `_`.
+  nombres de columnas u orden solo desde una lista blanca. Búsquedas "contiene" con
+  `patronContiene()` de `nucleo/consultas.js` (escapa `%` y `_`).
+- Rutas públicas o con secretos: rate limit (login, consulta pública, `seed_token.js`).
 - Allowlist de campos al crear/actualizar; nunca `Modelo.create(req.body)`.
 - Todo lo que toca dinero, ingresos o estados va en una transacción.
 - Respuestas `{ ok, codigo, mensaje, ... }`, mensajes al usuario en español, sin stack ni errores crudos de la base.
