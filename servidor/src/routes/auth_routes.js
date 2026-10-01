@@ -1,7 +1,7 @@
 import { Router } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { loginController, meController, logoutController, resetPasswordController } from "../controllers/auth_controller.js";
-import { requireAuth } from "../middleware/auth_middleware.js";
+import { requireAuth, requireRole } from "../middleware/auth_middleware.js";
 import { seedAdmin, seedStaff } from "../controllers/auth_seed_controller.js";
 import { env } from "../configuracion_servidor/env.js";
 
@@ -50,7 +50,8 @@ function requireSeedToken(req, res, next) {
   next();
 }
 
-authRouter.post("/reset-password", resetLimiter, resetPasswordController);
+// Cambia la contraseña de cualquier cuenta sabiendo solo el email: únicamente el super admin.
+authRouter.post("/reset-password", resetLimiter, requireAuth, requireRole("super_admin"), resetPasswordController);
 authRouter.post("/seed-admin", requireSeedToken, seedAdmin);
 authRouter.post("/seed-staff", requireSeedToken, seedStaff);
 authRouter.post("/login", loginLimiter, loginController);

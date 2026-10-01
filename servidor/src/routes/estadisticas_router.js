@@ -8,8 +8,12 @@ import {
   AsistenciasHorasDia,
   PlanesPopulares,
 } from "../controllers/estadisticas_controller.js";
+import { requireAuth, requireRole } from "../middleware/auth_middleware.js";
 
 export const estadisticasRouter = Router();
+
+// Devuelven nombres y DNI de alumnos: solo admin (las pantallas que las usan también son solo admin).
+estadisticasRouter.use(requireAuth, requireRole("admin"));
 
 /**
  * =========================

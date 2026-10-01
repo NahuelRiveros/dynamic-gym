@@ -3,8 +3,8 @@ import { crearUsuarioConRoles ,listarUsuarios} from "../services/admin_usuarios_
 
 export async function crearUsuarioController(req, res) {
   try {
-    const result = await crearUsuarioConRoles(req.body ?? {});
-    if (!result.ok) return res.status(400).json(result);
+    const result = await crearUsuarioConRoles(req.body ?? {}, { solicitante_roles: req.user.roles });
+    if (!result.ok) return res.status(result.codigo === "SIN_PERMISO" ? 403 : 400).json(result);
     return res.json(result);
   } catch (error) {
     console.error("crearUsuarioController:", error);

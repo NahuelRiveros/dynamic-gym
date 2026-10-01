@@ -1,5 +1,5 @@
 import request from "supertest";
-import { afterAll, describe, expect, it } from "vitest";
+import { afterAll, describe, expect, it, vi } from "vitest";
 import { createApp } from "../app.js";
 import { sequelize } from "../database/sequelize.js";
 import { USUARIOS_TEST } from "../../tests/armar_base.js";
@@ -38,10 +38,21 @@ describe("Auth", () => {
 });
 
 describe("Salud", () => {
-  it("/health responde que el servidor y la base funcionan", async () => {
+  it("/health responde sin consultar la base (así Neon puede dormirse)", async () => {
+    const consulta = vi.spyOn(sequelize, "query");
+
     const r = await request(app).get("/api/health");
 
     expect(r.status).toBe(200);
     expect(r.body.ok).toBe(true);
+    expect(consulta).not.toHaveBeenCalled();
+    consulta.mockRestore();
+  });
+
+  it("/health?bd=1 prueba también la base", async () => {
+    const r = await request(app).get("/api/health?bd=1");
+
+    expect(r.status).toBe(200);
+    expect(r.body.mensaje).toBe("Servidor y base funcionando");
   });
 });

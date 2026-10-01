@@ -24,7 +24,12 @@ const router = Router();
 /**
  * 🔥 HEALTH CHECK (SIN AUTH)
  */
-router.get("/health", async (_req, res) => {
+// Sin ?bd=1 NO consulta la base: Render y los monitores la llaman seguido, y cada consulta
+// despertaría a Neon (que cobra por tiempo despierta). Con ?bd=1 prueba también la base.
+router.get("/health", async (req, res) => {
+  if (req.query.bd !== "1") {
+    return res.json({ ok: true, mensaje: "Servidor funcionando" });
+  }
   try {
     await sequelize.query("SELECT 1");
 

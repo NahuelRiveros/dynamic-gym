@@ -10,9 +10,11 @@ const dialectOptions = {
 // ── Pool de conexiones ────────────────────────────────────────────────────
 // Evita abrir/cerrar la DB en cada request.
 // En Render free tier el DB tiene límite de 25 conexiones → max: 5 es seguro.
+// min: 0 → sin pedidos, a los `idle` ms se cierran todas: no queda una conexión abierta para siempre
+// (Neon puede suspenderse y el pooler no tiene que sostenerla).
 const poolConfig = {
   max: 5,
-  min: 1,
+  min: 0,
   acquire: 30000,
   idle: 10000,
 };

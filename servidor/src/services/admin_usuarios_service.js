@@ -6,7 +6,7 @@ import { Persona, Usuario, UsuarioRol, Rol } from "../models_v2/index.js";
 const normalizarEmail = (v) => String(v ?? "").trim().toLowerCase();
 const normalizarDocumento = (v) => String(v ?? "").replace(/[.\s]/g, "").trim();
 
-export async function crearUsuarioConRoles(data) {
+export async function crearUsuarioConRoles(data, { solicitante_roles = [] } = {}) {
   const personaId  = data.persona_id ? Number(data.persona_id) : null;
   const email      = normalizarEmail(data.email);
   const documento  = data.documento ? normalizarDocumento(data.documento) : null;
@@ -17,6 +17,15 @@ export async function crearUsuarioConRoles(data) {
     return { ok: false, codigo: "PASSWORD_INVALIDO", mensaje: "Password obligatorio (mínimo 4 caracteres)" };
   if (!roles.length)
     return { ok: false, codigo: "ROLES_REQUERIDOS", mensaje: "Debés enviar roles: [1] admin, [2] staff" };
+
+  // Los roles se validan ANTES de crear nada: un `return` dentro de la transacción la confirma,
+  // así que validar después dejaba creado un usuario sin roles.
+  const rolesDb = await Rol.findAll({ where: { id: roles } });
+  if (rolesDb.length !== roles.length)
+    return { ok: false, codigo: "ROL_INVALIDO", mensaje: "Alguno de los roles enviados no existe" };
+  // super_admin maneja la suscripción del software: solo otro super_admin puede darlo.
+  if (rolesDb.some((r) => r.codigo === "super_admin") && !solicitante_roles.includes("super_admin"))
+    return { ok: false, codigo: "SIN_PERMISO", mensaje: "Solo un super admin puede crear otro super admin" };
 
   return sequelize.transaction(async (t) => {
     let persona = null;
@@ -39,11 +48,12 @@ export async function crearUsuarioConRoles(data) {
       if (!persona) {
         const nombre  = String(data.nombre ?? "").trim();
         const apellido = String(data.apellido ?? "").trim();
-        if (!nombre || !apellido)
-          return { ok: false, codigo: "FALTAN_DATOS_PERSONA", mensaje: "Si no existe persona, enviá nombre y apellido" };
+        if (!nombre || !apellido || !documento)
+          return { ok: false, codigo: "FALTAN_DATOS_PERSONA", mensaje: "Si no existe persona, enviá nombre, apellido y documento" };
 
+        // tipo_documento 1 = DNI (el único que usa el gimnasio, igual que auth_seed_controller).
         persona = await Persona.create(
-          { nombre, apellido, email: email || null, documento: documento ? String(documento) : null },
+          { nombre, apellido, email: email || null, documento, tipo_documento_id: 1 },
           { transaction: t }
         );
       }
@@ -58,10 +68,6 @@ export async function crearUsuarioConRoles(data) {
       { persona_id: persona.id, contrasena: hash, activo: true, actualizado_en: new Date() },
       { transaction: t }
     );
-
-    const rolesDb = await Rol.findAll({ where: { id: roles }, transaction: t });
-    if (rolesDb.length !== roles.length)
-      return { ok: false, codigo: "ROL_INVALIDO", mensaje: "Alguno de los roles enviados no existe" };
 
     for (const rolId of roles) {
       await UsuarioRol.create(
