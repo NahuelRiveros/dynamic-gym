@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { getVencimientos } from "../../api/estadisticas_api";
 import { CalendarClock, RefreshCw, AlertTriangle, Clock, Zap, User } from "lucide-react";
-import DataGrid from "../../components/table/DataGrid";
+import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 

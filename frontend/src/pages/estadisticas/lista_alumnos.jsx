@@ -4,7 +4,7 @@ import { getAlumnosListado, actualizarEstadosAlumnos } from "../../api/alumnos_a
 import { useAuth } from "../../auth/auth_context.jsx";
 import { Users, RefreshCw, ChevronRight } from "lucide-react";
 import { formatearFechaAR } from "../../components/form/formatear_fecha";
-import DataGrid from "../../components/table/DataGrid";
+import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
 
 /* ── badges ─────────────────────────────────────────────────────────────── */
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import StaffFormModal from "../../components/modal/staff_form_modal";
 import StaffPasswordModal from "../../components/modal/staff_password_modal";
-import DataGrid from "../../components/table/DataGrid";
+import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
 import {
   obtenerStaff,
   crearStaff,
@@ -250,7 +250,6 @@ export default function StaffPage() {
           emptyMessage="No hay staff cargado."
           actions={actions}
           actionsLabel="Acciones"
-          actionsPosition="end"
           pageSize={15}
           pageSizeOptions={[10, 15, 25]}
         />

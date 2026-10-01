@@ -2,7 +2,7 @@ import { useState } from "react";
 import ProductoFormModal from "../../components/modal/producto_form_modal";
 import MovimientoStockModal from "../../components/modal/movimiento_stock_modal";
 import HistorialStockModal from "../../components/modal/historial_stock_modal";
-import DataGrid from "../../components/table/DataGrid";
+import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
 import {
   crearProducto,
   actualizarProducto,
@@ -224,7 +224,6 @@ export default function ProductosTab({ productos, categorias, cargando, onRefres
         emptyMessage="No hay productos cargados."
         actions={actions}
         actionsLabel="Acciones"
-        actionsPosition="end"
         pageSize={15}
         pageSizeOptions={[10, 15, 25]}
       />

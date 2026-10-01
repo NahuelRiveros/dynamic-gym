@@ -1,6 +1,6 @@
 import { useState } from "react";
 import MovimientoStockModal from "../../components/modal/movimiento_stock_modal";
-import DataGrid from "../../components/table/DataGrid";
+import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
 import { registrarEntrada, registrarVenta } from "../../api/stock_api.js";
 import { PackagePlus, ShoppingCart } from "lucide-react";
 
@@ -114,7 +114,6 @@ export default function VenderTab({ productos, cargando, onRefrescar }) {
         emptyMessage="No hay productos disponibles para vender."
         actions={actions}
         actionsLabel="Acciones"
-        actionsPosition="end"
         pageSize={15}
         pageSizeOptions={[10, 15, 25]}
       />

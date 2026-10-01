@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import PlanFormModal from "../../components/modal/plan_form_modal";
-import DataGrid from "../../components/table/DataGrid";
+import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
 import {
   obtenerPlanes,
   crearPlan,
@@ -288,7 +288,6 @@ export default function PlanesPage() {
           emptyMessage="No hay planes cargados."
           actions={actions}
           actionsLabel="Acciones"
-          actionsPosition="end"
           pageSize={15}
           pageSizeOptions={[10, 15, 25]}
         />
