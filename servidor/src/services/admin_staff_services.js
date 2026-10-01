@@ -10,51 +10,50 @@ const ahoraArgentina = () =>
   sequelize.literal(`TIMEZONE('America/Argentina/Cordoba', CURRENT_TIMESTAMP)`);
 
 export async function listarStaff() {
-  const rolStaff = await Rol.findOne({ where: { codigo: "staff" } });
-  if (!rolStaff) return [];
-
-  const relaciones = await UsuarioRol.findAll({
-    where: { rol_id: rolStaff.id },
+  // Se parte de Usuario (relación Usuario ↔ roles que sí está declarada en models_v2): antes se partía
+  // de UsuarioRol, que no tiene relaciones declaradas, y el listado fallaba siempre. Una sola consulta.
+  const usuarios = await Usuario.findAll({
+    attributes: ["id", "persona_id", "activo", "actualizado_en", "ultimo_login"],
     include: [
       {
-        model: Usuario,
-        as: "usuario",
-        include: [
-          {
-            model: Persona,
-            as: "persona",
-            attributes: ["id", "nombre", "apellido", "email", "documento", "actualizado_en"],
-          },
-        ],
-        attributes: ["id", "persona_id", "activo", "actualizado_en", "ultimo_login"],
+        model: Persona,
+        as: "persona",
+        attributes: ["id", "nombre", "apellido", "email", "documento", "actualizado_en"],
       },
       {
         model: Rol,
-        as: "rol",
+        as: "roles",
+        where: { codigo: "staff" },
         attributes: ["id", "codigo", "descripcion"],
+        through: { attributes: ["id"] },
       },
     ],
-    order: [["id", "DESC"]],
   });
 
-  return relaciones.map((rel) => ({
-    gym_usuario_rol_id:    rel.id,
-    gym_usuario_id:        rel.usuario?.id,
-    gym_usuario_activo:    rel.usuario?.activo,
-    gym_usuario_fechacambio: rel.usuario?.actualizado_en,
-    gym_usuario_ultimo_login: rel.usuario?.ultimo_login,
+  return usuarios
+    .map((u) => {
+      const rol = u.roles[0];
+      return {
+        gym_usuario_rol_id:    rol[UsuarioRol.name]?.id,
+        gym_usuario_id:        u.id,
+        gym_usuario_activo:    u.activo,
+        gym_usuario_fechacambio: u.actualizado_en,
+        gym_usuario_ultimo_login: u.ultimo_login,
 
-    gym_persona_id:        rel.usuario?.persona?.id,
-    gym_persona_nombre:    rel.usuario?.persona?.nombre,
-    gym_persona_apellido:  rel.usuario?.persona?.apellido,
-    gym_persona_email:     rel.usuario?.persona?.email,
-    gym_persona_documento: rel.usuario?.persona?.documento,
-    gym_persona_fechacambio: rel.usuario?.persona?.actualizado_en,
+        gym_persona_id:        u.persona?.id,
+        gym_persona_nombre:    u.persona?.nombre,
+        gym_persona_apellido:  u.persona?.apellido,
+        gym_persona_email:     u.persona?.email,
+        gym_persona_documento: u.persona?.documento,
+        gym_persona_fechacambio: u.persona?.actualizado_en,
 
-    rol_id:          rel.rol?.id,
-    rol_codigo:      rel.rol?.codigo,
-    rol_descripcion: rel.rol?.descripcion,
-  }));
+        rol_id:          rol.id,
+        rol_codigo:      rol.codigo,
+        rol_descripcion: rol.descripcion,
+      };
+    })
+    // Mismo orden que antes: el último en recibir el rol, primero.
+    .sort((a, b) => b.gym_usuario_rol_id - a.gym_usuario_rol_id);
 }
 
 export async function crearStaff({ email, password, nombre, apellido, documento }) {
@@ -126,8 +125,9 @@ export async function crearStaff({ email, password, nombre, apellido, documento 
       };
     }
 
+    // tipo_documento 1 = DNI (obligatorio en la base; sin él el alta de una persona nueva fallaba siempre).
     persona = await Persona.create(
-      { nombre: nombreN, apellido: apellidoN, email: emailN, documento: doc, actualizado_en: ahoraArgentina() },
+      { nombre: nombreN, apellido: apellidoN, email: emailN, documento: doc, tipo_documento_id: 1, actualizado_en: ahoraArgentina() },
       { transaction: t }
     );
 

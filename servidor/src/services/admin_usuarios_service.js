@@ -2,6 +2,7 @@
 import { sequelize } from "../database/sequelize.js";
 import { Op } from "sequelize";
 import { Persona, Usuario, UsuarioRol, Rol } from "../models_v2/index.js";
+import { patronContiene } from "../nucleo/consultas.js";
 
 const normalizarEmail = (v) => String(v ?? "").trim().toLowerCase();
 const normalizarDocumento = (v) => String(v ?? "").replace(/[.\s]/g, "").trim();
@@ -112,12 +113,13 @@ export async function listarUsuarios({ buscar, rol, activo, page, limit }) {
 
   const activoBool  = parseBool(activo);
   const q           = String(buscar ?? "").trim();
+  const patron = patronContiene(q);
   const wherePersona = q
     ? {
         [Op.or]: [
-          { nombre:   { [Op.iLike]: `%${q}%` } },
-          { apellido: { [Op.iLike]: `%${q}%` } },
-          { email:    { [Op.iLike]: `%${q}%` } },
+          { nombre:   { [Op.iLike]: patron } },
+          { apellido: { [Op.iLike]: patron } },
+          { email:    { [Op.iLike]: patron } },
         ],
       }
     : undefined;

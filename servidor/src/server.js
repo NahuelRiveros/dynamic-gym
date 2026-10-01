@@ -2,15 +2,14 @@ import { createApp } from "./app.js";
 import { sequelize } from "./database/sequelize.js";
 import { runMigraciones } from "./database/migration_runner.js";
 import { iniciarCronEstadoAlumnos } from "./cron/estado_alumno_cron.js";
-// import { iniciarSyncQueueCron } from "./cron/sync_queue_cron.js";
 import "./models_v2/index.js";
 import { env } from "./configuracion_servidor/env.js";
 
 async function main() {
   console.log(`🚀 Iniciando Dynamic Gym [${env.NODE_ENV}]...`);
 
+  // La zona horaria se fija en cada conexión del pool (database/sequelize.js → afterConnect).
   await sequelize.authenticate();
-  await sequelize.query(`SET TIME ZONE 'America/Argentina/Cordoba'`);
   console.log("✅ Base de datos conectada");
 
   // Renombra tablas/columnas al esquema nuevo si aún no se hizo (idempotente)

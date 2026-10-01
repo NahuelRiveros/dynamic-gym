@@ -1,6 +1,7 @@
 ﻿import { PlanTipo, Membresia } from "../models_v2/index.js";
 import { Op } from "sequelize";
 import { sequelize } from "../database/sequelize.js";
+import { invalidarCatalogos } from "./catalogos_service.js";
 
 export async function listarPlanes({ incluirInactivos = true } = {}) {
   const where = {};
@@ -27,13 +28,15 @@ export async function existePlanConDescripcion(descripcion, excluirId = null) {
 }
 
 export async function crearPlan(data) {
-  return PlanTipo.create({
+  const plan = await PlanTipo.create({
     descripcion:  data.descripcion,
     dias_totales: data.dias_totales,
     ingresos:     data.ingresos,
     precio:       data.precio,
     activo:       true,
   });
+  invalidarCatalogos();
+  return plan;
 }
 
 export async function actualizarPlan(id, data) {
@@ -47,6 +50,7 @@ export async function actualizarPlan(id, data) {
     precio:        data.precio,
     actualizado_en: sequelize.literal("CURRENT_TIMESTAMP"),
   });
+  invalidarCatalogos();
 
   return plan;
 }
@@ -63,5 +67,6 @@ export async function cambiarEstadoPlan(id, activo) {
   const plan = await PlanTipo.findByPk(id);
   if (!plan) return null;
   await plan.update({ activo });
+  invalidarCatalogos();
   return plan;
 }

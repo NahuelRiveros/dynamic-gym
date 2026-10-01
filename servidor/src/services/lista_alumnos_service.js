@@ -1,5 +1,6 @@
 import { sequelize } from "../database/sequelize.js";
 import { QueryTypes } from "sequelize";
+import { patronContiene } from "../nucleo/consultas.js";
 
 export async function listarAlumnos({
   q,
@@ -20,7 +21,7 @@ export async function listarAlumnos({
 
   if (dni) {
     where.push(`p.documento::text ILIKE :dni`);
-    repl.dni = `%${dni}%`;
+    repl.dni = patronContiene(dni);
   }
 
   if (q) {
@@ -32,7 +33,7 @@ export async function listarAlumnos({
         COALESCE(p.email,'') ILIKE :q
       )
     `);
-    repl.q = `%${q}%`;
+    repl.q = patronContiene(q);
   }
 
   if (estado_id != null) {
@@ -135,8 +136,11 @@ export async function listarAlumnos({
     ${whereSQL}
   `;
 
-  const items    = await sequelize.query(sqlItems, { replacements: repl, type: QueryTypes.SELECT });
-  const [countRow] = await sequelize.query(sqlCount, { replacements: repl, type: QueryTypes.SELECT });
+  // Las dos consultas a la vez: la página y el total no dependen una de la otra.
+  const [items, [countRow]] = await Promise.all([
+    sequelize.query(sqlItems, { replacements: repl, type: QueryTypes.SELECT }),
+    sequelize.query(sqlCount, { replacements: repl, type: QueryTypes.SELECT }),
+  ]);
 
   const total      = countRow?.total ?? 0;
   const totalPages = Math.ceil(total / l);

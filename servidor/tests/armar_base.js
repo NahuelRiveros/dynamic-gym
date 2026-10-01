@@ -39,9 +39,11 @@ export async function armarBaseDeTest(conexion = conexionDeTest()) {
     for (const archivo of ARCHIVOS_SQL) {
       await base.query(readFileSync(new URL(`../src/database/${archivo}`, import.meta.url), "utf8"));
     }
-    // Al arrancar, el servidor corre migration_v2.sql, que renombra tablas viejas si falta
-    // public.persona. Con una tabla vacía con ese nombre lo saltea, como pasa en producción.
-    await base.query("CREATE TABLE IF NOT EXISTS public.persona (id INT)");
+    // Lo que producción tiene y el SQL de arranque no: el esquema viejo public (vacío) y la vista de
+    // recaudación. Con public.persona presente, migration_v2.sql se saltea al arrancar, como en producción.
+    await base.query(readFileSync(new URL("./estructura_produccion.sql", import.meta.url), "utf8"));
+    // Estado que existe en producción y no en setup_gym_v3.sql: lo usa el alta de alumnos.
+    await base.query("INSERT INTO gym_v3.alumno_estado (id, descripcion) VALUES (3, 'Pendiente') ON CONFLICT (id) DO NOTHING");
 
     for (const u of Object.values(USUARIOS_TEST)) await crearUsuario(base, u);
     for (const a of Object.values(ALUMNOS_TEST)) await crearAlumno(base, a);

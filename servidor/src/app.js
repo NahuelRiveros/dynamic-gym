@@ -9,6 +9,7 @@ import { existsSync } from "fs";
 import { fileURLToPath } from "url";
 import routes from "./routes/index.js";
 import { env } from "./configuracion_servidor/env.js";
+import { manejadorErrores } from "./nucleo/manejador_errores.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname  = path.dirname(__filename);
@@ -33,8 +34,9 @@ export function createApp() {
   // Reduce respuestas JSON/estáticos hasta un 70% — va ANTES de rutas
   app.use(compression());
 
-  // "combined" en prod guarda IP + User-Agent; "dev" es legible en consola
-  app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
+  // "combined" en prod guarda IP + User-Agent; "dev" es legible en consola. En los tests, nada
+  // (si no, cada pedido de Supertest llena la salida).
+  if (env.NODE_ENV !== "test") app.use(morgan(env.NODE_ENV === "production" ? "combined" : "dev"));
 
   app.use(express.json());
   app.use(cookieParser());
@@ -86,21 +88,7 @@ export function createApp() {
   }
 
   // ── Error handler global ─────────────────────────────────────────────────
-  app.use((err, _req, res, _next) => {
-    if (err?.type === "entity.parse.failed") {
-      return res.status(400).json({
-        ok: false,
-        codigo: "JSON_INVALIDO",
-        mensaje: "Body JSON inválido",
-      });
-    }
-    console.error(err);
-    return res.status(500).json({
-      ok: false,
-      codigo: "ERROR",
-      mensaje: "Error interno del servidor",
-    });
-  });
+  app.use(manejadorErrores);
 
   return app;
 }

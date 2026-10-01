@@ -34,17 +34,9 @@ export const sequelize = env.DATABASE_URL
       port: env.DB_PORT,
     });
 
+// En CADA conexión nueva del pool (no solo la primera): esquema y hora argentina. Sin la zona,
+// las conexiones quedan en UTC y desde las 21 h CURRENT_DATE / now() ya dan "mañana".
+// Las dos órdenes en un solo viaje a la base.
 sequelize.afterConnect(async (connection) => {
-  await connection.query("SET search_path TO gym_v3, public");
+  await connection.query("SET search_path TO gym_v3, public; SET TIME ZONE 'America/Argentina/Cordoba'");
 });
-
-export async function conectarDB() {
-  try {
-    await sequelize.authenticate();
-    await sequelize.query(`SET TIME ZONE 'America/Argentina/Cordoba'`);
-    console.log("✅ Base de datos conectada");
-  } catch (error) {
-    console.error("❌ Error al conectar la base de datos:", error);
-    throw error;
-  }
-}

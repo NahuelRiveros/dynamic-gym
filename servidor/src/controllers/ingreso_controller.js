@@ -1,47 +1,14 @@
 import { registrarIngresoPorDni } from "../services/ingresos_service.js";
+import { responderResultado } from "../nucleo/responder.js";
 
-export async function registrarIngreso(req, res, next) {
-  try {
-    const { dni } = req.body;
+export async function registrarIngreso(req, res) {
+  const r = await registrarIngresoPorDni({ dni: req.datos.body.dni });
 
-    if (!dni || typeof dni !== "string") {
-      return res.status(400).json({
-        ok: false,
-        codigo: "VALIDACION",
-        mensaje: "El DNI es obligatorio y debe ser texto",
-      });
-    }
-
-    const r = await registrarIngresoPorDni({ dni });
-
-    if (!r.ok) {
-      if (r.codigo === "NO_EXISTE") {
-        return res.status(404).json(r);
-      }
-
-      if (r.codigo === "NO_ES_ALUMNO") {
-        return res.status(404).json(r);
-      }
-
-      if (
-        [
-          "PLAN_VENCIDO_O_INEXISTENTE",
-          "SIN_INGRESOS",
-          "YA_INGRESO_HOY",
-        ].includes(r.codigo)
-      ) {
-        return res.status(409).json(r);
-      }
-
-      if (r.codigo === "VALIDACION") {
-        return res.status(400).json(r);
-      }
-
-      return res.status(400).json(r);
-    }
-
-    return res.status(200).json(r);
-  } catch (err) {
-    next(err);
-  }
+  return responderResultado(res, r, {
+    NO_EXISTE: 404,
+    NO_ES_ALUMNO: 404,
+    PLAN_VENCIDO_O_INEXISTENTE: 409,
+    SIN_INGRESOS: 409,
+    YA_INGRESO_HOY: 409,
+  });
 }

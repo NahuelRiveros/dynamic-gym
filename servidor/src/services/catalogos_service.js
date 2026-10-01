@@ -5,8 +5,21 @@
   PlanTipo,
   CategoriaProducto,
 } from "../models_v2/index.js";
+import { crearCache } from "../nucleo/cache.js";
 
-export async function obtenerCatalogos() {
+// Los piden casi todas las pantallas y casi no cambian: 10 minutos en memoria. planes_services
+// invalida la caché al crear, editar o activar/desactivar un plan, así el cambio se ve al instante.
+const cacheCatalogos = crearCache({ ttlMs: 10 * 60 * 1000 });
+
+export function obtenerCatalogos() {
+  return cacheCatalogos.obtener(cargarCatalogos);
+}
+
+export function invalidarCatalogos() {
+  cacheCatalogos.invalidar();
+}
+
+async function cargarCatalogos() {
   const [tiposDocumento, sexos, tiposPersona, tiposPlan, categoriasProducto] = await Promise.all([
     TipoDocumento.findAll({
       attributes: ["id", "descripcion"],

@@ -12,8 +12,9 @@ export function validarPlanBody(body) {
     errores.push("La descripción debe tener al menos 3 caracteres");
   }
 
-  if (!Number.isInteger(dias_totales) || dias_totales < 0) {
-    errores.push("Los días totales deben ser un número entero mayor o igual a 0");
+  // La base exige dias_totales > 0 (CHECK en plan_tipo): con 0 terminaba en "Error interno".
+  if (!Number.isInteger(dias_totales) || dias_totales < 1) {
+    errores.push("Los días totales deben ser un número entero mayor a 0");
   }
 
   if (!Number.isInteger(ingresos) || ingresos < 0) {
