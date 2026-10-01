@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useRef, useState } from "react";
 import {
   AVISO_CONFIG_EVENT,
   AVISO_CONFIG_STORAGE_KEY,
@@ -114,9 +114,12 @@ export default function GymAudioScheduler() {
     };
   }, []);
 
+  // Los navegadores no dejan reproducir audio hasta que el usuario toca algo: con el primer
+  // click / tecla / toque se desbloquea. useEffectEvent: usa siempre la última versión de la función.
+  const alPrimeraInteraccion = useEffectEvent(() => desbloquearAudio());
   useEffect(() => {
     const onFirstInteraction = () => {
-      desbloquearAudio();
+      alPrimeraInteraccion();
       window.removeEventListener("click", onFirstInteraction);
       window.removeEventListener("keydown", onFirstInteraction);
       window.removeEventListener("touchstart", onFirstInteraction);

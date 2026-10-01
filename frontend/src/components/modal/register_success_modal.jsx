@@ -1,27 +1,14 @@
-import { useEffect, useState } from "react";
 import { CheckCircle, UserPlus, IdCard, Hash } from "lucide-react";
+import { useCuentaRegresiva } from "../../hook/use_cuenta_regresiva.js";
 
-export default function RegisterSuccessModal({ open, persona, alumno, delayMs = 5000, onFinish }) {
+// El contenido se monta al abrir: así la cuenta regresiva arranca de nuevo cada vez.
+export default function RegisterSuccessModal({ open, ...props }) {
+  return open ? <ContenidoAltaExitosa {...props} /> : null;
+}
+
+function ContenidoAltaExitosa({ persona, alumno, delayMs = 5000, onFinish }) {
   const totalSeg = Math.round(delayMs / 1000);
-  const [restante, setRestante] = useState(totalSeg);
-
-  useEffect(() => {
-    if (!open) return;
-    setRestante(totalSeg);
-    let seg = totalSeg;
-    const t = setInterval(() => {
-      seg -= 1;
-      if (seg <= 0) {
-        clearInterval(t);
-        onFinish?.();
-      } else {
-        setRestante(seg);
-      }
-    }, 1000);
-    return () => clearInterval(t);
-  }, [open]);
-
-  if (!open) return null;
+  const restante = useCuentaRegresiva({ segundos: totalSeg, alTerminar: onFinish });
 
   const porcentaje = (restante / totalSeg) * 100;
   const nombre = [persona?.nombre, persona?.apellido].filter(Boolean).join(" ");

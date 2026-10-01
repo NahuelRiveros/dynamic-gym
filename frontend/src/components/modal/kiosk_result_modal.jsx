@@ -1,24 +1,10 @@
-import { useEffect, useState } from "react";
 import { CheckCircle, IdCard, Clock, Calendar, Ticket } from "lucide-react";
 import { formatearFechaAR } from "../form/formatear_fecha";
+import { useCuentaRegresiva } from "../../hook/use_cuenta_regresiva.js";
 
 export default function KioskResultModal({ resp, onClose, autoCloseMs = 8000 }) {
   const totalSeg = Math.round(autoCloseMs / 1000);
-  const [restante, setRestante] = useState(totalSeg);
-
-  useEffect(() => {
-    let seg = totalSeg;
-    const t = setInterval(() => {
-      seg -= 1;
-      if (seg <= 0) {
-        clearInterval(t);
-        onClose();
-      } else {
-        setRestante(seg);
-      }
-    }, 1000);
-    return () => clearInterval(t);
-  }, []);
+  const restante = useCuentaRegresiva({ segundos: totalSeg, alTerminar: onClose });
 
   // Después de los hooks: React necesita que se llamen siempre los mismos, en el mismo orden.
   if (!resp) return null;

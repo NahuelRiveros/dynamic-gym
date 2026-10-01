@@ -106,12 +106,12 @@ frontend/src/
                                #   confirm_dialog, botones_modal, lista_errores — usar antes de crear otra
   components/sistema/          # aviso_servidor (Render dormido / sin conexión)
   components/                  # form/, modal/ (formularios del panel sobre ui/modal), layout/, alertas/
-  hook/                        # use_catalogos, use_consulta_media
+  hook/                        # datos (use_<dominio>.js con TanStack Query) y utilidades (use_filtros,
+                               #   use_valor_demorado, use_cuenta_regresiva, use_consulta_media)
   test/                        # setup, servidor_mock (MSW), renderizar
 e2e/                           # Playwright
 ```
 
-Hacia dónde va (por etapas, sin tocar la base): pantallas por módulo con sus hooks de TanStack Query.
 
 ---
 
@@ -127,9 +127,21 @@ Hacia dónde va (por etapas, sin tocar la base): pantallas por módulo con sus h
 ## Reglas React (`frontend/`)
 
 - Componentes funcionales, uno exportado por archivo, props desestructuradas con valores por defecto.
-- **Nada de axios en componentes**: las llamadas van en `src/api/<dominio>_api.js`. Pantallas nuevas
-  o que se tocan: datos con TanStack Query (`useQuery`/`useMutation`), **no** `useEffect` + fetch.
-  (ESLint avisa `set-state-in-effect` en las que todavía lo hacen; vuelve a error cuando no quede ninguna.)
+- **Nada de axios en componentes**: las llamadas van en `src/api/<dominio>_api.js` y los datos se
+  usan con los hooks de TanStack Query de `src/hook/use_<dominio>.js` (alumnos, estadisticas,
+  recaudacion, planes, staff, stock, suscripcion, promociones, catalogos). **Nunca** `useEffect` +
+  fetch (ESLint lo marca como error: `set-state-in-effect`).
+  - Cada hook tiene sus claves (`planesKeys`, `stockKeys`...) y las mutaciones invalidan lo que
+    cambian (un plan también refresca catálogos y estadísticas; un pago, alumnos y recaudación).
+  - Respuestas `{ ok: false }` → `exigirOk()`; mensaje para mostrar → `mensajeDeError()` (`hook/consultas_utils.js`).
+  - Error de carga: `components/ui/estado_error.jsx` (con Reintentar). Error al guardar: dentro del
+    modal (`errorServidor`), nunca detrás. Confirmaciones: `ConfirmDialog`, nunca `window.confirm`.
+  - Filtros con botón "Actualizar": `hook/use_filtros.js`. Búsquedas al servidor: `useValorDemorado` (300 ms).
+  - Neon: nada de consultas periódicas cortas. Lo que casi no cambia, con `staleTime` largo
+    (catálogos 5 min, suscripción y cumpleaños 1 h).
+- Efectos que no cargan datos (timers, listeners): `useEffectEvent` para llamar funciones del
+  componente (ver `hook/use_cuenta_regresiva.js`). Estado inicial desde props: valor inicial de
+  `useState` en un componente que se monta al abrir, no un efecto que lo copia.
 - Hooks siempre antes de cualquier `return`.
 - Siempre los 3 estados: cargando, error (mensaje + reintentar), vacío.
 - Formularios: React Hook Form + `zodResolver`.

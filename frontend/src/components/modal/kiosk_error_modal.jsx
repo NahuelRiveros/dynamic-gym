@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
 import { XCircle, RefreshCw } from "lucide-react";
+import { useCuentaRegresiva } from "../../hook/use_cuenta_regresiva.js";
 
 const MENSAJES = {
   NO_EXISTE: {
@@ -39,21 +39,7 @@ const MENSAJES = {
 
 export default function KioskErrorModal({ resp, onClose, autoCloseMs = 6000 }) {
   const totalSeg = Math.round(autoCloseMs / 1000);
-  const [restante, setRestante] = useState(totalSeg);
-
-  useEffect(() => {
-    let seg = totalSeg;
-    const t = setInterval(() => {
-      seg -= 1;
-      if (seg <= 0) {
-        clearInterval(t);
-        onClose();
-      } else {
-        setRestante(seg);
-      }
-    }, 1000);
-    return () => clearInterval(t);
-  }, []);
+  const restante = useCuentaRegresiva({ segundos: totalSeg, alTerminar: onClose });
 
   // Después de los hooks: React necesita que se llamen siempre los mismos, en el mismo orden.
   if (!resp) return null;

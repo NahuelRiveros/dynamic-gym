@@ -29,9 +29,9 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
     rules: {
-      // TEMPORAL: aviso y no error mientras las pantallas cargan datos con useEffect. Al pasar
-      // cada una a TanStack Query (etapa 4) desaparece; cuando no quede ninguna, vuelve a "error".
-      "react-hooks/set-state-in-effect": "warn",
+      // Datos del servidor con TanStack Query (src/hook/use_*.js), nunca useEffect + setState.
+      "react-hooks/set-state-in-effect": "error",
+      "react-hooks/exhaustive-deps": "error",
     },
   },
   {

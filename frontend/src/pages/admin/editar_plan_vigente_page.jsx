@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   buscarPlanVigente,
   actualizarPlanVigente,
   actualizarPersona,
 } from "../../api/admin_alumnos_api";
-import { getCatalogos } from "../../api/catalogos_api";
+import { useCatalogos } from "../../hook/use_catalogos.js";
 import ConfirmarActualizacionPlanModal from "../../components/modal/confirmar_plan_modal.jsx";
 import ConfirmDialog from "../../components/ui/confirm_dialog.jsx";
 import {
@@ -60,7 +60,8 @@ export default function EditarPlanVigentePage() {
   const [buscando,     setBuscando]     = useState(false);
   const [error,        setError]        = useState("");
   const [mensaje,      setMensaje]      = useState("");
-  const [tiposPlan,    setTiposPlan]    = useState([]);
+  const catalogos = useCatalogos();
+  const tiposPlan = useMemo(() => catalogos.data?.tiposPlan ?? [], [catalogos.data]);
   const [alumno,       setAlumno]       = useState(null);
   const [planOriginal, setPlanOriginal] = useState(null);
   const [tab,          setTab]          = useState(TAB_PLAN);
@@ -74,12 +75,6 @@ export default function EditarPlanVigentePage() {
   const [formPersona,      setFormPersona]      = useState(mapearPersonaAForm(null));
   const [guardandoPersona, setGuardandoPersona] = useState(false);
   const [mostrarConfirmPersona, setMostrarConfirmPersona] = useState(false);
-
-  useEffect(() => {
-    getCatalogos()
-      .then((d) => setTiposPlan(d?.tiposPlan || []))
-      .catch(() => {});
-  }, []);
 
   function limpiarMensajes() { setError(""); setMensaje(""); }
 

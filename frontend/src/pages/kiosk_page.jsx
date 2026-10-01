@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { kioskIngreso } from "../api/kiosk_api.js";
-import { getAlumnosCumples } from "../api/alumnos_api.js";
+import { useCumples } from "../hook/use_alumnos.js";
 import KioskResultModal from "../components/modal/kiosk_result_modal.jsx";
 import KioskErrorModal from "../components/modal/kiosk_error_modal.jsx";
 import KioskLogModal from "../components/modal/kiosk_log_modal.jsx";
@@ -19,7 +19,6 @@ export default function KioskPage() {
   const [mostrarError, setMostrarError] = useState(false);
   const [mostrarLog, setMostrarLog] = useState(false);
   const [hora, setHora] = useState("");
-  const [cumples, setCumples] = useState({ hoy: [], proximos: [] });
   const inputRef = useRef(null);
   const clicksBrandingRef = useRef(0);
   const timerBrandingRef = useRef(null);
@@ -53,20 +52,9 @@ export default function KioskPage() {
     }
   }, [mostrarOk, mostrarError]);
 
-  // Cargar cumpleaños
-  useEffect(() => {
-    async function cargar() {
-      try {
-        const data = await getAlumnosCumples({ dias: 3 });
-        setCumples({ hoy: data.hoy || [], proximos: data.proximos || [] });
-      } catch {
-        // Los cumpleaños son un extra: si fallan, el kiosco sigue registrando ingresos.
-      }
-    }
-    cargar();
-    const t = setInterval(cargar, 60000);
-    return () => clearInterval(t);
-  }, []);
+  // Cumpleaños: un extra. Si fallan no se muestra nada y el kiosco sigue registrando ingresos.
+  const { data: datosCumples } = useCumples(3);
+  const cumples = { hoy: datosCumples?.hoy || [], proximos: datosCumples?.proximos || [] };
 
   // Activa el log con 5 clicks rápidos sobre el branding del pie
   function onClickBranding() {

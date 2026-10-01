@@ -1,24 +1,15 @@
-import { useEffect, useState } from "react";
 import { CheckCircle, IdCard, Banknote, Ticket, CalendarDays, CreditCard } from "lucide-react";
 import { formatearFechaAR } from "../form/formatear_fecha";
+import { useCuentaRegresiva } from "../../hook/use_cuenta_regresiva.js";
 
-export default function PagoSuccessModal({ open, alumno, plan, pago, delayMs = 6000, onFinish }) {
+// El contenido se monta al abrir: así la cuenta regresiva arranca de nuevo cada vez.
+export default function PagoSuccessModal({ open, ...props }) {
+  return open ? <ContenidoPagoExitoso {...props} /> : null;
+}
+
+function ContenidoPagoExitoso({ alumno, plan, pago, delayMs = 6000, onFinish }) {
   const totalSeg = Math.round(delayMs / 1000);
-  const [restante, setRestante] = useState(totalSeg);
-
-  useEffect(() => {
-    if (!open) return;
-    setRestante(totalSeg);
-    let seg = totalSeg;
-    const t = setInterval(() => {
-      seg -= 1;
-      if (seg <= 0) { clearInterval(t); onFinish?.(); }
-      else setRestante(seg);
-    }, 1000);
-    return () => clearInterval(t);
-  }, [open]);
-
-  if (!open) return null;
+  const restante = useCuentaRegresiva({ segundos: totalSeg, alTerminar: onFinish });
 
   const porcentaje = (restante / totalSeg) * 100;
   const nombre = [alumno?.nombre, alumno?.apellido].filter(Boolean).join(" ") ||

@@ -1,9 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useMemo, useState } from "react";
+import { useForm, useWatch } from "react-hook-form";
+import { useQueryClient } from "@tanstack/react-query";
 import { CreditCard, Search, UserCheck, Dumbbell, CheckCircle2, CalendarDays, Ticket, Banknote } from "lucide-react";
 import PagoSuccessModal from "../components/modal/pago_success_modal.jsx";
-import { obtenerPlanes } from "../api/planes_api";
 import { registrarPago, previewPago } from "../api/pagos_api";
+import { alumnosKeys } from "../hook/use_alumnos.js";
+import { estadisticasKeys } from "../hook/use_estadisticas.js";
+import { usePlanes } from "../hook/use_planes.js";
+import { recaudacionKeys } from "../hook/use_recaudacion.js";
 
 import FormError from "../components/form/form_error";
 import InputField from "../components/form/input_field";
@@ -38,8 +42,24 @@ function dateToISO(d) {
 }
 
 export default function RegistrarPagoPage() {
-  const [planes, setPlanes]           = useState([]);
-  const [cargandoPlanes, setCargandoPlanes] = useState(false);
+  const queryClient = useQueryClient();
+  // Los mismos datos (y caché) que la pantalla de planes; acá solo los activos, como opciones.
+  const consultaPlanes = usePlanes();
+  const cargandoPlanes = consultaPlanes.isPending;
+  const planes = useMemo(
+    () =>
+      (consultaPlanes.data ?? [])
+        .filter((p) => p.activo)
+        .map((p) => ({
+          value:        p.id,
+          label:        `${p.descripcion}`,
+          descripcion:  p.descripcion,
+          dias_totales: p.dias_totales,
+          ingresos:     p.ingresos,
+          precio:       Number(p.precio),
+        })),
+    [consultaPlanes.data],
+  );
   const [cargando, setCargando]       = useState(false);
   const [error, setError]             = useState(null);
   const [alumno, setAlumno]           = useState(null);
@@ -48,37 +68,14 @@ export default function RegistrarPagoPage() {
   const [ultimoPago, setUltimoPago]   = useState(null);
   const [tipoPlanId, setTipoPlanId]   = useState("");
 
-  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm({
+  const { register, handleSubmit, control, setValue, formState: { errors } } = useForm({
     defaultValues: {
       documento:   "",
       metodo_pago: "EFECTIVO",
     },
   });
 
-  const documento = watch("documento");
-
-  async function cargarPlanes() {
-    setCargandoPlanes(true);
-    try {
-      const r = await obtenerPlanes();
-      const lista = Array.isArray(r?.data) ? r.data : [];
-      setPlanes(
-        lista
-          .filter((p) => p.activo)
-          .map((p) => ({
-            value:        p.id,
-            label:        `${p.descripcion}`,
-            descripcion:  p.descripcion,
-            dias_totales: p.dias_totales,
-            ingresos:     p.ingresos,
-            precio:       Number(p.precio),
-          }))
-      );
-    } catch { setPlanes([]); }
-    finally { setCargandoPlanes(false); }
-  }
-
-  useEffect(() => { cargarPlanes(); }, []);
+  const documento = useWatch({ control, name: "documento" });
 
   function limpiar() {
     setAlumno(null);
@@ -133,6 +130,10 @@ export default function RegistrarPagoPage() {
         metodo_pago:  String(values.metodo_pago).trim(),
       });
       if (!r?.ok) { setError(r?.mensaje || "No se pudo registrar el pago"); return; }
+      // Un pago cambia el estado del alumno, los vencimientos y la recaudación.
+      for (const queryKey of [alumnosKeys.todo, estadisticasKeys.todo, recaudacionKeys.todo]) {
+        queryClient.invalidateQueries({ queryKey });
+      }
       setUltimoPago(r);
       setModalOpen(true);
       limpiar();
