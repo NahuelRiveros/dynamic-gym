@@ -1,139 +1,53 @@
-import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import InputField from "../form/input_field.jsx";
+import Modal from "../ui/modal.jsx";
+import BotonesModal from "../ui/botones_modal.jsx";
 
-const valoresIniciales = {
-  password: "",
-  confirmarPassword: "",
-};
-
-export default function StaffPasswordModal({
-  abierto,
-  onClose,
-  onGuardar,
-  staffSeleccionado = null,
-  cargando = false,
-}) {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    setError,
-    formState: { errors },
-  } = useForm({
-    defaultValues: valoresIniciales,
-  });
-
-  useEffect(() => {
-    if (abierto) {
-      reset(valoresIniciales);
-    }
-  }, [abierto, reset]);
+// Se monta cada vez que se abre el modal: los campos arrancan siempre vacíos.
+function FormularioPassword({ onGuardar, onClose, cargando }) {
+  const { register, handleSubmit, setError, formState: { errors } } = useForm({ defaultValues: { password: "", confirmarPassword: "" } });
 
   function validar(data) {
-    let valido = true;
-
     const password = String(data.password ?? "").trim();
     const confirmar = String(data.confirmarPassword ?? "").trim();
+    const errores = {};
 
-    if (!password) {
-      setError("password", {
-        type: "manual",
-        message: "La contraseña es obligatoria",
-      });
-      valido = false;
-    } else if (password.length < 4) {
-      setError("password", {
-        type: "manual",
-        message: "La contraseña debe tener al menos 4 caracteres",
-      });
-      valido = false;
-    }
+    if (!password) errores.password = "La contraseña es obligatoria";
+    else if (password.length < 4) errores.password = "La contraseña debe tener al menos 4 caracteres";
+    if (!confirmar) errores.confirmarPassword = "Debés confirmar la contraseña";
+    else if (password !== confirmar) errores.confirmarPassword = "Las contraseñas no coinciden";
 
-    if (!confirmar) {
-      setError("confirmarPassword", {
-        type: "manual",
-        message: "Debés confirmar la contraseña",
-      });
-      valido = false;
-    } else if (password !== confirmar) {
-      setError("confirmarPassword", {
-        type: "manual",
-        message: "Las contraseñas no coinciden",
-      });
-      valido = false;
-    }
-
-    return valido;
+    for (const [campo, message] of Object.entries(errores)) setError(campo, { type: "manual", message });
+    return Object.keys(errores).length === 0;
   }
 
   async function submit(data) {
     if (!validar(data)) return;
-
-    await onGuardar({
-      password: String(data.password).trim(),
-    });
+    await onGuardar({ password: String(data.password).trim() });
   }
 
-  if (!abierto) return null;
+  return (
+    <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
+      <InputField label="Nueva contraseña" name="password" register={register} error={errors.password?.message} placeholder="Mínimo 4 caracteres" type="password" autoComplete="new-password" />
+      <InputField label="Confirmar contraseña" name="confirmarPassword" register={register} error={errors.confirmarPassword?.message} placeholder="Repetí la contraseña" type="password" autoComplete="new-password" />
+      <BotonesModal onCancelar={onClose} ocupado={cargando} textoConfirmar="Actualizar contraseña" />
+    </form>
+  );
+}
 
-  const nombreCompleto = staffSeleccionado
-    ? `${staffSeleccionado.gym_persona_nombre} ${staffSeleccionado.gym_persona_apellido}`
-    : "";
+export default function StaffPasswordModal({ abierto, onClose, onGuardar, staffSeleccionado = null, cargando = false }) {
+  const nombreCompleto = staffSeleccionado ? `${staffSeleccionado.gym_persona_nombre} ${staffSeleccionado.gym_persona_apellido}` : "";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-      <div className="w-full max-w-xl rounded-2xl bg-white shadow-xl">
-        <div className="border-b border-blue-100 px-6 py-4">
-          <h2 className="text-xl font-bold text-gray-900">Cambiar contraseña</h2>
-          <p className="mt-1 text-sm text-gray-600">
-            {nombreCompleto
-              ? `Actualizá la contraseña de ${nombreCompleto}.`
-              : "Actualizá la contraseña del usuario."}
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit(submit)} className="space-y-4 px-6 py-5">
-          <InputField
-            label="Nueva contraseña"
-            name="password"
-            register={register}
-            error={errors.password?.message}
-            placeholder="Mínimo 4 caracteres"
-            type="password"
-            autoComplete="new-password"
-          />
-
-          <InputField
-            label="Confirmar contraseña"
-            name="confirmarPassword"
-            register={register}
-            error={errors.confirmarPassword?.message}
-            placeholder="Repetí la contraseña"
-            type="password"
-            autoComplete="new-password"
-          />
-
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              disabled={cargando}
-              className="rounded-xl border border-gray-300 px-4 py-2 text-sm font-semibold text-gray-700 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              Cancelar
-            </button>
-
-            <button
-              type="submit"
-              disabled={cargando}
-              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {cargando ? "Guardando..." : "Actualizar contraseña"}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+    <Modal
+      abierto={abierto}
+      onCerrar={onClose}
+      titulo="Cambiar contraseña"
+      descripcion={nombreCompleto ? `Actualizá la contraseña de ${nombreCompleto}.` : "Actualizá la contraseña del usuario."}
+      ocupado={cargando}
+      ancho="xl"
+    >
+      <FormularioPassword onGuardar={onGuardar} onClose={onClose} cargando={cargando} />
+    </Modal>
   );
 }

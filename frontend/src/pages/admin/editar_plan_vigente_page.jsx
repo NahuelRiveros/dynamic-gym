@@ -6,7 +6,7 @@ import {
 } from "../../api/admin_alumnos_api";
 import { getCatalogos } from "../../api/catalogos_api";
 import ConfirmarActualizacionPlanModal from "../../components/modal/confirmar_plan_modal.jsx";
-import ConfirmDialog from "../../components/feedback/ConfirmDialog.jsx";
+import ConfirmDialog from "../../components/ui/confirm_dialog.jsx";
 import {
   hoyISO,
   fechaAR,
