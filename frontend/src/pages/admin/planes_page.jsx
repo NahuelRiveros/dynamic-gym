@@ -1,13 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import PlanFormModal from "../../components/modal/plan_form_modal";
 import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
-import {
-  obtenerPlanes,
-  crearPlan,
-  actualizarPlan,
-  cambiarEstadoPlan,
-} from "../../api/planes_api.js";
-import { getPlanesPopulares } from "../../api/estadisticas_api.js";
+import ConfirmDialog from "../../components/ui/confirm_dialog.jsx";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { mensajeDeError } from "../../hook/consultas_utils.js";
+import { usePlanesPopulares } from "../../hook/use_estadisticas.js";
+import { useCambiarEstadoPlan, useGuardarPlan, usePlanes } from "../../hook/use_planes.js";
 import { Layers, Plus, Edit2, ToggleLeft, ToggleRight, RefreshCw, BarChart2 } from "lucide-react";
 
 const ANIO_ACTUAL = new Date().getFullYear();
@@ -34,76 +32,39 @@ function iniciales(desc) {
 }
 
 export default function PlanesPage() {
-  const [planes, setPlanes]           = useState([]);
-  const [cargando, setCargando]       = useState(true);
-  const [error, setError]             = useState("");
-  const [modalAbierto, setModalAbierto]     = useState(false);
+  const consultaPlanes = usePlanes();
+  const planes = consultaPlanes.data ?? [];
+  const cargando = consultaPlanes.isFetching;
+  const cargarPlanes = () => consultaPlanes.refetch();
+
+  const [anioStats, setAnioStats] = useState(ANIO_ACTUAL);
+  const consultaPopularidad = usePlanesPopulares(anioStats);
+  const popularidad = consultaPopularidad.data?.items ?? [];
+  const cargandoStats = consultaPopularidad.isPending;
+
+  const [modalAbierto, setModalAbierto]         = useState(false);
   const [planSeleccionado, setPlanSeleccionado] = useState(null);
-  const [guardando, setGuardando]     = useState(false);
+  const [planAConfirmar, setPlanAConfirmar]     = useState(null);
+  const guardar = useGuardarPlan();
+  const cambiarEstado = useCambiarEstadoPlan();
 
-  const [anioStats, setAnioStats]         = useState(ANIO_ACTUAL);
-  const [popularidad, setPopularidad]     = useState([]);
-  const [cargandoStats, setCargandoStats] = useState(true);
-
-  async function cargarPlanes() {
-    try {
-      setCargando(true);
-      setError("");
-      const resp = await obtenerPlanes();
-      setPlanes(resp.data || []);
-    } catch (err) {
-      setError(err?.response?.data?.mensaje || "No se pudieron cargar los planes");
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  async function cargarPopularidad(anio) {
-    try {
-      setCargandoStats(true);
-      const resp = await getPlanesPopulares({ anio });
-      setPopularidad(resp.items || []);
-    } catch {
-      setPopularidad([]);
-    } finally {
-      setCargandoStats(false);
-    }
-  }
-
-  useEffect(() => { cargarPlanes(); }, []);
-  useEffect(() => { cargarPopularidad(anioStats); }, [anioStats]);
-
-  function abrirNuevo()       { setPlanSeleccionado(null); setModalAbierto(true); }
-  function abrirEditar(plan)  { setPlanSeleccionado(plan); setModalAbierto(true); }
+  function abrirNuevo()       { guardar.reset(); setPlanSeleccionado(null); setModalAbierto(true); }
+  function abrirEditar(plan)  { guardar.reset(); setPlanSeleccionado(plan); setModalAbierto(true); }
   function cerrarModal()      { setModalAbierto(false); setPlanSeleccionado(null); }
 
-  async function guardarPlan(payload) {
-    try {
-      setGuardando(true);
-      if (planSeleccionado) {
-        await actualizarPlan(planSeleccionado.id, payload);
-      } else {
-        await crearPlan(payload);
-      }
-      cerrarModal();
-      await cargarPlanes();
-    } catch (err) {
-      setError(err?.response?.data?.mensaje || "No se pudo guardar el plan");
-    } finally {
-      setGuardando(false);
-    }
+  async function guardarPlan(datos) {
+    // Si falla, el modal queda abierto y muestra el error (ej. "Ya existe un plan con esa descripción").
+    await guardar.mutateAsync({ id: planSeleccionado?.id, datos }).then(cerrarModal, () => {});
   }
 
-  async function toggleEstado(plan) {
-    const nuevoEstado = !plan.activo;
-    const accion = nuevoEstado ? "activar" : "desactivar";
-    if (!window.confirm(`¿Seguro que querés ${accion} el plan "${plan.descripcion}"?`)) return;
-    try {
-      await cambiarEstadoPlan(plan.id, nuevoEstado);
-      await cargarPlanes();
-    } catch (err) {
-      setError(err?.response?.data?.mensaje || `No se pudo ${accion} el plan`);
-    }
+  function toggleEstado(plan) {
+    cambiarEstado.reset();
+    setPlanAConfirmar(plan);
+  }
+
+  async function confirmarCambioEstado() {
+    const plan = planAConfirmar;
+    await cambiarEstado.mutateAsync({ id: plan.id, activo: !plan.activo }).then(() => setPlanAConfirmar(null), () => {});
   }
 
   const activos   = planes.filter((p) => p.activo).length;
@@ -213,10 +174,10 @@ export default function PlanesPage() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                type="button" onClick={cargarPlanes} disabled={cargando}
+                type="button" onClick={cargarPlanes} disabled={cargando} aria-label="Actualizar planes" title="Actualizar planes"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition shadow-sm disabled:opacity-50"
               >
-                <RefreshCw size={13} className={cargando ? "animate-spin" : ""} />
+                <RefreshCw size={13} className={cargando ? "animate-spin" : ""} aria-hidden="true" />
               </button>
               <button
                 type="button" onClick={abrirNuevo}
@@ -264,6 +225,8 @@ export default function PlanesPage() {
           <div className="px-5 py-5">
             {cargandoStats ? (
               <div className="flex items-center justify-center py-10 text-sm text-slate-400">Cargando…</div>
+            ) : consultaPopularidad.isError ? (
+              <EstadoError error={consultaPopularidad.error} onReintentar={() => consultaPopularidad.refetch()} />
             ) : popularidad.length === 0 ? (
               <div className="flex items-center justify-center py-10 text-sm text-slate-400">Sin datos para {anioStats}</div>
             ) : (
@@ -273,16 +236,14 @@ export default function PlanesPage() {
         </div>
 
         {/* ── ERROR ── */}
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-        )}
+        {consultaPlanes.isError && <EstadoError error={consultaPlanes.error} onReintentar={cargarPlanes} reintentando={cargando} />}
 
         {/* ── TABLA ── */}
         <DataGrid
           rows={planes}
           columns={columns}
           keyField="id"
-          loading={cargando}
+          loading={consultaPlanes.isPending}
           searchable
           searchPlaceholder="Buscar plan…"
           emptyMessage="No hay planes cargados."
@@ -299,7 +260,23 @@ export default function PlanesPage() {
         onClose={cerrarModal}
         onGuardar={guardarPlan}
         planEditar={planSeleccionado}
-        cargando={guardando}
+        cargando={guardar.isPending}
+        errorServidor={guardar.isError ? mensajeDeError(guardar.error, "No se pudo guardar el plan") : null}
+      />
+
+      <ConfirmDialog
+        open={Boolean(planAConfirmar)}
+        title={planAConfirmar?.activo ? "¿Desactivar plan?" : "¿Activar plan?"}
+        message={
+          cambiarEstado.isError
+            ? mensajeDeError(cambiarEstado.error, "No se pudo cambiar el estado del plan")
+            : `"${planAConfirmar?.descripcion ?? ""}" ${planAConfirmar?.activo ? "deja de ofrecerse al registrar pagos." : "vuelve a ofrecerse al registrar pagos."}`
+        }
+        confirmLabel={planAConfirmar?.activo ? "Desactivar" : "Activar"}
+        variant={planAConfirmar?.activo ? "danger" : "primary"}
+        loading={cambiarEstado.isPending}
+        onConfirm={confirmarCambioEstado}
+        onClose={() => setPlanAConfirmar(null)}
       />
     </div>
   );

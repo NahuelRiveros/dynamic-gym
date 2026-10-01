@@ -23,7 +23,7 @@ function validar(form) {
 }
 
 // Se monta cada vez que se abre el modal: los valores iniciales salen del plan a editar.
-function FormularioPlan({ planEditar, onGuardar, onClose, cargando }) {
+function FormularioPlan({ planEditar, onGuardar, onClose, cargando, errorServidor }) {
   const [form, setForm] = useState(() => desdePlan(planEditar));
   const [errores, setErrores] = useState([]);
 
@@ -68,16 +68,17 @@ function FormularioPlan({ planEditar, onGuardar, onClose, cargando }) {
         </label>
       </div>
 
-      <ListaErrores errores={errores} />
+      {/* El error del servidor (ej. descripción repetida) se ve acá, no detrás del modal. */}
+      <ListaErrores errores={errorServidor ? [...errores, errorServidor] : errores} />
       <BotonesModal onCancelar={onClose} ocupado={cargando} />
     </form>
   );
 }
 
-export default function PlanFormModal({ abierto, onClose, onGuardar, planEditar = null, cargando = false }) {
+export default function PlanFormModal({ abierto, onClose, onGuardar, planEditar = null, cargando = false, errorServidor = null }) {
   return (
     <Modal abierto={abierto} onCerrar={onClose} titulo={planEditar ? "Editar plan" : "Nuevo plan"} ocupado={cargando}>
-      <FormularioPlan planEditar={planEditar} onGuardar={onGuardar} onClose={onClose} cargando={cargando} />
+      <FormularioPlan planEditar={planEditar} onGuardar={onGuardar} onClose={onClose} cargando={cargando} errorServidor={errorServidor} />
     </Modal>
   );
 }

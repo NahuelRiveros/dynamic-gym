@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import InputField from "../form/input_field.jsx";
 import Modal from "../ui/modal.jsx";
 import BotonesModal from "../ui/botones_modal.jsx";
+import ListaErrores from "../ui/lista_errores.jsx";
 
 const desdeStaff = (staff) => ({
   nombre: staff?.gym_persona_nombre || "",
@@ -12,7 +13,7 @@ const desdeStaff = (staff) => ({
 });
 
 // Se monta cada vez que se abre el modal: los valores iniciales salen del staff a editar.
-function FormularioStaff({ staffEditar, onGuardar, onClose, cargando }) {
+function FormularioStaff({ staffEditar, onGuardar, onClose, cargando, errorServidor }) {
   const esEdicion = Boolean(staffEditar);
   const { register, handleSubmit, setError, formState: { errors } } = useForm({ defaultValues: desdeStaff(staffEditar) });
 
@@ -64,12 +65,13 @@ function FormularioStaff({ staffEditar, onGuardar, onClose, cargando }) {
         </div>
       )}
 
+      <ListaErrores errores={errorServidor ? [errorServidor] : []} />
       <BotonesModal onCancelar={onClose} ocupado={cargando} textoConfirmar={esEdicion ? "Guardar cambios" : "Crear staff"} />
     </form>
   );
 }
 
-export default function StaffFormModal({ abierto, onClose, onGuardar, staffEditar = null, cargando = false }) {
+export default function StaffFormModal({ abierto, onClose, onGuardar, staffEditar = null, cargando = false, errorServidor = null }) {
   const esEdicion = Boolean(staffEditar);
   return (
     <Modal
@@ -80,7 +82,7 @@ export default function StaffFormModal({ abierto, onClose, onGuardar, staffEdita
       ocupado={cargando}
       ancho="2xl"
     >
-      <FormularioStaff staffEditar={staffEditar} onGuardar={onGuardar} onClose={onClose} cargando={cargando} />
+      <FormularioStaff staffEditar={staffEditar} onGuardar={onGuardar} onClose={onClose} cargando={cargando} errorServidor={errorServidor} />
     </Modal>
   );
 }

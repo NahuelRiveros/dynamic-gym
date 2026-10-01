@@ -1,14 +1,11 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import StaffFormModal from "../../components/modal/staff_form_modal";
 import StaffPasswordModal from "../../components/modal/staff_password_modal";
 import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
-import {
-  obtenerStaff,
-  crearStaff,
-  actualizarStaff,
-  cambiarPasswordStaff,
-  cambiarEstadoStaff,
-} from "../../api/staff_api";
+import ConfirmDialog from "../../components/ui/confirm_dialog.jsx";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { mensajeDeError } from "../../hook/consultas_utils.js";
+import { useCambiarEstadoStaff, useCambiarPasswordStaff, useGuardarStaff, useStaff } from "../../hook/use_staff.js";
 import { Users, UserPlus, Edit2, KeyRound, ShieldCheck, ShieldOff, RefreshCw } from "lucide-react";
 
 function formatearFecha(fecha) {
@@ -25,79 +22,42 @@ function iniciales(nombre, apellido) {
 }
 
 export default function StaffPage() {
-  const [staff, setStaff]                   = useState([]);
-  const [cargando, setCargando]             = useState(true);
-  const [error, setError]                   = useState("");
+  const consulta = useStaff();
+  const staff = consulta.data ?? [];
+  const cargando = consulta.isFetching;
+  const cargarStaff = () => consulta.refetch();
+
   const [modalFormAbierto, setModalFormAbierto]         = useState(false);
   const [modalPasswordAbierto, setModalPasswordAbierto] = useState(false);
   const [staffSeleccionado, setStaffSeleccionado]       = useState(null);
-  const [guardando, setGuardando]           = useState(false);
-  const [errorAccion, setErrorAccion]       = useState("");
+  const [staffAConfirmar, setStaffAConfirmar]           = useState(null);
+  const guardar = useGuardarStaff();
+  const cambiarPassword = useCambiarPasswordStaff();
+  const cambiarEstado = useCambiarEstadoStaff();
 
-  async function cargarStaff() {
-    try {
-      setCargando(true);
-      setError("");
-      const resp = await obtenerStaff();
-      setStaff(resp.data || []);
-    } catch (err) {
-      setError(err?.response?.data?.mensaje || "No se pudo cargar el staff");
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  useEffect(() => { cargarStaff(); }, []);
-
-  function abrirNuevo()           { setStaffSeleccionado(null); setModalFormAbierto(true); }
-  function abrirEditar(usuario)   { setStaffSeleccionado(usuario); setModalFormAbierto(true); }
-  function abrirPassword(usuario) { setStaffSeleccionado(usuario); setModalPasswordAbierto(true); }
+  function abrirNuevo()           { guardar.reset(); setStaffSeleccionado(null); setModalFormAbierto(true); }
+  function abrirEditar(usuario)   { guardar.reset(); setStaffSeleccionado(usuario); setModalFormAbierto(true); }
+  function abrirPassword(usuario) { cambiarPassword.reset(); setStaffSeleccionado(usuario); setModalPasswordAbierto(true); }
   function cerrarFormModal()      { setModalFormAbierto(false); setStaffSeleccionado(null); }
   function cerrarPasswordModal()  { setModalPasswordAbierto(false); setStaffSeleccionado(null); }
 
-  async function guardarStaff(payload) {
-    try {
-      setGuardando(true);
-      setErrorAccion("");
-      if (staffSeleccionado?.gym_usuario_id) {
-        await actualizarStaff(staffSeleccionado.gym_usuario_id, payload);
-      } else {
-        await crearStaff(payload);
-      }
-      cerrarFormModal();
-      await cargarStaff();
-    } catch (err) {
-      setErrorAccion(err?.response?.data?.mensaje || "No se pudo guardar el staff");
-    } finally {
-      setGuardando(false);
-    }
+  // Si algo falla, el modal queda abierto y muestra el error del servidor (ej. email repetido).
+  async function guardarStaff(datos) {
+    await guardar.mutateAsync({ usuarioId: staffSeleccionado?.gym_usuario_id, datos }).then(cerrarFormModal, () => {});
   }
 
-  async function guardarPassword(payload) {
-    try {
-      setGuardando(true);
-      setErrorAccion("");
-      await cambiarPasswordStaff(staffSeleccionado.gym_usuario_id, payload.password);
-      cerrarPasswordModal();
-      await cargarStaff();
-    } catch (err) {
-      setErrorAccion(err?.response?.data?.mensaje || "No se pudo cambiar la contraseña");
-    } finally {
-      setGuardando(false);
-    }
+  async function guardarPassword({ password }) {
+    await cambiarPassword.mutateAsync({ usuarioId: staffSeleccionado.gym_usuario_id, password }).then(cerrarPasswordModal, () => {});
   }
 
-  async function toggleEstado(usuario) {
-    const nuevoEstado = !usuario.gym_usuario_activo;
-    const accion = nuevoEstado ? "activar" : "desactivar";
-    if (!window.confirm(`¿Seguro que querés ${accion} a ${usuario.gym_persona_nombre} ${usuario.gym_persona_apellido}?`)) return;
-    try {
-      setErrorAccion("");
-      await cambiarEstadoStaff(usuario.gym_usuario_id, nuevoEstado);
-      await cargarStaff();
-    } catch (err) {
-      setErrorAccion(err?.response?.data?.mensaje || `No se pudo ${accion} el staff`);
-    }
+  function toggleEstado(usuario) {
+    cambiarEstado.reset();
+    setStaffAConfirmar(usuario);
+  }
+
+  async function confirmarCambioEstado() {
+    const u = staffAConfirmar;
+    await cambiarEstado.mutateAsync({ usuarioId: u.gym_usuario_id, activo: !u.gym_usuario_activo }).then(() => setStaffAConfirmar(null), () => {});
   }
 
   const activos   = staff.filter((u) => u.gym_usuario_activo).length;
@@ -209,10 +169,10 @@ export default function StaffPage() {
             </div>
             <div className="flex items-center gap-2">
               <button
-                type="button" onClick={cargarStaff} disabled={cargando}
+                type="button" onClick={cargarStaff} disabled={cargando} aria-label="Actualizar staff" title="Actualizar staff"
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition shadow-sm disabled:opacity-50"
               >
-                <RefreshCw size={13} className={cargando ? "animate-spin" : ""} />
+                <RefreshCw size={13} className={cargando ? "animate-spin" : ""} aria-hidden="true" />
               </button>
               <button
                 type="button" onClick={abrirNuevo}
@@ -232,19 +192,14 @@ export default function StaffPage() {
         </div>
 
         {/* ── ERROR ── */}
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-        )}
-        {errorAccion && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{errorAccion}</div>
-        )}
+        {consulta.isError && <EstadoError error={consulta.error} onReintentar={cargarStaff} reintentando={cargando} />}
 
         {/* ── TABLA ── */}
         <DataGrid
           rows={staff}
           columns={columns}
           keyField="gym_usuario_id"
-          loading={cargando}
+          loading={consulta.isPending}
           searchable
           searchPlaceholder="Buscar por nombre, email o DNI…"
           emptyMessage="No hay staff cargado."
@@ -261,7 +216,8 @@ export default function StaffPage() {
         onClose={cerrarFormModal}
         onGuardar={guardarStaff}
         staffEditar={staffSeleccionado}
-        cargando={guardando}
+        cargando={guardar.isPending}
+        errorServidor={guardar.isError ? mensajeDeError(guardar.error, "No se pudo guardar el staff") : null}
       />
 
       <StaffPasswordModal
@@ -269,7 +225,23 @@ export default function StaffPage() {
         onClose={cerrarPasswordModal}
         onGuardar={guardarPassword}
         staffSeleccionado={staffSeleccionado}
-        cargando={guardando}
+        cargando={cambiarPassword.isPending}
+        errorServidor={cambiarPassword.isError ? mensajeDeError(cambiarPassword.error, "No se pudo cambiar la contraseña") : null}
+      />
+
+      <ConfirmDialog
+        open={Boolean(staffAConfirmar)}
+        title={staffAConfirmar?.gym_usuario_activo ? "¿Desactivar staff?" : "¿Activar staff?"}
+        message={
+          cambiarEstado.isError
+            ? mensajeDeError(cambiarEstado.error, "No se pudo cambiar el estado")
+            : `${staffAConfirmar?.gym_persona_nombre ?? ""} ${staffAConfirmar?.gym_persona_apellido ?? ""} ${staffAConfirmar?.gym_usuario_activo ? "no va a poder iniciar sesión." : "va a poder iniciar sesión de nuevo."}`
+        }
+        confirmLabel={staffAConfirmar?.gym_usuario_activo ? "Desactivar" : "Activar"}
+        variant={staffAConfirmar?.gym_usuario_activo ? "danger" : "primary"}
+        loading={cambiarEstado.isPending}
+        onConfirm={confirmarCambioEstado}
+        onClose={() => setStaffAConfirmar(null)}
       />
     </div>
   );

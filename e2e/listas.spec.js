@@ -38,6 +38,12 @@ test("el admin crea un plan desde el modal; Escape lo cierra y el foco vuelve al
 
   await expect(page.getByRole("dialog")).toBeHidden();
   await expect(listado(page, isMobile).getByText(nombre)).toBeVisible();
+
+  // Repetido: el error del servidor se ve dentro del modal (antes quedaba detrás).
+  await nuevo.click();
+  await modal.getByLabel("Descripción").fill(nombre);
+  await modal.getByRole("button", { name: "Guardar" }).click();
+  await expect(modal.getByRole("alert")).toHaveText("Ya existe un plan con esa descripción");
 });
 
 test("el admin ve la lista de staff (antes fallaba siempre)", async ({ page, isMobile }) => {
