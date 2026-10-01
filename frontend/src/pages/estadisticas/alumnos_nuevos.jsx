@@ -1,17 +1,17 @@
-import { useEffect, useMemo, useState } from "react";
-import { getAlumnosNuevos } from "../../api/estadisticas_api";
+import { useMemo, useState } from "react";
 import { Calendar, RefreshCw, Users, TrendingUp } from "lucide-react";
 import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
-import { formatearFechaAR } from "../../components/form/formatear_fecha";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { useAlumnosNuevos } from "../../hook/use_estadisticas.js";
+import { useFiltros } from "../../hook/use_filtros.js";
+import { formatearFechaAR, hoyISOArgentina } from "../../components/form/formatear_fecha";
 
 function primerDiaMesISO() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-01`;
 }
 
-function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
-}
+const hoyISO = hoyISOArgentina;
 
 function iniciales(nombre, apellido) {
   return ((String(apellido || "")[0] || "") + (String(nombre || "")[0] || "")).toUpperCase() || "?";
@@ -64,43 +64,26 @@ const COLUMNS = [
 export default function AlumnosNuevosPage() {
   const [desde, setDesde] = useState(primerDiaMesISO());
   const [hasta, setHasta] = useState(hoyISO());
+  // La consulta usa el rango aplicado con "Actualizar", no el que se está escribiendo.
+  const [filtros, aplicarFiltros] = useFiltros({ desde, hasta });
+  const consulta = useAlumnosNuevos(filtros);
+  const cargando = consulta.isFetching;
 
-  const [data, setData]         = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError]       = useState(null);
-
-  async function cargar() {
-    setCargando(true);
-    setError(null);
-    try {
-      const r = await getAlumnosNuevos({ desde, hasta });
-      if (!r?.ok) {
-        setError(r?.mensaje || "No se pudo cargar alumnos nuevos");
-        setData(null);
-        return;
-      }
-      setData(r);
-    } catch (e) {
-      setError(e?.response?.data?.mensaje || e?.message || "Error inesperado");
-      setData(null);
-    } finally {
-      setCargando(false);
-    }
+  function actualizar() {
+    if (!aplicarFiltros({ desde, hasta })) consulta.refetch();
   }
 
-  useEffect(() => { cargar(); }, []);
-
-  const items = data?.items || [];
+  const items = consulta.data?.items || [];
   const total = items.length;
 
   const promedio = useMemo(() => {
-    if (!desde || !hasta || total === 0) return "—";
-    const d1 = new Date(desde);
-    const d2 = new Date(hasta);
+    if (!filtros.desde || !filtros.hasta || total === 0) return "—";
+    const d1 = new Date(filtros.desde);
+    const d2 = new Date(filtros.hasta);
     const diff = Math.floor((d2 - d1) / 86400000) + 1;
     if (!Number.isFinite(diff) || diff <= 0) return "—";
     return (total / diff).toFixed(2);
-  }, [total, desde, hasta]);
+  }, [total, filtros]);
 
   return (
     <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
@@ -117,7 +100,7 @@ export default function AlumnosNuevosPage() {
               </span>
               <h1 className="mt-2 text-2xl font-extrabold text-slate-900">Alumnos nuevos</h1>
               <p className="mt-0.5 text-sm text-slate-500">
-                Registrados entre {desde} y {hasta}
+                Registrados entre {filtros.desde} y {filtros.hasta}
               </p>
             </div>
 
@@ -137,7 +120,7 @@ export default function AlumnosNuevosPage() {
                 />
               </div>
               <button
-                type="button" onClick={cargar} disabled={cargando}
+                type="button" onClick={actualizar} disabled={cargando}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-blue-500/20 hover:bg-blue-500 transition disabled:opacity-50"
               >
                 <RefreshCw size={13} className={cargando ? "animate-spin" : ""} />
@@ -148,15 +131,13 @@ export default function AlumnosNuevosPage() {
         </div>
 
         {/* ── ERROR ── */}
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-        )}
+        {consulta.isError && <EstadoError error={consulta.error} onReintentar={() => consulta.refetch()} reintentando={cargando} />}
 
         {/* ── STATS ── */}
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
           <StatCard icon={<Users size={13} />}       label="Total alumnos nuevos" value={String(total)} highlight />
           <StatCard icon={<TrendingUp size={13} />}  label="Promedio diario"      value={promedio} />
-          <StatCard icon={<Calendar size={13} />}    label="Rango"                value={`${desde.slice(8)} / ${desde.slice(5,7)} → ${hasta.slice(8)} / ${hasta.slice(5,7)}`} />
+          <StatCard icon={<Calendar size={13} />}    label="Rango"                value={`${filtros.desde.slice(8)} / ${filtros.desde.slice(5,7)} → ${filtros.hasta.slice(8)} / ${filtros.hasta.slice(5,7)}`} />
         </div>
 
         {/* ── TABLA ── */}

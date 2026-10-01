@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getAlumnosListado, actualizarEstadosAlumnos } from "../../api/alumnos_api";
 import { useAuth } from "../../auth/auth_context.jsx";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { useActualizarEstados, useListadoAlumnos } from "../../hook/use_alumnos.js";
+import { useValorDemorado } from "../../hook/use_valor_demorado.js";
 import { Users, RefreshCw, ChevronRight } from "lucide-react";
 import { formatearFechaAR } from "../../components/form/formatear_fecha";
 import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
@@ -115,61 +117,33 @@ export default function ListaAlumnosPage() {
   const [page, setPage]   = useState(1);
   const [limit, setLimit] = useState(20);
 
-  const [data, setData]         = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError]       = useState(null);
-
-  async function cargar({ resetPage = false, qOverride, planVigenteOverride } = {}) {
-    const nextPage = resetPage ? 1 : page;
-    const q  = qOverride  !== undefined ? qOverride  : busqueda;
-    const pv = planVigenteOverride !== undefined ? planVigenteOverride : planVigente;
-    setCargando(true);
-    setError(null);
-    try {
-      const params = {
-        page: nextPage, limit,
-        sort: "apellido", order: "asc",
-        ...(q?.trim() ? { q: q.trim() } : {}),
-        ...(pv        ? { plan_vigente: pv } : {}),
-      };
-      const r = await getAlumnosListado(params);
-      if (!r?.ok) { setError(r?.mensaje || "No se pudo cargar alumnos"); setData(null); return; }
-      setData(r);
-      if (resetPage) setPage(1);
-    } catch (e) {
-      setError(e?.response?.data?.mensaje || e?.message || "Error inesperado");
-      setData(null);
-    } finally {
-      setCargando(false);
-    }
-  }
+  // La búsqueda va al servidor cuando se deja de escribir (300 ms), no en cada tecla.
+  const q = useValorDemorado(busqueda.trim());
+  const consulta = useListadoAlumnos({
+    page, limit,
+    sort: "apellido", order: "asc",
+    ...(q ? { q } : {}),
+    ...(planVigente ? { plan_vigente: planVigente } : {}),
+  });
+  const actualizarEstados = useActualizarEstados();
+  const cargando = consulta.isFetching || actualizarEstados.isPending;
 
   function handleSearch(val) {
     setBusqueda(val);
-    cargar({ resetPage: true, qOverride: val });
+    setPage(1);
   }
 
   async function actualizarYRecargar() {
-    setCargando(true);
-    setError(null);
-    if (esAdmin) {
-      try {
-        await actualizarEstadosAlumnos();
-      } catch {
-        // Si no se pudieron recalcular los estados, igual se muestra la lista con los que hay.
-      }
-    }
+    if (!esAdmin) return consulta.refetch();
     try {
-      await cargar();
-    } catch (e) {
-      setError(e?.response?.data?.mensaje || e?.message || "Error al recargar");
-    } finally {
-      setCargando(false);
+      // Al terminar (bien o mal) se vuelve a pedir la lista: ver useActualizarEstados.
+      await actualizarEstados.mutateAsync();
+    } catch {
+      // Si no se pudieron recalcular los estados, igual se muestra la lista con los que hay.
     }
   }
 
-  useEffect(() => { cargar(); }, [page, limit]);
-
+  const data  = consulta.data;
   const items = data?.items || [];
   const pag   = data?.pagination || { page: 1, totalPages: 1, total: 0, limit };
 
@@ -207,7 +181,7 @@ export default function ListaAlumnosPage() {
         <div className="flex flex-wrap items-center gap-2">
           <select
             value={planVigente}
-            onChange={(e) => { const val = e.target.value; setPlanVigente(val); cargar({ resetPage: true, planVigenteOverride: val }); }}
+            onChange={(e) => { setPlanVigente(e.target.value); setPage(1); }}
             className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
           >
             <option value="">Plan (todos)</option>
@@ -217,18 +191,14 @@ export default function ListaAlumnosPage() {
         </div>
 
         {/* ── ERROR ── */}
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {consulta.isError && <EstadoError error={consulta.error} onReintentar={() => consulta.refetch()} reintentando={cargando} />}
 
         {/* ── TABLA ── */}
         <DataGrid
           rows={items}
           columns={COLUMNS}
           keyField="gym_alumno_id"
-          loading={cargando}
+          loading={consulta.isPending}
           searchable
           searchPlaceholder="Buscar por nombre, apellido, DNI o email…"
           onSearch={handleSearch}

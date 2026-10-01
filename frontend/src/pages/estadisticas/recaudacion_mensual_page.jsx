@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getRecaudacionMensualPorAnio } from "../../api/recaudacion_api";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { useRecaudacionMensual } from "../../hook/use_recaudacion.js";
 import {
   BarChart3, ChevronLeft, ChevronRight, RefreshCw, TrendingUp, Calendar,
 } from "lucide-react";
@@ -19,27 +20,12 @@ function money(v) {
 export default function RecaudacionMensualPage() {
   const nav = useNavigate();
   const anioActual = new Date().getFullYear();
-  const [anio, setAnio]       = useState(anioActual);
-  const [data, setData]       = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError]     = useState(null);
-
-  async function cargar() {
-    setCargando(true);
-    setError(null);
-    try {
-      const r = await getRecaudacionMensualPorAnio(anio);
-      if (!r?.ok) { setError(r?.mensaje || "No se pudo cargar recaudación"); setData(null); return; }
-      setData(r);
-    } catch (e) {
-      setError(e?.response?.data?.mensaje || e?.message || "Error inesperado");
-      setData(null);
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  useEffect(() => { cargar(); }, [anio]);
+  const [anio, setAnio] = useState(anioActual);
+  // Cambiar de año pide los datos solo; los años ya vistos quedan en caché (ir y volver es instantáneo).
+  const consulta = useRecaudacionMensual(anio);
+  const data = consulta.data;
+  const cargando = consulta.isFetching;
+  const cargar = () => consulta.refetch();
 
   const meses = useMemo(() => {
     const map = new Map();
@@ -102,11 +88,7 @@ export default function RecaudacionMensualPage() {
         </div>
 
         {/* ── ERROR ── */}
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {consulta.isError && <EstadoError error={consulta.error} onReintentar={cargar} reintentando={cargando} />}
 
         {/* ── STATS ── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

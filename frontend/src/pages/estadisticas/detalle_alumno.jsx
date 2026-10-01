@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getAlumnoDetalle } from "../../api/alumnos_api";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { useDetalleAlumno } from "../../hook/use_alumnos.js";
 import { ArrowLeft, BadgeCheck, Ban, RefreshCw, CreditCard, TrendingUp, Zap, Clock } from "lucide-react";
 import { formatearFechaAR } from "../../components/form/formatear_fecha";
 import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
@@ -98,26 +99,10 @@ export default function DetalleAlumnoPage() {
   const { id } = useParams();
   const nav    = useNavigate();
 
-  const [data, setData]         = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError]       = useState(null);
-
-  async function cargar() {
-    setCargando(true);
-    setError(null);
-    try {
-      const r = await getAlumnoDetalle(id);
-      if (!r?.ok) { setError(r?.mensaje || "No se pudo cargar el alumno"); setData(null); return; }
-      setData(r);
-    } catch (e) {
-      setError(e?.response?.data?.mensaje || e?.message || "Error inesperado");
-      setData(null);
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  useEffect(() => { cargar(); }, [id]);
+  const consulta = useDetalleAlumno(id);
+  const data = consulta.data;
+  const cargando = consulta.isFetching;
+  const cargar = () => consulta.refetch();
 
   const alumno     = data?.alumno;
   const planActual = data?.plan_actual;
@@ -177,9 +162,7 @@ export default function DetalleAlumnoPage() {
         </div>
 
         {/* ── ERROR ── */}
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-        )}
+        {consulta.isError && <EstadoError error={consulta.error} onReintentar={cargar} reintentando={cargando} />}
 
         {/* ── CARDS PLAN ── */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

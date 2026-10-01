@@ -89,7 +89,7 @@ export const router = createBrowserRouter([
     path: "/estadisticas/recaudaciones/:anio/:mes",
     element: (
       <AppLayout>
-        <ProtectedRoute>
+        <ProtectedRoute roles={["admin"]}>
           <RecaudacionCalendarioDia />
         </ProtectedRoute>
       </AppLayout>

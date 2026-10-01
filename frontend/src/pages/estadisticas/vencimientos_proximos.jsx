@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from "react";
-import { getVencimientos } from "../../api/estadisticas_api";
+import { useMemo, useState } from "react";
 import { CalendarClock, RefreshCw, AlertTriangle, Clock, Zap, User } from "lucide-react";
 import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { hoyISOArgentina } from "../../components/form/formatear_fecha.js";
+import { useVencimientos } from "../../hook/use_estadisticas.js";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -46,32 +48,15 @@ function Badge({ red, amber, children }) {
 /* ── página ──────────────────────────────────────────────────────────────── */
 
 export default function VencimientosPage() {
-  const [dias, setDias]         = useState(7);
-  const [data, setData]         = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError]       = useState(null);
+  const [dias, setDias] = useState(7);
+  // Cambiar los días pide los datos solo (cambia la queryKey); "Actualizar" los vuelve a pedir.
+  const consulta = useVencimientos(dias);
+  const cargando = consulta.isFetching;
 
-  const hoyISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+  const hoyISO = useMemo(() => hoyISOArgentina(), []);
 
-  async function cargar() {
-    setCargando(true);
-    setError(null);
-    try {
-      const r = await getVencimientos({ dias });
-      if (!r?.ok) { setError(r?.mensaje || "No se pudo cargar vencimientos"); setData(null); return; }
-      setData(r);
-    } catch (e) {
-      setError(e?.response?.data?.mensaje || e?.message || "Error inesperado");
-      setData(null);
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  useEffect(() => { cargar(); }, [dias]);
-
-  const items    = data?.items || [];
-  const total    = Number(data?.total || 0);
+  const items    = useMemo(() => consulta.data?.items || [], [consulta.data]);
+  const total    = Number(consulta.data?.total || 0);
   const urgentes = useMemo(() =>
     items.filter((it) => { const d = diasEntre(hoyISO, it.fin); return d !== null && d <= 2; }).length,
     [items, hoyISO]
@@ -181,7 +166,7 @@ export default function VencimientosPage() {
               </div>
               <button
                 type="button"
-                onClick={cargar}
+                onClick={() => consulta.refetch()}
                 disabled={cargando}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-blue-500/20 hover:bg-blue-500 transition disabled:opacity-50"
               >
@@ -200,9 +185,7 @@ export default function VencimientosPage() {
         </div>
 
         {/* ── ERROR ── */}
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-        )}
+        {consulta.isError && <EstadoError error={consulta.error} onReintentar={() => consulta.refetch()} reintentando={cargando} />}
 
         {/* ── TABLA ── */}
         <DataGrid

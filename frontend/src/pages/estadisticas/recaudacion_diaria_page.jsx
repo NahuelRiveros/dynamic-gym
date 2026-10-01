@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useMemo, useState } from "react";
-import { getRecaudacionDiasDeMes } from "../../api/recaudacion_api";
+import { useMemo } from "react";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { useRecaudacionDiaria } from "../../hook/use_recaudacion.js";
 import {
   ChevronLeft, ChevronRight, ArrowLeft,
   CalendarDays, TrendingUp, Star, Activity,
@@ -31,28 +32,11 @@ export default function RecaudacionDiariaPage() {
   const year  = Number(anio);
   const month = Number(mes);
 
-  const [data, setData]         = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError]       = useState(null);
-
-  useEffect(() => {
-    if (!Number.isFinite(year) || !Number.isFinite(month)) return;
-    async function cargar() {
-      setCargando(true);
-      setError(null);
-      try {
-        const r = await getRecaudacionDiasDeMes(year, month);
-        if (!r?.ok) { setError(r?.mensaje || "No se pudo cargar recaudación diaria"); setData(null); return; }
-        setData(r);
-      } catch (e) {
-        setError(e?.response?.data?.mensaje || e?.message || "Error inesperado");
-        setData(null);
-      } finally {
-        setCargando(false);
-      }
-    }
-    cargar();
-  }, [year, month]);
+  // Sin año o mes válidos en la dirección no se consulta (enabled: false).
+  const consulta = useRecaudacionDiaria(year, month);
+  const data = consulta.data;
+  const cargando = consulta.isFetching;
+  const error = consulta.isError;
 
   const diasDelMes = useMemo(() => new Date(year, month, 0).getDate(), [year, month]);
 
@@ -153,11 +137,7 @@ export default function RecaudacionDiariaPage() {
         </div>
 
         {/* ── ERROR ── */}
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {error && <EstadoError error={consulta.error} onReintentar={() => consulta.refetch()} reintentando={cargando} />}
 
         {/* ── STATS ── */}
         {!cargando && totalMes > 0 && (

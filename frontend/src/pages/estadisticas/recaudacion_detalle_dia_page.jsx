@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { getRecaudacionDetalleDia } from "../../api/recaudacion_api";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { useRecaudacionDetalleDia } from "../../hook/use_recaudacion.js";
 import {
   ArrowLeft, CalendarDays, TrendingUp, Receipt,
   Clock, User, Zap,
@@ -53,28 +54,10 @@ export default function RecaudacionDetalleDiaPage() {
   const month = Number(mes);
   const day   = Number(dia);
 
-  const [data, setData]         = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError]       = useState(null);
-
-  useEffect(() => {
-    if (!Number.isFinite(year) || !Number.isFinite(month) || !Number.isFinite(day)) return;
-    async function cargar() {
-      setCargando(true);
-      setError(null);
-      try {
-        const r = await getRecaudacionDetalleDia(year, month, day);
-        if (!r?.ok) { setError(r?.mensaje || "No se pudo cargar el detalle del día"); setData(null); return; }
-        setData(r);
-      } catch (e) {
-        setError(e?.response?.data?.mensaje || e?.message || "Error inesperado");
-        setData(null);
-      } finally {
-        setCargando(false);
-      }
-    }
-    cargar();
-  }, [year, month, day]);
+  // Sin fecha válida en la dirección no se consulta (enabled: false).
+  const consulta = useRecaudacionDetalleDia(year, month, day);
+  const data = consulta.data;
+  const cargando = consulta.isFetching;
 
   const totalDia       = useMemo(() => Number(data?.total_dia || 0), [data]);
   const cantidadCobros = useMemo(() => Number(data?.cantidad_cobros || 0), [data]);
@@ -120,11 +103,7 @@ export default function RecaudacionDetalleDiaPage() {
         </div>
 
         {/* ── ERROR ── */}
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            {error}
-          </div>
-        )}
+        {consulta.isError && <EstadoError error={consulta.error} onReintentar={() => consulta.refetch()} reintentando={cargando} />}
 
         {/* ── STATS ── */}
         <div className="grid grid-cols-3 gap-3">

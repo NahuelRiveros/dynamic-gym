@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { getHeatmapAsistencias } from "../../api/estadisticas_api";
+import { useMemo, useState } from "react";
 import { Activity, RefreshCw, Calendar, Trophy, Clock, Zap } from "lucide-react";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { useHeatmapAsistencias } from "../../hook/use_estadisticas.js";
+import { useFiltros } from "../../hook/use_filtros.js";
 
 const DIAS = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 const DIAS_FULL = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
@@ -28,26 +30,15 @@ export default function HeatmapAsistenciasPage() {
   const def = useMemo(() => isoMesActual(), []);
   const [desde, setDesde] = useState(def.desde);
   const [hasta, setHasta] = useState(def.hasta);
-  const [data, setData]         = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [error, setError]       = useState(null);
+  // La consulta usa el rango aplicado con "Actualizar", no el que se está escribiendo.
+  const [filtros, aplicarFiltros] = useFiltros(def);
+  const consulta = useHeatmapAsistencias(filtros);
+  const data = consulta.data;
+  const cargando = consulta.isFetching;
 
-  async function cargar() {
-    setCargando(true);
-    setError(null);
-    try {
-      const r = await getHeatmapAsistencias({ desde, hasta });
-      if (!r?.ok) { setError(r?.mensaje || "No se pudo cargar el heatmap"); setData(null); return; }
-      setData(r);
-    } catch (e) {
-      setError(e?.response?.data?.mensaje || e?.message || "Error inesperado");
-      setData(null);
-    } finally {
-      setCargando(false);
-    }
+  function actualizar() {
+    if (!aplicarFiltros({ desde, hasta })) consulta.refetch();
   }
-
-  useEffect(() => { cargar(); }, []);
 
   /* ── procesamiento ── */
   const { matriz, maxVal, pico, totalIngresos, diaMasConcurrido, horaMasConcurrida } = useMemo(() => {
@@ -96,7 +87,7 @@ export default function HeatmapAsistenciasPage() {
               </span>
               <h1 className="mt-2 text-2xl font-extrabold text-slate-900">Heatmap de asistencias</h1>
               <p className="mt-0.5 text-sm text-slate-500">
-                Intensidad por hora y día de la semana · {desde} → {hasta}
+                Intensidad por hora y día de la semana · {filtros.desde} → {filtros.hasta}
               </p>
             </div>
 
@@ -109,7 +100,7 @@ export default function HeatmapAsistenciasPage() {
                 <input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)}
                   className="text-sm text-slate-700 outline-none w-32" />
               </div>
-              <button type="button" onClick={cargar} disabled={cargando}
+              <button type="button" onClick={actualizar} disabled={cargando}
                 className="inline-flex items-center gap-1.5 rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-sm shadow-blue-500/20 hover:bg-blue-500 transition disabled:opacity-50">
                 <RefreshCw size={13} className={cargando ? "animate-spin" : ""} />
                 {cargando ? "…" : "Actualizar"}
@@ -119,9 +110,7 @@ export default function HeatmapAsistenciasPage() {
         </div>
 
         {/* ── ERROR ── */}
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-        )}
+        {consulta.isError && <EstadoError error={consulta.error} onReintentar={() => consulta.refetch()} reintentando={cargando} />}
 
         {/* ── STATS ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
