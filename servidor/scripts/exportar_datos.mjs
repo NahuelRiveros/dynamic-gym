@@ -524,7 +524,7 @@ async function main() {
   console.log("\n💾 Guardando JSONs para migración...");
 
   // Limpiar contraseñas de los JSONs de usuario (exportar solo lo necesario)
-  const usuariosMigracion = usuarios.map(({ contrasena, ...u }) => u);
+  const usuariosMigracion = usuarios.map(({ contrasena: _contrasena, ...u }) => u);
 
   const archivos = [
     guardarJSON("personas",           personas),

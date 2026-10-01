@@ -153,7 +153,11 @@ export default function ListaAlumnosPage() {
     setCargando(true);
     setError(null);
     if (esAdmin) {
-      try { await actualizarEstadosAlumnos(); } catch {}
+      try {
+        await actualizarEstadosAlumnos();
+      } catch {
+        // Si no se pudieron recalcular los estados, igual se muestra la lista con los que hay.
+      }
     }
     try {
       await cargar();

@@ -1,22 +1,6 @@
 import { useState } from "react";
 import { X, Trash2, Copy, Check, AlertCircle, ShieldOff, WifiOff } from "lucide-react";
-
-export const KIOSK_LOG_KEY = "kiosk_log";
-const LOG_MAX = 200;
-
-export function guardarLogKiosk({ dni, codigo, mensaje }) {
-  try {
-    const log = JSON.parse(localStorage.getItem(KIOSK_LOG_KEY) || "[]");
-    log.unshift({
-      ts: new Date().toISOString(),
-      dni,
-      codigo,
-      mensaje,
-    });
-    if (log.length > LOG_MAX) log.splice(LOG_MAX);
-    localStorage.setItem(KIOSK_LOG_KEY, JSON.stringify(log));
-  } catch {}
-}
+import { KIOSK_LOG_KEY } from "./kiosk_log.js";
 
 function fmt(ts) {
   try {

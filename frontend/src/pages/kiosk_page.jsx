@@ -3,7 +3,8 @@ import { kioskIngreso } from "../api/kiosk_api.js";
 import { getAlumnosCumples } from "../api/alumnos_api.js";
 import KioskResultModal from "../components/modal/kiosk_result_modal.jsx";
 import KioskErrorModal from "../components/modal/kiosk_error_modal.jsx";
-import KioskLogModal, { guardarLogKiosk } from "../components/modal/kiosk_log_modal.jsx";
+import KioskLogModal from "../components/modal/kiosk_log_modal.jsx";
+import { guardarLogKiosk } from "../components/modal/kiosk_log.js";
 import AlertasDropdown from "../components/alertas/AlertasDropdown.jsx";
 import { Dumbbell } from "lucide-react";
 
@@ -58,7 +59,9 @@ export default function KioskPage() {
       try {
         const data = await getAlumnosCumples({ dias: 3 });
         setCumples({ hoy: data.hoy || [], proximos: data.proximos || [] });
-      } catch {}
+      } catch {
+        // Los cumpleaños son un extra: si fallan, el kiosco sigue registrando ingresos.
+      }
     }
     cargar();
     const t = setInterval(cargar, 60000);
@@ -84,7 +87,9 @@ export default function KioskPage() {
       const audio = new Audio(src);
       audio.currentTime = 0;
       audio.play().catch(() => {});
-    } catch {}
+    } catch {
+      // Sin audio (navegador sin soporte o bloqueado) el ingreso se registra igual.
+    }
   }
 
   async function onSubmit(e) {

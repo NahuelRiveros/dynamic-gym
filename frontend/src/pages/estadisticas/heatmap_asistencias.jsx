@@ -16,11 +16,6 @@ function isoMesActual() {
 // Convierte un valor 0..1 en un color azul eléctrico con distintos niveles de intensidad
 function celColor(alpha) {
   if (alpha <= 0) return { bg: "rgba(241,245,249,0.8)", border: "rgba(203,213,225,0.6)", text: "rgba(148,163,184,0.8)" };
-  // De azul claro (alpha bajo) a azul intenso + cyan (alpha alto)
-  const r = Math.round(37  + (14  - 37)  * alpha);  // 37→14
-  const g = Math.round(99  + (165 - 99)  * alpha);  // 99→165 (más cyan en el pico)
-  const b = Math.round(235 + (245 - 235) * alpha);  // 235→245
-  // Versión simplificada: usar rgba con distintos parámetros de azul
   const intensity = Math.max(0.08, alpha);
   return {
     bg:     `rgba(37, 99, 235, ${intensity})`,

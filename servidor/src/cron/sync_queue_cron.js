@@ -60,7 +60,7 @@ export async function sincronizarColaPendiente() {
         );
       }
 
-    } catch (err) {
+    } catch {
       // Error de conexión — la DB sigue sin responder.
       // Dejamos el ítem como "pendiente" y abortamos el resto del lote
       // (todos fallarán igual si no hay conexión).

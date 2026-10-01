@@ -48,7 +48,7 @@ async function main() {
   const client = await pool.connect();
   try {
     // Ejecutar como bloque completo — el driver pg soporta esto a través de simple query protocol
-    const result = await client.query(sql);
+    await client.query(sql);
 
     // Mostrar los RAISE NOTICE como output
     console.log("✅ Migración ejecutada sin errores\n");

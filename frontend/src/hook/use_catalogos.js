@@ -18,8 +18,7 @@ export function useCatalogos() {
         if (!alive) return;
         setError(e);
       } finally {
-        if (!alive) return;
-        setLoading(false);
+        if (alive) setLoading(false);
       }
     })();
 

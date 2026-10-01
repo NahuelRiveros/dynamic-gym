@@ -126,7 +126,7 @@ suscripcionRouter.post("/webhook", async (req, res) => {
     const hasta = new Date(hoy);
     hasta.setDate(hasta.getDate() + 30);
 
-    const [saveResult, extResult] = await Promise.allSettled([
+    const [saveResult] = await Promise.allSettled([
       registrarPago({
         mpPaymentId:    paymentId,
         mpPreferenceId: pago.external_reference,

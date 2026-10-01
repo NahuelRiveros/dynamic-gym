@@ -3,10 +3,6 @@ import { CheckCircle, IdCard, Clock, Calendar, Ticket } from "lucide-react";
 import { formatearFechaAR } from "../form/formatear_fecha";
 
 export default function KioskResultModal({ resp, onClose, autoCloseMs = 8000 }) {
-  if (!resp) return null;
-
-  const alumno = resp.alumno || {};
-  const plan = resp.plan || null;
   const totalSeg = Math.round(autoCloseMs / 1000);
   const [restante, setRestante] = useState(totalSeg);
 
@@ -24,6 +20,11 @@ export default function KioskResultModal({ resp, onClose, autoCloseMs = 8000 }) 
     return () => clearInterval(t);
   }, []);
 
+  // Después de los hooks: React necesita que se llamen siempre los mismos, en el mismo orden.
+  if (!resp) return null;
+
+  const alumno = resp.alumno || {};
+  const plan = resp.plan || null;
   const porcentaje = (restante / totalSeg) * 100;
   const pocosIngresos = plan?.ingresos_restantes != null && plan.ingresos_restantes <= 3;
 

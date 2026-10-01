@@ -22,7 +22,7 @@ export async function verificarSuscripcion(req, res, next) {
   if (req.method === "GET") return next();
 
   const ruta = req.path;
-  if (RUTAS_SIEMPRE_LIBRES.some((r) => ruta.startsWith("/" + r) || ruta === "/" + r)) {
+  if (RUTAS_SIEMPRE_LIBRES.some((r) => ruta === r || ruta.startsWith(`${r}/`))) {
     return next();
   }
 

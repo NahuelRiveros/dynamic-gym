@@ -16,7 +16,7 @@ import { authConfig } from "../config/auth_config.js";
 export default function LoginPage() {
   const nav = useNavigate();
   const [searchParams] = useSearchParams();
-  const { login, user } = useAuth();
+  const { login, usuario } = useAuth();
 
   const sesionExpirada = searchParams.get("expired") === "1";
   const from = searchParams.get("from") || "/";
@@ -184,8 +184,8 @@ export default function LoginPage() {
 
       {mostrarWelcome && (
         <WelcomeModal
-          nombre={user?.nombre}
-          apellido={user?.apellido}
+          nombre={usuario?.nombre}
+          apellido={usuario?.apellido}
           onFinish={() => {
             setMostrarWelcome(false);
             nav(from);

@@ -1,0 +1,29 @@
+{
+  "name": "dynamic-gym",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "instalar": "npm install && npm --prefix servidor install && npm --prefix frontend install",
+    "dev": "concurrently -n api,web -c blue,magenta \"npm --prefix servidor run dev\" \"npm --prefix frontend run dev\"",
+    "dev:api": "npm --prefix servidor run dev",
+    "dev:web": "npm --prefix frontend run dev",
+    "test": "npm --prefix servidor test && npm --prefix frontend test",
+    "test:api": "npm --prefix servidor test --",
+    "test:web": "npm --prefix frontend test --",
+    "test:e2e": "playwright test",
+    "lint": "eslint .",
+    "build": "npm --prefix frontend run build"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@playwright/test": "^1.56.0",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

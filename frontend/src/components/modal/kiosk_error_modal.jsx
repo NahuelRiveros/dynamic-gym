@@ -38,9 +38,6 @@ const MENSAJES = {
 };
 
 export default function KioskErrorModal({ resp, onClose, autoCloseMs = 6000 }) {
-  if (!resp) return null;
-
-  const codigo = resp.codigo || "ERROR";
   const totalSeg = Math.round(autoCloseMs / 1000);
   const [restante, setRestante] = useState(totalSeg);
 
@@ -57,6 +54,11 @@ export default function KioskErrorModal({ resp, onClose, autoCloseMs = 6000 }) {
     }, 1000);
     return () => clearInterval(t);
   }, []);
+
+  // Después de los hooks: React necesita que se llamen siempre los mismos, en el mismo orden.
+  if (!resp) return null;
+
+  const codigo = resp.codigo || "ERROR";
 
   const porcentaje = (restante / totalSeg) * 100;
   const { titulo, desc } = MENSAJES[codigo] ?? {

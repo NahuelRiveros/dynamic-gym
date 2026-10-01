@@ -32,7 +32,7 @@ router.get("/health", async (_req, res) => {
       ok: true,
       mensaje: "Servidor y base funcionando",
     });
-  } catch (error) {
+  } catch {
     return res.status(500).json({
       ok: false,
       mensaje: "Servidor activo pero DB caída",

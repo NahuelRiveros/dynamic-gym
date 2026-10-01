@@ -85,8 +85,6 @@ export default function InputField({
 }) {
   const [showPassword, setShowPassword] = useState(false);
 
-  if (hidden) return null;
-
   const inputId = id ?? name;
   const isPassword = type === "password";
   const finalType = isPassword && showPassword ? "text" : type;
@@ -99,6 +97,9 @@ export default function InputField({
     ...(rules ?? {}),
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }), [type, required, requiredMessage, minLength, maxLength, pattern, validate, validationPreset, rules]);
+
+  // Después de los hooks: React necesita que se llamen siempre los mismos, en el mismo orden.
+  if (hidden) return null;
 
   const registeredProps = !isControlled && register && name ? register(name, validationRules) : {};
 

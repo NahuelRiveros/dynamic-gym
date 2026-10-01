@@ -9,6 +9,22 @@ frontend/.env
 frontend/.env.*
 servidor/.env
 servidor/.env.*
+!servidor/.env.example
+!servidor/.env.test.example
+!frontend/.env.example
+
+# ── Tests (salidas de Playwright) ─────────────
+test-results/
+playwright-report/
+
+# ── Configuración personal de Claude Code ─────
+.claude/settings.local.json
+
+# ── Launcher de escritorio (ya no se usa) y builds de Python ──
+build_tmp/
+__pycache__/
+*.exe
+*.zip
 
 # ── Builds del frontend ───────────────────────
 frontend/dist/

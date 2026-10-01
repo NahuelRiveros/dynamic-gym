@@ -374,7 +374,6 @@ function GraficoPopularidad({ items }) {
           <tbody className="divide-y divide-slate-50">
             {items.map((item, idx) => {
               const pctVentas    = totalVentas > 0    ? Math.round((item.total_ventas    / totalVentas)    * 100) : 0;
-              const pctRecaudado = totalRecaudado > 0 ? Math.round((item.total_recaudado / totalRecaudado) * 100) : 0;
               const anchoPct     = maxVentas > 0      ? (item.total_ventas / maxVentas) * 100 : 0;
               const ticket       = item.total_ventas > 0 ? Math.round(item.total_recaudado / item.total_ventas) : 0;
               const color        = COLORES[idx % COLORES.length];
