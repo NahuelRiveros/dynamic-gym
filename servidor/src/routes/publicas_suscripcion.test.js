@@ -24,12 +24,17 @@ describe("Consulta pública de plan (Mi Plan)", () => {
     expect((await request(app).get("/api/consulta/plan/abc")).body.codigo).toBe("VALIDACION");
   });
 
-  it("limita las consultas seguidas (no se puede recorrer la lista de alumnos probando DNIs)", async () => {
-    let ultima;
-    for (let i = 0; i < 31; i++) ultima = await request(app).get(`/api/consulta/plan/2000000${i}`);
+  it("limita las consultas seguidas de una misma persona, sin frenar a las demás (detrás del proxy de Render)", async () => {
+    const desde = (ip) => (pedido) => pedido.set("X-Forwarded-For", ip);
 
+    let ultima;
+    for (let i = 0; i < 31; i++) ultima = await desde("203.0.113.7")(request(app).get(`/api/consulta/plan/2000000${i}`));
     expect(ultima.status).toBe(429);
     expect(ultima.body.codigo).toBe("DEMASIADOS_INTENTOS");
+
+    // Otra persona (otra IP real) sigue pudiendo consultar su plan.
+    const otra = await desde("198.51.100.20")(request(app).get(`/api/consulta/plan/${ALUMNOS_TEST.conPlan.documento}`));
+    expect(otra.status).toBe(200);
   });
 });
 

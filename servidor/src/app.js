@@ -29,6 +29,10 @@ const corsOrigin = env.CORS_ORIGIN
 export function createApp() {
   const app = express();
 
+  // Render pone un proxy adelante: sin esto todos los pedidos llegan con la IP del proxy y los
+  // límites de intentos (login, consulta pública) se comparten entre TODOS los usuarios.
+  app.set("trust proxy", 1);
+
   app.use(helmet());
 
   // Reduce respuestas JSON/estáticos hasta un 70% — va ANTES de rutas
