@@ -1,13 +1,12 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Shield, RefreshCw, Clock, CalendarCheck, AlertTriangle,
   CheckCircle, Calendar, Plus,
 } from "lucide-react";
-import {
-  getSuperEstadoSuscripcion,
-  superExtenderSuscripcion,
-  superFijarFechaSuscripcion,
-} from "../../api/suscripcion_api.js";
+import ConfirmDialog from "../../components/ui/confirm_dialog.jsx";
+import { hoyISOArgentina } from "../../components/form/formatear_fecha.js";
+import { mensajeDeError } from "../../hook/consultas_utils.js";
+import { useExtenderSuscripcion, useFijarFechaSuscripcion, useSuperEstadoSuscripcion } from "../../hook/use_suscripcion.js";
 
 const OPCIONES_DIAS = [
   { label: "30 días", dias: 30 },
@@ -36,15 +35,24 @@ function fmtFecha(f) {
   });
 }
 
-function hoyISO() {
-  return new Date().toISOString().slice(0, 10);
-}
+const hoyISO = hoyISOArgentina;
 
 export default function GestionSuscripcionPage() {
-  const [estado, setEstado]       = useState(null);
-  const [cargando, setCargando]   = useState(true);
-  const [error, setError]         = useState("");
-  const [exito, setExito]         = useState("");
+  const consulta = useSuperEstadoSuscripcion();
+  const estado = consulta.data ?? null;
+  const cargando = consulta.isPending;
+  const cargarEstado = () => consulta.refetch();
+
+  const extender = useExtenderSuscripcion();
+  const fijar = useFijarFechaSuscripcion();
+  const extendiendo = extender.isPending;
+  const fijando = fijar.isPending;
+
+  // Mensajes de la última acción (los errores de carga vienen de la consulta).
+  const [error, setError] = useState("");
+  const [exito, setExito] = useState("");
+  // Acción esperando confirmación: { titulo, mensaje, ejecutar }
+  const [confirmacion, setConfirmacion] = useState(null);
 
   // Modo: "extender" | "fijar"
   const [modo, setModo] = useState("extender");
@@ -52,30 +60,26 @@ export default function GestionSuscripcionPage() {
   // Extender
   const [diasSel, setDiasSel]       = useState(30);
   const [diasCustom, setDiasCustom] = useState("");
-  const [extendiendo, setExtendiendo] = useState(false);
 
   // Fijar fecha
   const [fechaFijar, setFechaFijar] = useState("");
-  const [fijando, setFijando]       = useState(false);
 
   const diasEfectivos = diasCustom !== "" ? Number(diasCustom) : diasSel;
 
-  async function cargarEstado() {
+  // Se ejecuta desde el diálogo de confirmación; el resultado se avisa arriba de la página.
+  async function ejecutar(mutacion, valor, mensajeOk, mensajeError) {
+    setExito(""); setError("");
     try {
-      setCargando(true);
-      setError("");
-      const r = await getSuperEstadoSuscripcion();
-      setEstado(r);
+      const r = await mutacion.mutateAsync(valor);
+      setExito(mensajeOk(r));
     } catch (e) {
-      setError(e?.response?.data?.mensaje || "No se pudo obtener el estado de suscripción");
+      setError(mensajeDeError(e, mensajeError));
     } finally {
-      setCargando(false);
+      setConfirmacion(null);
     }
   }
 
-  useEffect(() => { cargarEstado(); }, []);
-
-  async function handleExtender() {
+  function handleExtender() {
     if (!diasEfectivos || diasEfectivos <= 0 || diasEfectivos > 3650) {
       setError("Ingresá un número de días entre 1 y 3650");
       return;
@@ -83,36 +87,26 @@ export default function GestionSuscripcionPage() {
     const previewFecha = estado?.fecha_vencimiento
       ? fmtFecha(calcularNuevoVencimientoExtender(estado.fecha_vencimiento, diasEfectivos))
       : "—";
-    if (!window.confirm(`¿Extender ${diasEfectivos} días? Nuevo vencimiento estimado: ${previewFecha}`)) return;
-    try {
-      setExtendiendo(true);
-      setExito(""); setError("");
-      const r = await superExtenderSuscripcion(diasEfectivos);
-      setExito(`Suscripción extendida. Nuevo vencimiento: ${fmtFecha(r.nuevo_vencimiento)}`);
-      setDiasCustom("");
-      await cargarEstado();
-    } catch (e) {
-      setError(e?.response?.data?.mensaje || "Error al extender la suscripción");
-    } finally {
-      setExtendiendo(false);
-    }
+    setConfirmacion({
+      titulo: `¿Extender ${diasEfectivos} días?`,
+      mensaje: `Nuevo vencimiento estimado: ${previewFecha}`,
+      ejecutar: async () => {
+        await ejecutar(extender, diasEfectivos, (r) => `Suscripción extendida. Nuevo vencimiento: ${fmtFecha(r.nuevo_vencimiento)}`, "Error al extender la suscripción");
+        setDiasCustom("");
+      },
+    });
   }
 
-  async function handleFijar() {
+  function handleFijar() {
     if (!fechaFijar) { setError("Seleccioná una fecha"); return; }
-    if (!window.confirm(`¿Fijar el vencimiento exactamente al ${fmtFecha(fechaFijar)}?`)) return;
-    try {
-      setFijando(true);
-      setExito(""); setError("");
-      const r = await superFijarFechaSuscripcion(fechaFijar);
-      setExito(`Vencimiento fijado al ${fmtFecha(r.nuevo_vencimiento)}`);
-      setFechaFijar("");
-      await cargarEstado();
-    } catch (e) {
-      setError(e?.response?.data?.mensaje || "Error al fijar la fecha");
-    } finally {
-      setFijando(false);
-    }
+    setConfirmacion({
+      titulo: "¿Fijar el vencimiento?",
+      mensaje: `El vencimiento queda exactamente el ${fmtFecha(fechaFijar)}.`,
+      ejecutar: async () => {
+        await ejecutar(fijar, fechaFijar, (r) => `Vencimiento fijado al ${fmtFecha(r.nuevo_vencimiento)}`, "Error al fijar la fecha");
+        setFechaFijar("");
+      },
+    });
   }
 
   const diasRestantes = estado?.dias_restantes ?? null;
@@ -140,19 +134,21 @@ export default function GestionSuscripcionPage() {
             <button
               type="button"
               onClick={cargarEstado}
-              disabled={cargando}
+              disabled={consulta.isFetching}
+              aria-label="Actualizar estado"
+              title="Actualizar estado"
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50 transition shadow-sm disabled:opacity-50 self-start sm:self-auto"
             >
-              <RefreshCw size={13} className={cargando ? "animate-spin" : ""} />
+              <RefreshCw size={13} className={consulta.isFetching ? "animate-spin" : ""} aria-hidden="true" />
             </button>
           </div>
         </div>
 
         {/* ── ALERTAS ── */}
-        {error && (
-          <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-            <AlertTriangle size={15} className="shrink-0" />
-            {error}
+        {(error || consulta.isError) && (
+          <div role="alert" className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+            <AlertTriangle size={15} className="shrink-0" aria-hidden="true" />
+            {error || mensajeDeError(consulta.error)}
           </div>
         )}
         {exito && (
@@ -371,6 +367,17 @@ export default function GestionSuscripcionPage() {
         ) : null}
 
       </div>
+
+      <ConfirmDialog
+        open={Boolean(confirmacion)}
+        title={confirmacion?.titulo}
+        message={confirmacion?.mensaje}
+        confirmLabel="Confirmar"
+        variant="warning"
+        loading={extendiendo || fijando}
+        onConfirm={() => confirmacion?.ejecutar()}
+        onClose={() => setConfirmacion(null)}
+      />
     </div>
   );
 }

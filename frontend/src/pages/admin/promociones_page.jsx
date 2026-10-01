@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import {
   Megaphone,
   Send,
@@ -11,11 +11,10 @@ import {
   Mail,
   Phone,
 } from "lucide-react";
-import {
-  getPreviewDestinatarios,
-  getNumerosWhatsApp,
-  enviarPromocion,
-} from "../../api/promociones_api";
+import { getNumerosWhatsApp } from "../../api/promociones_api";
+import ConfirmDialog from "../../components/ui/confirm_dialog.jsx";
+import { mensajeDeError } from "../../hook/consultas_utils.js";
+import { useEnviarPromocion, usePreviewDestinatarios } from "../../hook/use_promociones.js";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
 
@@ -50,11 +49,15 @@ const PLANTILLAS = [
   },
 ];
 
+// El texto escrito va escapado: un "<" o "&" en el mensaje no rompe el HTML del email.
+const escaparHtml = (texto) =>
+  String(texto).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
 function construirHtml(titulo, mensaje) {
   return `<div style="font-family:sans-serif;max-width:600px;margin:auto;padding:24px">
-  ${titulo ? `<h2 style="color:#2563eb;margin-bottom:8px">${titulo}</h2>` : ""}
+  ${titulo ? `<h2 style="color:#2563eb;margin-bottom:8px">${escaparHtml(titulo)}</h2>` : ""}
   <p style="margin-top:0">Hola <strong>{nombre}</strong>, somos de Dynamic Gym.</p>
-  <p style="white-space:pre-line;line-height:1.6">${mensaje}</p>
+  <p style="white-space:pre-line;line-height:1.6">${escaparHtml(mensaje)}</p>
   <hr style="border:none;border-top:1px solid #e2e8f0;margin:24px 0"/>
   <p style="color:#94a3b8;font-size:12px;margin:0">Dynamic Gym Formosa<br/>Este mensaje fue enviado a nuestros alumnos.</p>
 </div>`;
@@ -68,21 +71,26 @@ export default function PromocionesPage() {
   const [subject, setSubject] = useState(PLANTILLAS[0].subject);
   const [titulo, setTitulo] = useState(PLANTILLAS[0].titulo);
   const [mensaje, setMensaje] = useState(PLANTILLAS[0].mensaje);
-  const [preview, setPreview] = useState(null);
-  const [cargando, setCargando] = useState(false);
-  const [enviando, setEnviando] = useState(false);
-  const [resultado, setResultado] = useState(null);
   const [copiado, setCopiado] = useState(false);
+  const [confirmando, setConfirmando] = useState(false);
 
-  useEffect(() => {
-    setPreview(null);
-    setResultado(null);
-    setCargando(true);
-    getPreviewDestinatarios(filtro)
-      .then(setPreview)
-      .catch(() => setPreview({ ok: false, total: 0 }))
-      .finally(() => setCargando(false));
-  }, [filtro]);
+  // Cambiar el filtro cambia la queryKey: la vista previa se pide sola (y queda en caché).
+  const consultaPreview = usePreviewDestinatarios(filtro);
+  const preview = consultaPreview.data ?? null;
+  const cargando = consultaPreview.isPending;
+
+  const envio = useEnviarPromocion();
+  const enviando = envio.isPending;
+  const resultado = envio.isSuccess
+    ? envio.data
+    : envio.isError
+      ? { ok: false, mensaje: mensajeDeError(envio.error, "Error al enviar") }
+      : null;
+
+  function cambiarFiltro(valor) {
+    setFiltro(valor);
+    envio.reset();
+  }
 
   function cambiarPlantilla(id) {
     const p = PLANTILLAS.find((x) => x.id === id);
@@ -91,32 +99,20 @@ export default function PromocionesPage() {
     setSubject(p.subject);
     setTitulo(p.titulo);
     setMensaje(p.mensaje);
-    setResultado(null);
+    envio.reset();
   }
 
-  async function handleEnviar() {
+  function handleEnviar() {
     if (!subject.trim() || !mensaje.trim()) return;
-    if (!confirm(`¿Enviar email a ${preview?.total ?? "?"} destinatarios?`))
-      return;
+    envio.reset();
+    setConfirmando(true);
+  }
 
-    setEnviando(true);
-    setResultado(null);
-    try {
-      const html = construirHtml(titulo.trim(), mensaje.trim());
-      const r = await enviarPromocion({
-        filtro,
-        subject: subject.trim(),
-        html,
-      });
-      setResultado(r);
-    } catch (err) {
-      setResultado({
-        ok: false,
-        mensaje: err?.response?.data?.mensaje || "Error al enviar",
-      });
-    } finally {
-      setEnviando(false);
-    }
+  async function confirmarEnvio() {
+    const html = construirHtml(titulo.trim(), mensaje.trim());
+    // El resultado (enviados, fallidos o el error) se muestra con envio.data / envio.error.
+    await envio.mutateAsync({ filtro, subject: subject.trim(), html }).catch(() => {});
+    setConfirmando(false);
   }
 
   async function handleCopiarNumeros() {
@@ -166,7 +162,7 @@ export default function PromocionesPage() {
             {FILTROS.map((f) => (
               <button
                 key={f.value}
-                onClick={() => setFiltro(f.value)}
+                onClick={() => cambiarFiltro(f.value)}
                 className={`rounded-xl border px-4 py-2 text-sm font-semibold transition ${
                   filtro === f.value
                     ? "border-violet-300 bg-violet-600 text-white shadow-sm"
@@ -259,7 +255,7 @@ export default function PromocionesPage() {
               value={subject}
               onChange={(e) => {
                 setSubject(e.target.value);
-                setResultado(null);
+                envio.reset();
               }}
               placeholder="Ej: 🎯 Oferta especial para vos"
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
@@ -278,7 +274,7 @@ export default function PromocionesPage() {
               value={titulo}
               onChange={(e) => {
                 setTitulo(e.target.value);
-                setResultado(null);
+                envio.reset();
               }}
               placeholder="Ej: ¡Promoción de mayo!"
               className="w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm text-slate-800 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-100"
@@ -303,7 +299,7 @@ export default function PromocionesPage() {
               value={mensaje}
               onChange={(e) => {
                 setMensaje(e.target.value);
-                setResultado(null);
+                envio.reset();
               }}
               rows={5}
               placeholder="Escribí acá tu promoción, aviso o comunicado..."
@@ -360,6 +356,17 @@ export default function PromocionesPage() {
           </button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={confirmando}
+        title="¿Enviar el email?"
+        message={`Le llega a ${preview?.total ?? "?"} alumnos. Una vez enviado no se puede deshacer.`}
+        confirmLabel="Enviar"
+        variant="primary"
+        loading={enviando}
+        onConfirm={confirmarEnvio}
+        onClose={() => setConfirmando(false)}
+      />
     </div>
   );
 }

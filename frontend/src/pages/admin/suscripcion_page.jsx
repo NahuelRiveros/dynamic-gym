@@ -1,11 +1,10 @@
-import { useQuery } from "@tanstack/react-query";
 import {
   CreditCard, CheckCircle2, AlertTriangle, Clock,
   Lock, RefreshCw, Zap, CalendarDays, BadgeCheck,
   MessageCircle, Copy, Check,
 } from "lucide-react";
 import { useState } from "react";
-import { getEstadoSuscripcion } from "../../api/suscripcion_api";
+import { useEstadoSuscripcion } from "../../hook/use_suscripcion.js";
 import { formatearFechaAR } from "../../components/form/formatear_fecha";
 
 /* ── helpers ─────────────────────────────────────────────────────────────── */
@@ -62,11 +61,7 @@ const ESTADO_UI = {
 export default function SuscripcionPage() {
   const [copiado, setCopiado] = useState(false);
 
-  const { data: estado, isLoading, refetch } = useQuery({
-    queryKey:  ["suscripcion-estado"],
-    queryFn:   getEstadoSuscripcion,
-    staleTime: 60_000,
-  });
+  const { data: estado, isLoading, refetch } = useEstadoSuscripcion();
 
   const ui        = ESTADO_UI[estado?.estado || "sin_suscripcion"] ?? ESTADO_UI.sin_suscripcion;
   const necesita  = ["aviso", "gracia", "vencido"].includes(estado?.estado);
