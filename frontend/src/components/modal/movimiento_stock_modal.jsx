@@ -17,7 +17,7 @@ const TITULOS = { entrada: "Reponer stock", venta: "Vender producto", baja: "Dar
 const ETIQUETAS_BOTON = { entrada: "Reponer", venta: "Vender", baja: "Dar de baja" };
 
 // Se monta cada vez que se abre el modal: arranca siempre en 1 unidad, efectivo y sin motivo.
-function FormularioMovimiento({ tipo, producto, onConfirmar, onClose, cargando }) {
+function FormularioMovimiento({ tipo, producto, onConfirmar, onClose, cargando, errorServidor }) {
   const [cantidad, setCantidad] = useState(1);
   const [metodoPago, setMetodoPago] = useState("EFECTIVO");
   const [motivo, setMotivo] = useState("");
@@ -58,16 +58,16 @@ function FormularioMovimiento({ tipo, producto, onConfirmar, onClose, cargando }
         </label>
       )}
 
-      <ListaErrores errores={error ? [error] : []} />
+      <ListaErrores errores={[error, errorServidor].filter(Boolean)} />
       <BotonesModal onCancelar={onClose} ocupado={cargando} textoConfirmar={ETIQUETAS_BOTON[tipo]} peligro={tipo === "baja"} />
     </form>
   );
 }
 
-export default function MovimientoStockModal({ abierto, tipo, producto, onClose, onConfirmar, cargando = false }) {
+export default function MovimientoStockModal({ abierto, tipo, producto, onClose, onConfirmar, cargando = false, errorServidor = null }) {
   return (
     <Modal abierto={abierto && !!producto} onCerrar={onClose} titulo={TITULOS[tipo]} descripcion={producto?.nombre} ocupado={cargando} ancho="md">
-      <FormularioMovimiento tipo={tipo} producto={producto} onConfirmar={onConfirmar} onClose={onClose} cargando={cargando} />
+      <FormularioMovimiento tipo={tipo} producto={producto} onConfirmar={onConfirmar} onClose={onClose} cargando={cargando} errorServidor={errorServidor} />
     </Modal>
   );
 }

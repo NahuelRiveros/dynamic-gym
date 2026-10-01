@@ -1,10 +1,7 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { BarChart2, TrendingDown } from "lucide-react";
-import {
-  getRecaudacionMensualStock,
-  getProductosMasVendidos,
-  getMermasDeStock,
-} from "../../api/stock_api.js";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { useEstadisticasStock } from "../../hook/use_stock.js";
 
 const ANIO_ACTUAL = new Date().getFullYear();
 
@@ -18,33 +15,10 @@ const fmtARS = (n) =>
 
 export default function EstadisticasTab() {
   const [anio, setAnio] = useState(ANIO_ACTUAL);
-  const [cargando, setCargando] = useState(true);
-
-  const [mensual, setMensual] = useState([]);
-  const [ranking, setRanking] = useState([]);
-  const [mermas, setMermas] = useState([]);
-
-  async function cargar(anioSeleccionado) {
-    try {
-      setCargando(true);
-      const [rMensual, rRanking, rMermas] = await Promise.all([
-        getRecaudacionMensualStock({ anio: anioSeleccionado }),
-        getProductosMasVendidos({ anio: anioSeleccionado }),
-        getMermasDeStock({ anio: anioSeleccionado }),
-      ]);
-      setMensual(rMensual.items || []);
-      setRanking(rRanking.items || []);
-      setMermas(rMermas.items || []);
-    } catch {
-      setMensual([]);
-      setRanking([]);
-      setMermas([]);
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  useEffect(() => { cargar(anio); }, [anio]);
+  // Antes un error se veía como "sin ventas"; ahora se avisa y se puede reintentar.
+  const consulta = useEstadisticasStock(anio);
+  const cargando = consulta.isPending;
+  const { mensual = [], ranking = [], mermas = [] } = consulta.data ?? {};
 
   const totalRecaudado = mensual.reduce((acc, m) => acc + Number(m.total_recaudado), 0);
   const totalUnidades = mensual.reduce((acc, m) => acc + Number(m.total_unidades), 0);
@@ -90,6 +64,8 @@ export default function EstadisticasTab() {
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center text-sm text-slate-400">
           Cargando…
         </div>
+      ) : consulta.isError ? (
+        <EstadoError error={consulta.error} onReintentar={() => consulta.refetch()} reintentando={consulta.isFetching} />
       ) : (
         <>
           {/* ── RECAUDACIÓN MENSUAL ── */}

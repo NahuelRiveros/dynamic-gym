@@ -21,7 +21,7 @@ function validar(form) {
 }
 
 // Se monta cada vez que se abre el modal: los valores iniciales salen del producto a editar.
-function FormularioProducto({ productoEditar, categorias, onGuardar, onClose, cargando }) {
+function FormularioProducto({ productoEditar, categorias, onGuardar, onClose, cargando, errorServidor }) {
   const [form, setForm] = useState(() => desdeProducto(productoEditar));
   const [errores, setErrores] = useState([]);
 
@@ -70,16 +70,16 @@ function FormularioProducto({ productoEditar, categorias, onGuardar, onClose, ca
         </label>
       </div>
 
-      <ListaErrores errores={errores} />
+      <ListaErrores errores={errorServidor ? [...errores, errorServidor] : errores} />
       <BotonesModal onCancelar={onClose} ocupado={cargando} />
     </form>
   );
 }
 
-export default function ProductoFormModal({ abierto, onClose, onGuardar, productoEditar = null, categorias = [], cargando = false }) {
+export default function ProductoFormModal({ abierto, onClose, onGuardar, productoEditar = null, categorias = [], cargando = false, errorServidor = null }) {
   return (
     <Modal abierto={abierto} onCerrar={onClose} titulo={productoEditar ? "Editar producto" : "Nuevo producto"} ocupado={cargando}>
-      <FormularioProducto productoEditar={productoEditar} categorias={categorias} onGuardar={onGuardar} onClose={onClose} cargando={cargando} />
+      <FormularioProducto productoEditar={productoEditar} categorias={categorias} onGuardar={onGuardar} onClose={onClose} cargando={cargando} errorServidor={errorServidor} />
     </Modal>
   );
 }

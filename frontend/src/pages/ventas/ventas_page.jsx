@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAuth } from "../../auth/auth_context.jsx";
 import { ShoppingCart, Boxes, BarChart2 } from "lucide-react";
-import { listarProductos } from "../../api/stock_api.js";
-import { getCatalogos } from "../../api/catalogos_api.js";
+import EstadoError from "../../components/ui/estado_error.jsx";
+import { useCatalogos } from "../../hook/use_catalogos.js";
+import { useProductos } from "../../hook/use_stock.js";
 import VenderTab from "./vender_tab.jsx";
 import ProductosTab from "./productos_tab.jsx";
 import EstadisticasTab from "./estadisticas_tab.jsx";
@@ -20,30 +21,11 @@ export default function VentasPage() {
   const tabsDisponibles = TABS.filter((t) => !t.soloAdmin || esAdmin);
   const [tabActivo, setTabActivo] = useState(tabsDisponibles[0]?.key || "vender");
 
-  const [productos, setProductos] = useState([]);
-  const [categorias, setCategorias] = useState([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState("");
-
-  async function cargarProductos() {
-    try {
-      setCargando(true);
-      setError("");
-      const resp = await listarProductos();
-      setProductos(resp.data || []);
-    } catch (err) {
-      setError(err?.response?.data?.mensaje || "No se pudieron cargar los productos");
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  useEffect(() => {
-    cargarProductos();
-    getCatalogos()
-      .then((resp) => setCategorias(resp.categoriasProducto || []))
-      .catch(() => setCategorias([]));
-  }, []);
+  // Las pestañas comparten la lista: después de vender o reponer, use_stock la refresca sola.
+  const consulta = useProductos();
+  const productos = consulta.data ?? [];
+  const cargando = consulta.isPending;
+  const categorias = useCatalogos().data?.categoriasProducto ?? [];
 
   return (
     <div className="min-h-screen bg-slate-50 p-3 sm:p-6">
@@ -88,20 +70,11 @@ export default function VentasPage() {
           )}
         </div>
 
-        {error && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
-        )}
+        {consulta.isError && <EstadoError error={consulta.error} onReintentar={() => consulta.refetch()} reintentando={consulta.isFetching} />}
 
-        {tabActivo === "vender" && (
-          <VenderTab productos={productos} cargando={cargando} onRefrescar={cargarProductos} />
-        )}
+        {tabActivo === "vender" && <VenderTab productos={productos} cargando={cargando} />}
         {tabActivo === "productos" && esAdmin && (
-          <ProductosTab
-            productos={productos}
-            categorias={categorias}
-            cargando={cargando}
-            onRefrescar={cargarProductos}
-          />
+          <ProductosTab productos={productos} categorias={categorias} cargando={cargando} />
         )}
         {tabActivo === "estadisticas" && esAdmin && <EstadisticasTab />}
 

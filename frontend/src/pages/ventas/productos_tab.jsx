@@ -3,13 +3,9 @@ import ProductoFormModal from "../../components/modal/producto_form_modal";
 import MovimientoStockModal from "../../components/modal/movimiento_stock_modal";
 import HistorialStockModal from "../../components/modal/historial_stock_modal";
 import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
-import {
-  crearProducto,
-  actualizarProducto,
-  cambiarEstadoProducto,
-  registrarEntrada,
-  registrarBaja,
-} from "../../api/stock_api.js";
+import ConfirmDialog from "../../components/ui/confirm_dialog.jsx";
+import { mensajeDeError } from "../../hook/consultas_utils.js";
+import { useCambiarEstadoProducto, useGuardarProducto, useMovimientoStock } from "../../hook/use_stock.js";
 import {
   Plus, Edit2, ToggleLeft, ToggleRight,
   PackagePlus, PackageMinus, History,
@@ -27,64 +23,42 @@ function iniciales(nombre) {
     .map((w) => w[0].toUpperCase()).join("") || "P";
 }
 
-export default function ProductosTab({ productos, categorias, cargando, onRefrescar }) {
+export default function ProductosTab({ productos, categorias, cargando }) {
   const [modalCatalogoAbierto, setModalCatalogoAbierto] = useState(false);
   const [productoSeleccionado, setProductoSeleccionado] = useState(null);
-  const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState("");
-
+  const [productoAConfirmar, setProductoAConfirmar] = useState(null);
   const [movimiento, setMovimiento] = useState(null); // { tipo, producto }
   const [historialProducto, setHistorialProducto] = useState(null);
 
-  function abrirNuevo() { setProductoSeleccionado(null); setModalCatalogoAbierto(true); }
-  function abrirEditar(producto) { setProductoSeleccionado(producto); setModalCatalogoAbierto(true); }
+  const guardar = useGuardarProducto();
+  const cambiarEstado = useCambiarEstadoProducto();
+  const registrar = useMovimientoStock();
+
+  function abrirNuevo() { guardar.reset(); setProductoSeleccionado(null); setModalCatalogoAbierto(true); }
+  function abrirEditar(producto) { guardar.reset(); setProductoSeleccionado(producto); setModalCatalogoAbierto(true); }
   function cerrarModalCatalogo() { setModalCatalogoAbierto(false); setProductoSeleccionado(null); }
 
-  async function guardarProducto(payload) {
-    try {
-      setGuardando(true);
-      if (productoSeleccionado) {
-        await actualizarProducto(productoSeleccionado.id, payload);
-      } else {
-        await crearProducto(payload);
-      }
-      cerrarModalCatalogo();
-      await onRefrescar();
-    } catch (err) {
-      setError(err?.response?.data?.mensaje || "No se pudo guardar el producto");
-    } finally {
-      setGuardando(false);
-    }
+  // Si algo falla, el modal queda abierto y muestra el error del servidor.
+  async function guardarProducto(datos) {
+    await guardar.mutateAsync({ id: productoSeleccionado?.id, datos }).then(cerrarModalCatalogo, () => {});
   }
 
-  async function toggleEstado(producto) {
-    const nuevoEstado = !producto.activo;
-    const accion = nuevoEstado ? "activar" : "desactivar";
-    if (!window.confirm(`¿Seguro que querés ${accion} "${producto.nombre}"?`)) return;
-    try {
-      await cambiarEstadoProducto(producto.id, nuevoEstado);
-      await onRefrescar();
-    } catch (err) {
-      setError(err?.response?.data?.mensaje || `No se pudo ${accion} el producto`);
-    }
+  function toggleEstado(producto) {
+    cambiarEstado.reset();
+    setProductoAConfirmar(producto);
   }
 
-  function abrirMovimiento(tipo, producto) { setMovimiento({ tipo, producto }); }
+  async function confirmarCambioEstado() {
+    const p = productoAConfirmar;
+    await cambiarEstado.mutateAsync({ id: p.id, activo: !p.activo }).then(() => setProductoAConfirmar(null), () => {});
+  }
+
+  function abrirMovimiento(tipo, producto) { registrar.reset(); setMovimiento({ tipo, producto }); }
   function cerrarMovimiento() { setMovimiento(null); }
 
   async function confirmarMovimiento({ cantidad, motivo }) {
-    try {
-      setGuardando(true);
-      const { tipo, producto } = movimiento;
-      if (tipo === "entrada") await registrarEntrada(producto.id, { cantidad });
-      if (tipo === "baja") await registrarBaja(producto.id, { cantidad, motivo });
-      cerrarMovimiento();
-      await onRefrescar();
-    } catch (err) {
-      setError(err?.response?.data?.mensaje || "No se pudo registrar el movimiento");
-    } finally {
-      setGuardando(false);
-    }
+    const { tipo, producto } = movimiento;
+    await registrar.mutateAsync({ tipo, id: producto.id, cantidad, motivo }).then(cerrarMovimiento, () => {});
   }
 
   const totalProductos = productos.length;
@@ -210,10 +184,6 @@ export default function ProductosTab({ productos, categorias, cargando, onRefres
         <StatCard label="Valorización de stock" value={formatearPrecio(valorizacion)} />
       </div>
 
-      {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 mb-4">{error}</div>
-      )}
-
       <DataGrid
         rows={productos}
         columns={columns}
@@ -234,7 +204,8 @@ export default function ProductosTab({ productos, categorias, cargando, onRefres
         onGuardar={guardarProducto}
         productoEditar={productoSeleccionado}
         categorias={categorias}
-        cargando={guardando}
+        cargando={guardar.isPending}
+        errorServidor={guardar.isError ? mensajeDeError(guardar.error, "No se pudo guardar el producto") : null}
       />
 
       <MovimientoStockModal
@@ -243,7 +214,23 @@ export default function ProductosTab({ productos, categorias, cargando, onRefres
         producto={movimiento?.producto}
         onClose={cerrarMovimiento}
         onConfirmar={confirmarMovimiento}
-        cargando={guardando}
+        cargando={registrar.isPending}
+        errorServidor={registrar.isError ? mensajeDeError(registrar.error, "No se pudo registrar el movimiento") : null}
+      />
+
+      <ConfirmDialog
+        open={Boolean(productoAConfirmar)}
+        title={productoAConfirmar?.activo ? "¿Desactivar producto?" : "¿Activar producto?"}
+        message={
+          cambiarEstado.isError
+            ? mensajeDeError(cambiarEstado.error, "No se pudo cambiar el estado del producto")
+            : `"${productoAConfirmar?.nombre ?? ""}" ${productoAConfirmar?.activo ? "deja de aparecer para vender." : "vuelve a aparecer para vender."}`
+        }
+        confirmLabel={productoAConfirmar?.activo ? "Desactivar" : "Activar"}
+        variant={productoAConfirmar?.activo ? "danger" : "primary"}
+        loading={cambiarEstado.isPending}
+        onConfirm={confirmarCambioEstado}
+        onClose={() => setProductoAConfirmar(null)}
       />
 
       <HistorialStockModal

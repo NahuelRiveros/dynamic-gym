@@ -1,7 +1,8 @@
 import { useState } from "react";
 import MovimientoStockModal from "../../components/modal/movimiento_stock_modal";
 import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
-import { registrarEntrada, registrarVenta } from "../../api/stock_api.js";
+import { mensajeDeError } from "../../hook/consultas_utils.js";
+import { useMovimientoStock } from "../../hook/use_stock.js";
 import { PackagePlus, ShoppingCart } from "lucide-react";
 
 function formatearPrecio(precio) {
@@ -16,29 +17,19 @@ function iniciales(nombre) {
     .map((w) => w[0].toUpperCase()).join("") || "P";
 }
 
-export default function VenderTab({ productos, cargando, onRefrescar }) {
+export default function VenderTab({ productos, cargando }) {
   const [movimiento, setMovimiento] = useState(null); // { tipo, producto }
-  const [guardando, setGuardando] = useState(false);
-  const [error, setError] = useState("");
+  const registrar = useMovimientoStock();
 
   const disponibles = productos.filter((p) => p.activo && p.stock_actual > 0);
 
-  function abrirMovimiento(tipo, producto) { setMovimiento({ tipo, producto }); }
+  function abrirMovimiento(tipo, producto) { registrar.reset(); setMovimiento({ tipo, producto }); }
   function cerrarMovimiento() { setMovimiento(null); }
 
+  // Si falla (ej. alguien vendió la última unidad recién), el error se ve dentro del modal.
   async function confirmarMovimiento({ cantidad, metodo_pago }) {
-    try {
-      setGuardando(true);
-      const { tipo, producto } = movimiento;
-      if (tipo === "entrada") await registrarEntrada(producto.id, { cantidad });
-      if (tipo === "venta") await registrarVenta(producto.id, { cantidad, metodo_pago });
-      cerrarMovimiento();
-      await onRefrescar();
-    } catch (err) {
-      setError(err?.response?.data?.mensaje || "No se pudo registrar el movimiento");
-    } finally {
-      setGuardando(false);
-    }
+    const { tipo, producto } = movimiento;
+    await registrar.mutateAsync({ tipo, id: producto.id, cantidad, metodo_pago }).then(cerrarMovimiento, () => {});
   }
 
   const columns = [
@@ -100,10 +91,6 @@ export default function VenderTab({ productos, cargando, onRefrescar }) {
 
   return (
     <>
-      {error && (
-        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 mb-4">{error}</div>
-      )}
-
       <DataGrid
         rows={disponibles}
         columns={columns}
@@ -124,7 +111,8 @@ export default function VenderTab({ productos, cargando, onRefrescar }) {
         producto={movimiento?.producto}
         onClose={cerrarMovimiento}
         onConfirmar={confirmarMovimiento}
-        cargando={guardando}
+        cargando={registrar.isPending}
+        errorServidor={registrar.isError ? mensajeDeError(registrar.error, "No se pudo registrar el movimiento") : null}
       />
     </>
   );
