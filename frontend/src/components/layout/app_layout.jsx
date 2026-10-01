@@ -4,6 +4,7 @@ import Navbar from "./navbar.jsx";
 import Footer from "./footer.jsx";
 import GymAudioScheduler from "../gym_audio_scheduler.jsx";
 import SuscripcionBanner from "../SuscripcionBanner.jsx";
+import AvisoServidor from "../sistema/aviso_servidor.jsx";
 
 function ScrollToTop() {
   const { pathname } = useLocation();
@@ -22,6 +23,7 @@ export default function AppLayout({ children }) {
       <GymAudioScheduler />
       <main>{children}</main>
       <Footer />
+      <AvisoServidor />
     </div>
   );
 }

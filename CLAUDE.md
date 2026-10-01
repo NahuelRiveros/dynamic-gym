@@ -102,13 +102,16 @@ servidor/tests/                # base de test, candado, datos de prueba
 frontend/src/
   app/ (router, query_client)  auth/ (auth_context)  api/ (una por dominio)  config/
   pages/                       # pantallas (admin/, estadisticas/, ventas/, super_admin/)
-  components/                  # form/, modal/, layout/, table/, feedback/, ui/, alertas/
+  components/ui/               # primitivas comunes: data_grid/ (tabla + tarjetas en celular), modal,
+                               #   confirm_dialog, botones_modal, lista_errores — usar antes de crear otra
+  components/sistema/          # aviso_servidor (Render dormido / sin conexión)
+  components/                  # form/, modal/ (formularios del panel sobre ui/modal), layout/, alertas/
+  hook/                        # use_catalogos, use_consulta_media
   test/                        # setup, servidor_mock (MSW), renderizar
 e2e/                           # Playwright
 ```
 
-Hacia dónde va (por etapas, sin tocar la base): `components/ui/` como única fuente de primitivas
-(tabla, modal, inputs); pantallas por módulo con sus hooks de TanStack Query.
+Hacia dónde va (por etapas, sin tocar la base): pantallas por módulo con sus hooks de TanStack Query.
 
 ---
 
@@ -131,6 +134,9 @@ Hacia dónde va (por etapas, sin tocar la base): `components/ui/` como única fu
 - Siempre los 3 estados: cargando, error (mensaje + reintentar), vacío.
 - Formularios: React Hook Form + `zodResolver`.
 - Reutilizar `components/` antes de crear algo nuevo; componentes de más de ~200 líneas → dividir.
+- Listados: `components/ui/data_grid/data_grid.jsx` (en celular, una tarjeta por fila; marcar con
+  `principal: true` la columna que va de título). Ventanas: `components/ui/modal.jsx`, con el
+  formulario adentro como componente aparte (se monta al abrir: sin `useEffect` que copie props a estado).
 - Accesible: `label` en inputs, `alt` en imágenes, botones reales, navegable con teclado.
 - Fechas: zona `America/Argentina/Buenos_Aires` (el negocio funciona en hora argentina).
 
