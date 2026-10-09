@@ -130,3 +130,29 @@ describe("Recaudación del día", () => {
     await usuario.click(screen.getByRole("link", { name: /Octubre 2025/ }));
   });
 });
+
+describe("Con el servidor anterior (sin planes / productos separados)", () => {
+  it("el gráfico y los totales igual se ven: el total cuenta como planes", async () => {
+    servidorMock.use(
+      http.get(`${API}/recaudacion/mensual`, () =>
+        HttpResponse.json({ ok: true, items: [{ mes: 3, total: 45000 }] }),
+      ),
+    );
+    renderizar(<RecaudacionAnualPage />, { ruta: "/estadisticas/recaudaciones-mensual?anio=2025", rutaDelUi: "/estadisticas/recaudaciones-mensual" });
+
+    expect(await screen.findByRole("button", { name: `Marzo: ${plata(45000)} (planes ${plata(45000)}, productos ${plata(0)})` })).toBeInTheDocument();
+    expect(screen.queryByText(/NaN/)).not.toBeInTheDocument();
+  });
+
+  it("el detalle del día no se rompe si no vienen ventas ni métodos", async () => {
+    servidorMock.use(
+      http.get(`${API}/recaudacion/detalle-dia`, () =>
+        HttpResponse.json({ ok: true, total_dia: 10000, cantidad_cobros: 1, items: [{ gym_fecha_id: 1, monto: 10000, metodo_pago: "EFECTIVO", alumno: "Carla Activa" }] }),
+      ),
+    );
+    renderizar(<RecaudacionDiaPage />, { ruta: "/estadisticas/recaudaciones/2025/10/1/detalle", rutaDelUi: "/estadisticas/recaudaciones/:anio/:mes/:dia/detalle" });
+
+    expect(await screen.findByText("No hubo ventas de productos este día.")).toBeInTheDocument();
+    expect(screen.getAllByText("Carla Activa").length).toBeGreaterThan(0);
+  });
+});
