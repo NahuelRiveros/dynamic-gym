@@ -300,14 +300,12 @@ export async function historialPagos(limit = 12) {
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
+// Días entre hoy (en Argentina) y el vencimiento, contando fechas y no horas: con new Date() y
+// setHours el resultado dependía de la zona del servidor (Render está en UTC) y se corría un día.
 function calcularEstado(fechaVencimiento) {
-  const hoy  = new Date();
-  hoy.setHours(0, 0, 0, 0);
-  const venc = new Date(fechaVencimiento);
-  venc.setHours(0, 0, 0, 0);
-
-  const diffMs   = venc - hoy;
-  const diffDias = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  const hoy = new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
+  const venc = String(fechaVencimiento).slice(0, 10);
+  const diffDias = Math.round((Date.parse(venc) - Date.parse(hoy)) / 86_400_000);
 
   if (diffDias > DIAS_AVISO) {
     return {
@@ -344,8 +342,9 @@ function calcularEstado(fechaVencimiento) {
   };
 }
 
-function fmtFechaAR(d) {
-  return d.toLocaleDateString("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" });
+function fmtFechaAR(fecha) {
+  const [anio, mes, dia] = fecha.split("-");
+  return `${dia}/${mes}/${anio}`;
 }
 
 // Calcula primer día del mes siguiente a partir de una fecha YYYY-MM-DD

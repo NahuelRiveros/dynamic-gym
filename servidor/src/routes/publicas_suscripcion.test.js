@@ -119,6 +119,18 @@ describe("Suscripción del software", () => {
     expect(estado.body).toMatchObject({ precio: 60000, dias_aviso: 10, dias_gracia: 3 });
   });
 
+  it("cuenta los días con la fecha de Argentina: el aviso y el vencimiento dicen el mismo día", async () => {
+    const tokenSuper = await tokenDe(app, USUARIOS_TEST.superAdmin);
+    const hoy = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Argentina/Buenos_Aires" }).format(new Date());
+    const venc = new Date(Date.parse(hoy) + 6 * 86_400_000).toISOString().slice(0, 10);
+    await request(app).post("/api/suscripcion/super/fijar").set("Authorization", `Bearer ${tokenSuper}`).send({ fecha: venc });
+
+    const r = await comoAdmin(request(app).get("/api/suscripcion/estado"));
+    const [anio, mes, dia] = venc.split("-");
+    expect(r.body).toMatchObject({ estado: "aviso", dias_restantes: 6, fecha_vencimiento: venc });
+    expect(r.body.mensaje).toBe(`Renovar antes del ${dia}/${mes}/${anio} — quedan 6 días`);
+  });
+
   it("sin Mercado Pago configurado, crear el pago avisa con un 400 claro", async () => {
     await sequelize.query(
       "INSERT INTO public.software_suscripcion (fecha_inicio, fecha_vencimiento, precio, cliente_nombre) VALUES (CURRENT_DATE, CURRENT_DATE + 10, 10000, 'Gym test')",
