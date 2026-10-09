@@ -7,6 +7,7 @@ import ConfirmDialog from "../../components/ui/confirm_dialog.jsx";
 import { hoyISOArgentina } from "../../components/form/formatear_fecha.js";
 import { mensajeDeError } from "../../hook/consultas_utils.js";
 import { useExtenderSuscripcion, useFijarFechaSuscripcion, useSuperEstadoSuscripcion } from "../../hook/use_suscripcion.js";
+import PrecioSuscripcion from "./precio_suscripcion.jsx";
 
 const OPCIONES_DIAS = [
   { label: "30 días", dias: 30 },
@@ -363,6 +364,8 @@ export default function GestionSuscripcionPage() {
                 </div>
               )}
             </div>
+
+            <PrecioSuscripcion precioActual={Number(estado.precio)} />
           </>
         ) : null}
 

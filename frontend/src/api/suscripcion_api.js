@@ -30,3 +30,8 @@ export async function superFijarFechaSuscripcion(fecha) {
   const r = await http.post("/suscripcion/super/fijar", { fecha });
   return r.data;
 }
+
+export async function superFijarPrecioSuscripcion(precio) {
+  const r = await http.post("/suscripcion/super/precio", { precio });
+  return r.data;
+}

@@ -111,7 +111,7 @@ describe("Contraseña y confirmación", () => {
     const guardar = vi.fn();
     render(<StaffPasswordModal abierto onClose={vi.fn()} onGuardar={guardar} staffSeleccionado={{ gym_persona_nombre: "Sergio", gym_persona_apellido: "Staff" }} />);
 
-    expect(screen.getByText("Actualizá la contraseña de Sergio Staff.")).toBeInTheDocument();
+    expect(screen.getByText("Actualizá la contraseña de Sergio Staff. La anterior deja de funcionar.")).toBeInTheDocument();
     await usuario.type(screen.getByLabelText("Nueva contraseña"), "clave-1");
     await usuario.type(screen.getByLabelText("Confirmar contraseña"), "clave-2");
     await usuario.click(screen.getByRole("button", { name: "Actualizar contraseña" }));

@@ -31,7 +31,9 @@ import {
   crearSuscripcionInicial,
   obtenerEstado,
   extenderSuscripcion,
+  acreditarPagoAprobado,
   fijarFechaVencimiento,
+  fijarPrecio,
   registrarPago,
   historialPagos,
 } from "../services/software_suscripcion_service.js";
@@ -118,28 +120,13 @@ suscripcionRouter.post("/webhook", async (req, res) => {
       return res.sendStatus(200);
     }
 
-    // ── Pago aprobado ── extender suscripción 30 días
-    const hoy  = new Date();
-    const hasta = new Date(hoy);
-    hasta.setDate(hasta.getDate() + 30);
-
-    const [saveResult] = await Promise.allSettled([
-      registrarPago({
-        mpPaymentId:    paymentId,
-        mpPreferenceId: pago.external_reference,
-        monto:          pago.monto,
-        estado:         "aprobado",
-        detalle:        pago.detalle,
-        desde:          hoy.toISOString().slice(0, 10),
-        hasta:          hasta.toISOString().slice(0, 10),
-      }),
-      extenderSuscripcion(30),
-    ]);
-
-    if (saveResult.status === "rejected") {
+    // ── Pago aprobado ── extender suscripción 30 días (una sola vez por pago)
+    const r = await acreditarPagoAprobado({ pago });
+    if (r.codigo === "DUPLICADO") {
       console.log("  ℹ  Pago duplicado ignorado:", paymentId);
     } else {
-      console.log(`  ✅ Suscripción extendida 30 días por pago ${paymentId}`);
+      invalidarCacheSuscripcion();
+      console.log(`  ✅ Suscripción extendida por pago ${paymentId}`);
     }
 
     return res.sendStatus(200);
@@ -178,6 +165,22 @@ suscripcionRouter.post("/super/fijar", requireAuth, requireRole("super_admin"), 
   const r = await fijarFechaVencimiento(fecha);
   invalidarCacheSuscripcion();
   return res.json({ ok: true, mensaje: `Vencimiento fijado al ${fecha}`, nuevo_vencimiento: r.nuevo_vencimiento });
+});
+
+// Body: { "precio": 60000 } — en pesos, sin centavos.
+const conPrecio = validar({
+  body: z.object({
+    precio: z.coerce
+      .number({ error: "El precio tiene que ser un número" })
+      .int("El precio va sin centavos")
+      .min(1, "El precio tiene que ser mayor a 0")
+      .max(10_000_000, "El precio parece demasiado alto"),
+  }),
+});
+suscripcionRouter.post("/super/precio", requireAuth, requireRole("super_admin"), conPrecio, async (req, res) => {
+  const r = await fijarPrecio(req.datos.body.precio);
+  invalidarCacheSuscripcion();
+  return res.status(r.ok ? 200 : 404).json(r.ok ? { ...r, mensaje: "Precio actualizado" } : r);
 });
 
 // ════════════════════════════════════════════════════════════════════════════

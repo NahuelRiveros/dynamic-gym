@@ -58,6 +58,8 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
       f.ingresos_disponibles,
       f.plan_tipo_id AS tipoplan_id,
       tp.descripcion AS tipoplan_desc,
+      COALESCE(tp.ingresos = 0, false) AS ingresos_ilimitados,
+      (f.fecha_fin - CURRENT_DATE)::int AS dias_restantes,
       CASE WHEN (SELECT id FROM fvig) IS NOT NULL THEN true ELSE false END AS vigente_hoy
     FROM gym_v3.membresia f
     LEFT JOIN gym_v3.plan_tipo tp ON tp.id = f.plan_tipo_id
@@ -80,7 +82,8 @@ export async function obtenerDetalleAlumno({ alumno_id }) {
       f.dias_totales AS dias_ingreso,
       f.ingresos_disponibles,
       f.plan_tipo_id AS tipoplan_id,
-      tp.descripcion AS tipoplan_desc
+      tp.descripcion AS tipoplan_desc,
+      COALESCE(tp.ingresos = 0, false) AS ingresos_ilimitados
     FROM gym_v3.membresia f
     LEFT JOIN gym_v3.plan_tipo tp ON tp.id = f.plan_tipo_id
     WHERE f.alumno_id = :alumno_id

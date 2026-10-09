@@ -81,7 +81,10 @@ export async function listarAlumnos({
       flast.pago_metodo AS metodo_pago,
       flast.pago_fecha AS fecha_pago,
 
-      CASE WHEN fvig.id IS NOT NULL THEN true ELSE false END AS tiene_plan_vigente
+      CASE WHEN fvig.id IS NOT NULL THEN true ELSE false END AS tiene_plan_vigente,
+      -- plan_tipo.ingresos = 0 es un plan ilimitado (no descuenta ingresos).
+      COALESCE(tp.ingresos = 0, false) AS ingresos_ilimitados,
+      (flast.pago_fin - CURRENT_DATE)::int AS dias_restantes
 
     FROM gym_v3.alumno a
     JOIN gym_v3.persona p ON p.id = a.persona_id

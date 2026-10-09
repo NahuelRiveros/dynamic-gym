@@ -103,6 +103,29 @@ describe("Recaudación", () => {
     expect((await con(tokenStaff)(request(app).get("/api/recaudacion/mensual").query({ anio: 2026 }))).status).toBe(403);
   });
 
+  it("cada pago cuenta en su año: el 31/12 en diciembre del año anterior y el 1/1 en enero", async () => {
+    // Alumno propio con dos pagos en el borde del año.
+    const [[persona]] = await sequelize.query(
+      "INSERT INTO gym_v3.persona (tipo_documento_id, nombre, apellido, documento) VALUES (1, 'Fin', 'DeAnio', '30121212') RETURNING id",
+    );
+    const [[alumno]] = await sequelize.query("INSERT INTO gym_v3.alumno (persona_id, estado_id) VALUES (:id, 1) RETURNING id", {
+      replacements: { id: persona.id },
+    });
+    await sequelize.query(
+      `INSERT INTO gym_v3.membresia (alumno_id, plan_tipo_id, fecha_inicio, fecha_fin, dias_totales, ingresos_disponibles, monto_pagado)
+       VALUES (:a, 1, '2027-12-31', '2028-01-30', 30, 0, 1111), (:a, 1, '2028-01-01', '2028-01-31', 30, 0, 2222)`,
+      { replacements: { a: alumno.id } },
+    );
+
+    const mes = async (anio, numero) => {
+      const r = await con(tokenAdmin)(request(app).get("/api/recaudacion/mensual").query({ anio }));
+      return r.body.items.find((i) => i.mes === numero).total;
+    };
+    expect(await mes(2027, 12)).toBe(1111);
+    expect(await mes(2028, 1)).toBe(2222);
+    expect(await mes(2028, 12)).toBe(0);
+  });
+
   it("el detalle de un día responde con el mismo formato de siempre", async () => {
     const r = await con(tokenAdmin)(request(app).get("/api/recaudacion/detalle-dia").query({ anio: 2026, mes: 1, dia: 15 }));
 

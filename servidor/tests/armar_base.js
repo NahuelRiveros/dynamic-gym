@@ -10,6 +10,7 @@ const ARCHIVOS_SQL = ["setup_gym_v3.sql", "migration_v3_stock.sql", "migration_v
 export const USUARIOS_TEST = {
   admin: { nombre: "Ana", apellido: "Admin", documento: "90000001", email: "admin@test.local", password: "clave-admin-123", rol: "admin" },
   staff: { nombre: "Sergio", apellido: "Staff", documento: "90000002", email: "staff@test.local", password: "clave-staff-123", rol: "staff" },
+  superAdmin: { nombre: "Nora", apellido: "Sistema", documento: "90000003", email: "super@test.local", password: "clave-super-123", rol: "super_admin" },
 };
 
 // Alumnos de prueba (plan_tipo 1 del setup: mensual, 12 ingresos). `dias_plan` negativo = plan vencido.

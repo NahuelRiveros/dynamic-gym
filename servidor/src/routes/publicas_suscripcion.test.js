@@ -24,6 +24,30 @@ describe("Consulta pública de plan (Mi Plan)", () => {
     expect((await request(app).get("/api/consulta/plan/abc")).body.codigo).toBe("VALIDACION");
   });
 
+  it("avisa si el plan es ilimitado, así no se le dice 'sin ingresos' a quien no los descuenta", async () => {
+    const comun = await request(app).get(`/api/consulta/plan/${ALUMNOS_TEST.conPlan.documento}`);
+    expect(comun.body.plan_actual.ingresos_ilimitados).toBe(false);
+
+    // Alumno propio con un plan de ingresos = 0 (ilimitado) y 0 ingresos disponibles.
+    const [[plan]] = await sequelize.query(
+      "INSERT INTO gym_v3.plan_tipo (descripcion, dias_totales, ingresos, precio, activo) VALUES ('Pase libre test', 30, 0, 0, TRUE) RETURNING id",
+    );
+    const [[persona]] = await sequelize.query(
+      "INSERT INTO gym_v3.persona (tipo_documento_id, nombre, apellido, documento) VALUES (1, 'Libre', 'Ilimitado', '30454545') RETURNING id",
+    );
+    const [[alumno]] = await sequelize.query("INSERT INTO gym_v3.alumno (persona_id, estado_id) VALUES (:id, 1) RETURNING id", {
+      replacements: { id: persona.id },
+    });
+    await sequelize.query(
+      `INSERT INTO gym_v3.membresia (alumno_id, plan_tipo_id, fecha_inicio, fecha_fin, dias_totales, ingresos_disponibles)
+       VALUES (:a, :p, CURRENT_DATE, CURRENT_DATE + 30, 30, 0)`,
+      { replacements: { a: alumno.id, p: plan.id } },
+    );
+
+    const libre = await request(app).get("/api/consulta/plan/30454545");
+    expect(libre.body.plan_actual).toMatchObject({ ingresos_ilimitados: true, ingresos_disponibles: 0, vigente_hoy: true });
+  });
+
   it("limita las consultas seguidas de una misma persona, sin frenar a las demás (detrás del proxy de Render)", async () => {
     const desde = (ip) => (pedido) => pedido.set("X-Forwarded-For", ip);
 
@@ -73,6 +97,26 @@ describe("Suscripción del software", () => {
     const r = await comoAdmin(request(app).post("/api/suscripcion/super/extender")).send({ dias: 30 });
 
     expect(r.status).toBe(403);
+  });
+
+  it("solo el super admin cambia el precio; el admin lo ve con las reglas del ciclo", async () => {
+    const tokenSuper = await tokenDe(app, USUARIOS_TEST.superAdmin);
+    const comoSuper = (pedido) => pedido.set("Authorization", `Bearer ${tokenSuper}`);
+    const [{ n }] = await sequelize.query("SELECT count(*)::int AS n FROM public.software_suscripcion", { type: "SELECT" });
+    if (n === 0) {
+      await sequelize.query("INSERT INTO public.software_suscripcion (fecha_inicio, fecha_vencimiento, precio, cliente_nombre) VALUES (CURRENT_DATE, CURRENT_DATE + 20, 10000, 'Gym test')");
+    }
+
+    expect((await comoAdmin(request(app).post("/api/suscripcion/super/precio")).send({ precio: 1 })).status).toBe(403);
+    const mal = await comoSuper(request(app).post("/api/suscripcion/super/precio")).send({ precio: 0 });
+    expect(mal.status).toBe(400);
+    expect(mal.body.mensaje).toBe("El precio tiene que ser mayor a 0");
+
+    const ok = await comoSuper(request(app).post("/api/suscripcion/super/precio")).send({ precio: 60000 });
+    expect(ok.body).toMatchObject({ ok: true, precio: 60000 });
+
+    const estado = await comoAdmin(request(app).get("/api/suscripcion/estado"));
+    expect(estado.body).toMatchObject({ precio: 60000, dias_aviso: 10, dias_gracia: 3 });
   });
 
   it("sin Mercado Pago configurado, crear el pago avisa con un 400 claro", async () => {

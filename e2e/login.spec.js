@@ -6,8 +6,8 @@ test("el login rechaza datos incorrectos con un mensaje claro", async ({ page })
   await page.goto("/login");
 
   await page.getByLabel("Email").fill("nadie@ejemplo.com");
-  await page.getByLabel("Contraseña").fill("clave-incorrecta");
-  await page.getByRole("button", { name: "Login" }).click();
+  await page.getByLabel("Contraseña", { exact: true }).fill("clave-incorrecta");
+  await page.getByRole("button", { name: "Ingresar" }).click();
 
   await expect(page.getByText("Email o contraseña incorrectos")).toBeVisible();
 });
@@ -17,8 +17,8 @@ test("el admin inicia sesión, ve la bienvenida con su nombre y vuelve a donde i
 
   await page.goto("/login");
   await page.getByLabel("Email").fill(admin.email);
-  await page.getByLabel("Contraseña").fill(admin.password);
-  await page.getByRole("button", { name: "Login" }).click();
+  await page.getByLabel("Contraseña", { exact: true }).fill(admin.password);
+  await page.getByRole("button", { name: "Ingresar" }).click();
 
   // El nombre también aparece en la barra de arriba: se busca dentro del cartel de bienvenida.
   const bienvenida = page.getByText("¡Bienvenido al sistema!").locator("..");

@@ -1,5 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { actualizarEstadosAlumnos, getAlumnoDetalle, getAlumnosCumples, getAlumnosListado } from "../api/alumnos_api.js";
+import { actualizarEstadosAlumnos, consultarPlanPorDni, getAlumnoDetalle, getAlumnosCumples, getAlumnosListado, registrarAlumno } from "../api/alumnos_api.js";
 import { exigirOk } from "./consultas_utils.js";
 
 export const alumnosKeys = {
@@ -7,7 +7,23 @@ export const alumnosKeys = {
   listado: (params) => ["alumnos", "listado", params],
   detalle: (id) => ["alumnos", "detalle", String(id)],
   cumples: (dias) => ["alumnos", "cumples", dias],
+  planPublico: (dni) => ["alumnos", "plan-publico", dni],
 };
+
+/**
+ * "Mi Plan" (pública): el plan de un DNI. Sin reintentos: un DNI que no existe responde 404 y
+ * la ruta tiene límite de consultas por persona. Un minuto en caché: consultar dos veces
+ * seguidas el mismo DNI no vuelve a despertar a Neon.
+ */
+export function usePlanPublico(dni) {
+  return useQuery({
+    queryKey: alumnosKeys.planPublico(dni),
+    queryFn: async () => exigirOk(await consultarPlanPorDni(dni), "No se pudo consultar el plan"),
+    enabled: Boolean(dni),
+    retry: false,
+    staleTime: 60 * 1000,
+  });
+}
 
 /** Listado paginado en el servidor. Mientras llega la página nueva se sigue viendo la anterior. */
 export function useListadoAlumnos(params) {
@@ -47,5 +63,14 @@ export function useActualizarEstados() {
   return useMutation({
     mutationFn: actualizarEstadosAlumnos,
     onSettled: () => queryClient.invalidateQueries({ queryKey: alumnosKeys.todo }),
+  });
+}
+
+/** Alta de un alumno nuevo. Las listas de alumnos se vuelven a pedir. */
+export function useRegistrarAlumno() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (datos) => exigirOk(await registrarAlumno(datos), "No se pudo registrar al alumno"),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: alumnosKeys.todo }),
   });
 }

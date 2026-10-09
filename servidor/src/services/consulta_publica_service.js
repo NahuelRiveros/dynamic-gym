@@ -58,6 +58,7 @@ export async function consultarPlanPorDni(dni) {
       f.fecha_fin AS fin,
       f.ingresos_disponibles,
       tp.descripcion AS tipoplan_desc,
+      tp.ingresos AS plan_ingresos,
       CASE
         WHEN (SELECT id FROM fvig) IS NOT NULL THEN true
         ELSE false
@@ -91,6 +92,8 @@ export async function consultarPlanPorDni(dni) {
           inicio:               plan.inicio ? String(plan.inicio).slice(0, 10) : null,
           fin:                  plan.fin    ? String(plan.fin).slice(0, 10)    : null,
           ingresos_disponibles: plan.ingresos_disponibles,
+          // plan_tipo.ingresos = 0 es un plan ilimitado: sus ingresos no se descuentan.
+          ingresos_ilimitados:  Number(plan.plan_ingresos) === 0,
           vigente_hoy:          plan.vigente_hoy,
           dias_restantes:       plan.dias_restantes,
         }

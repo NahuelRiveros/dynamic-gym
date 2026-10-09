@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { http, HttpResponse } from "msw";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "../auth/auth_context.jsx";
-import PagoSuccessModal from "../components/modal/pago_success_modal.jsx";
 import { API, servidorMock, sesionComo } from "../test/servidor_mock.js";
 import { useCuentaRegresiva } from "./use_cuenta_regresiva.js";
 import { useFiltros } from "./use_filtros.js";
@@ -27,19 +26,6 @@ describe("useCuentaRegresiva", () => {
 
     expect(ultimo).toHaveBeenCalledTimes(1);
     expect(primero).not.toHaveBeenCalled();
-  });
-
-  it("el cartel de pago exitoso arranca la cuenta de cero cada vez que se abre", () => {
-    vi.useFakeTimers();
-    const props = { alumno: { nombre: "Ana" }, plan: {}, pago: {}, delayMs: 6000, onFinish: vi.fn() };
-    const { rerender } = render(<PagoSuccessModal open {...props} />);
-
-    act(() => vi.advanceTimersByTime(4000));
-    expect(screen.getByText(/2\s*s/)).toBeInTheDocument();
-
-    rerender(<PagoSuccessModal open={false} {...props} />);
-    rerender(<PagoSuccessModal open {...props} />);
-    expect(screen.getByText(/6\s*s/)).toBeInTheDocument();
   });
 });
 

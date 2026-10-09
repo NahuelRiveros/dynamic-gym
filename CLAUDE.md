@@ -100,8 +100,11 @@ servidor/src/
   database/                    # conexión y SQL de arranque — NO modificar
 servidor/tests/                # base de test, candado, datos de prueba
 frontend/src/
-  app/ (router, query_client)  auth/ (auth_context)  api/ (una por dominio)  config/
-  pages/                       # pantallas (admin/, estadisticas/, ventas/, super_admin/)
+  app/ (router, query_client, pantallas.js: ruta + roles + menú de cada pantalla, única fuente)
+  auth/ (auth_context, permisos.js: tieneRol, menú por rol)  api/ (una por dominio)  config/
+  pages/                       # pantallas, una carpeta por área: inicio/, auth/, kiosco/, alumnos/,
+                               #   pagos/, consulta/ (pública), suscripcion/ (vuelta de Mercado Pago),
+                               #   admin/, estadisticas/, ventas/, super_admin/ — nada suelto en la raíz
   components/ui/               # primitivas comunes: data_grid/ (tabla + tarjetas en celular), modal,
                                #   confirm_dialog, botones_modal, lista_errores — usar antes de crear otra
   components/sistema/          # aviso_servidor (Render dormido / sin conexión)

@@ -61,6 +61,13 @@ describe("Alta de alumno → pago → ingreso por el kiosco", () => {
     expect(ingreso.body.plan.ingresos_restantes).toBe(11);
   });
 
+  it("después del pago, la vista previa avisa que tiene un plan vigente y cuántos días le quedan", async () => {
+    const r = await comoStaff(request(app).get("/api/pagos/preview").query({ documento: "35123456" }));
+
+    // 30 días contando hoy: vence dentro de 29.
+    expect(r.body.ultimo_pago).toMatchObject({ vigente_hoy: true, dias_restantes: 29, ingresos_ilimitados: false, ingresos_disponibles: 11 });
+  });
+
   it.each([
     ["sin monto", { monto_pagado: 0 }, 400, "VALIDACION"],
     ["sin método de pago", { metodo_pago: " " }, 400, "VALIDACION"],
@@ -82,6 +89,24 @@ describe("Listado y detalle de alumnos", () => {
     expect(r.status).toBe(200);
     expect(r.body.items.map((a) => a.gym_persona_apellido)).toEqual(["Activa"]);
     expect(r.body.pagination).toMatchObject({ page: 1, limit: 5, total: 1 });
+  });
+
+  it("cada alumno trae los días que le quedan y si su plan es ilimitado; también en la ficha", async () => {
+    const lista = await comoStaff(request(app).get("/api/alumnos/listado").query({ q: "Activa" }));
+    const [carla] = lista.body.items;
+    // El plan de prueba empieza hoy y dura 30 días (setup): vence dentro de 30.
+    expect(carla).toMatchObject({ dias_restantes: 30, ingresos_ilimitados: false, tiene_plan_vigente: true });
+
+    const ficha = await comoStaff(request(app).get(`/api/alumnos/detalle/${carla.gym_alumno_id}`));
+    expect(ficha.body.plan_actual).toMatchObject({ dias_restantes: 30, ingresos_ilimitados: false, vigente_hoy: true });
+    expect(ficha.body.planes[0]).toHaveProperty("ingresos_ilimitados", false);
+  });
+
+  it("ordena por vencimiento cuando se pide (los que vencen antes primero)", async () => {
+    const r = await comoStaff(request(app).get("/api/alumnos/listado").query({ sort: "vencimiento", order: "asc", limit: 100 }));
+    const dias = r.body.items.map((a) => a.dias_restantes).filter((d) => d !== null);
+
+    expect(dias).toEqual([...dias].sort((x, y) => x - y));
   });
 
   it("un _ o % en la búsqueda se busca como texto, no como comodín", async () => {

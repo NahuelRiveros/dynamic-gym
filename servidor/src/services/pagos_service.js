@@ -212,7 +212,10 @@ export async function previewPagoPorDni({ documento }) {
       flast.monto_pagado,
       flast.metodo_pago,
       flast.actualizado_en AS fecha_pago,
-      tp.descripcion AS plan_tipo_desc
+      tp.descripcion AS plan_tipo_desc,
+      (flast.fecha_inicio <= CURRENT_DATE AND flast.fecha_fin >= CURRENT_DATE) AS vigente_hoy,
+      (flast.fecha_fin - CURRENT_DATE)::int AS dias_restantes,
+      COALESCE(tp.ingresos = 0, false) AS ingresos_ilimitados
     FROM gym_v3.persona p
     LEFT JOIN gym_v3.alumno a ON a.persona_id = p.id
     LEFT JOIN gym_v3.alumno_estado ea ON ea.id = a.estado_id
@@ -264,6 +267,10 @@ export async function previewPagoPorDni({ documento }) {
           monto_pagado:        it.monto_pagado,
           metodo_pago:         it.metodo_pago,
           fecha_pago:          it.fecha_pago,
+          // Para avisar antes de cobrar: el plan nuevo empieza hoy y reemplaza al actual.
+          vigente_hoy:         Boolean(it.vigente_hoy),
+          dias_restantes:      it.dias_restantes,
+          ingresos_ilimitados: it.ingresos_ilimitados,
         }
       : null,
   };

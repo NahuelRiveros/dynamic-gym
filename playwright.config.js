@@ -38,6 +38,8 @@ export default defineConfig({
         SMTP_PASS: "",
         MP_ACCESS_TOKEN: "",
         SEED_SECRET: "",
+        // Los E2E inician sesión como admin más de 10 veces en una corrida (en producción no aplica).
+        LOGIN_MAX_INTENTOS: "100",
       },
     },
     {

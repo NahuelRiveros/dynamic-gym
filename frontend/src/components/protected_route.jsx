@@ -1,5 +1,6 @@
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../auth/auth_context.jsx";
+import { tieneRol } from "../auth/permisos.js";
 
 /**
  * Protege rutas según autenticación y roles.
@@ -35,15 +36,9 @@ export default function ProtectedRoute({ children, roles = [] }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Hay roles requeridos → verificar que el usuario tenga al menos uno
-  if (roles.length > 0) {
-    const rolesUsuario = usuario?.roles ?? [];
-    const tieneAcceso = roles.some((r) => rolesUsuario.includes(r));
-
-    if (!tieneAcceso) {
-      // Autenticado pero sin permiso → ir al inicio
-      return <Navigate to="/" replace />;
-    }
+  // Autenticado pero sin permiso → ir al inicio
+  if (!tieneRol(usuario, roles)) {
+    return <Navigate to="/" replace />;
   }
 
   return children;

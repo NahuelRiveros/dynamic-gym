@@ -34,7 +34,7 @@ export default function AvisoServidor() {
   return (
     <div
       role="status"
-      className="fixed inset-x-4 bottom-[calc(1rem+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
+      className="fixed inset-x-4 bottom-[calc(1rem+var(--barra-inferior,0px)+env(safe-area-inset-bottom))] z-50 mx-auto flex max-w-md items-center gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xl"
     >
       {caido ? (
         <CloudOff className="h-6 w-6 shrink-0 text-red-600" aria-hidden="true" />

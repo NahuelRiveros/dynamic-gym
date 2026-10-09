@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
-import Navbar from "./navbar.jsx";
-import Footer from "./footer.jsx";
+import { useAuth } from "../../auth/auth_context.jsx";
+import MarcoApp from "./marco_app.jsx";
 import GymAudioScheduler from "../gym_audio_scheduler.jsx";
 import SuscripcionBanner from "../SuscripcionBanner.jsx";
 import AvisoServidor from "../sistema/aviso_servidor.jsx";
@@ -15,15 +15,15 @@ function ScrollToTop() {
 }
 
 export default function AppLayout({ children }) {
+  const { isAuth } = useAuth();
   return (
-    <div className="min-h-screen bg-gray-50">
+    <MarcoApp>
       <ScrollToTop />
-      <Navbar />
       <SuscripcionBanner />
-      <GymAudioScheduler />
-      <main>{children}</main>
-      <Footer />
+      {/* Los avisos de audio son para la PC del gimnasio: un visitante no los ve ni los escucha. */}
+      {isAuth && <GymAudioScheduler />}
       <AvisoServidor />
-    </div>
+      {children}
+    </MarcoApp>
   );
 }

@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef } from "react";
-import { kioskIngreso } from "../api/kiosk_api.js";
-import { useCumples } from "../hook/use_alumnos.js";
-import KioskResultModal from "../components/modal/kiosk_result_modal.jsx";
-import KioskErrorModal from "../components/modal/kiosk_error_modal.jsx";
-import KioskLogModal from "../components/modal/kiosk_log_modal.jsx";
-import { guardarLogKiosk } from "../components/modal/kiosk_log.js";
-import AlertasDropdown from "../components/alertas/AlertasDropdown.jsx";
+import { kioskIngreso } from "../../api/kiosk_api.js";
+import { useCumples } from "../../hook/use_alumnos.js";
+import KioskResultModal from "../../components/modal/kiosk_result_modal.jsx";
+import KioskErrorModal from "../../components/modal/kiosk_error_modal.jsx";
+import KioskLogModal from "../../components/modal/kiosk_log_modal.jsx";
+import { guardarLogKiosk } from "../../components/modal/kiosk_log.js";
+import AlertasDropdown from "../../components/alertas/AlertasDropdown.jsx";
 import { Dumbbell } from "lucide-react";
 
-import sonidoOk from "../sounds/IngresoCorrecto.m4a";
-import sonidoError from "../sounds/IngresoErroneo.wav";
+import sonidoOk from "../../sounds/IngresoCorrecto.m4a";
+import sonidoError from "../../sounds/IngresoErroneo.wav";
 
 export default function KioskPage() {
   const [dni, setDni] = useState("");

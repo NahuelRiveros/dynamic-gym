@@ -50,6 +50,10 @@ export const env = {
   // ── Seed secret ────────────────────────────────────────────────
   SEED_SECRET:  process.env.SEED_SECRET || "",
 
+  // Intentos de login por persona (IP + email) cada 15 minutos. En producción siempre 10: solo
+  // los E2E lo suben, porque inician sesión como admin muchas veces seguidas desde la misma PC.
+  LOGIN_MAX_INTENTOS: esProduccion ? 10 : Number(process.env.LOGIN_MAX_INTENTOS) || 10,
+
   // ── MercadoPago (suscripción al software) ──────────────────────
   // Obtenelo en https://www.mercadopago.com.ar/developers/panel/app
   // Sandbox: usa el token de TEST para pruebas, PROD para producción.

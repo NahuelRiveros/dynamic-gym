@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   buscarPlanVigente,
   actualizarPlanVigente,
@@ -56,7 +57,9 @@ function mapearPersonaAForm(alumno) {
 
 // ════════════════════════════════════════════════════════════════
 export default function EditarPlanVigentePage() {
-  const [documento,    setDocumento]    = useState("");
+  // Desde la ficha del alumno se llega con ?dni=: el DNI ya queda escrito.
+  const [params] = useSearchParams();
+  const [documento,    setDocumento]    = useState(params.get("dni") ?? "");
   const [buscando,     setBuscando]     = useState(false);
   const [error,        setError]        = useState("");
   const [mensaje,      setMensaje]      = useState("");

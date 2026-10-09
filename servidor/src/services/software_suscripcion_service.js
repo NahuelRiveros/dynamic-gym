@@ -111,16 +111,19 @@ export async function obtenerEstado() {
     precio:           Number(s.precio),
     fecha_inicio:     String(s.fecha_inicio).slice(0, 10),
     fecha_vencimiento: String(s.fecha_vencimiento).slice(0, 10),
+    // Las reglas del ciclo, para que la pantalla las explique con los mismos números.
+    dias_aviso:       DIAS_AVISO,
+    dias_gracia:      DIAS_GRACIA,
     ...estado,
   };
 }
 
 // ── Extender suscripción después de un pago aprobado ────────────────────────
 
-export async function extenderSuscripcion(dias = 30) {
+export async function extenderSuscripcion(dias = 30, { transaction } = {}) {
   const rows = await sequelize.query(
     `SELECT id, fecha_vencimiento FROM public.software_suscripcion ORDER BY id LIMIT 1`,
-    { type: QueryTypes.SELECT }
+    { type: QueryTypes.SELECT, transaction }
   );
   if (!rows.length) return { ok: false, mensaje: "Sin suscripción" };
 
@@ -144,6 +147,7 @@ export async function extenderSuscripcion(dias = 30) {
     {
       replacements: { venc: nuevaFechaStr, id: s.id },
       type: QueryTypes.UPDATE,
+      transaction,
     }
   );
 
@@ -153,11 +157,11 @@ export async function extenderSuscripcion(dias = 30) {
 
 // ── Registrar pago ───────────────────────────────────────────────────────────
 
-export async function registrarPago({ mpPaymentId, mpPreferenceId, monto, estado, detalle, desde, hasta }) {
+export async function registrarPago({ mpPaymentId, mpPreferenceId, monto, estado, detalle, desde, hasta }, { transaction } = {}) {
   // Evitar duplicados (MP puede reenviar el webhook)
   const existe = await sequelize.query(
     `SELECT id FROM public.software_pago WHERE mp_payment_id = :pid LIMIT 1`,
-    { replacements: { pid: String(mpPaymentId) }, type: QueryTypes.SELECT }
+    { replacements: { pid: String(mpPaymentId) }, type: QueryTypes.SELECT, transaction }
   );
   if (existe.length > 0) return { ok: false, codigo: "DUPLICADO" };
 
@@ -176,10 +180,74 @@ export async function registrarPago({ mpPaymentId, mpPreferenceId, monto, estado
         hasta:  hasta || null,
       },
       type: QueryTypes.INSERT,
+      transaction,
     }
   );
 
   return { ok: true };
+}
+
+// ── Acreditar un pago aprobado de MP ─────────────────────────────────────────
+
+/**
+ * Registra el pago y extiende la suscripción, una sola vez por pago. MP reenvía el mismo aviso
+ * (a veces dos a la vez): se bloquea la fila de la suscripción para procesarlos de a uno, y si
+ * el pago ya figura aprobado no se extiende de nuevo. Si figuraba pendiente (MP avisa primero
+ * "pending" y después "approved"), se actualiza ese registro.
+ */
+export async function acreditarPagoAprobado({ pago, dias = 30 }) {
+  return sequelize.transaction(async (transaction) => {
+    await sequelize.query(
+      `SELECT id FROM public.software_suscripcion ORDER BY id LIMIT 1 FOR UPDATE`,
+      { type: QueryTypes.SELECT, transaction }
+    );
+
+    const pid = String(pago.id);
+    const [previo] = await sequelize.query(
+      `SELECT id, estado FROM public.software_pago WHERE mp_payment_id = :pid ORDER BY id LIMIT 1`,
+      { replacements: { pid }, type: QueryTypes.SELECT, transaction }
+    );
+    if (previo?.estado === "aprobado") return { ok: false, codigo: "DUPLICADO" };
+
+    const desde = new Date().toLocaleDateString("en-CA", { timeZone: "America/Argentina/Buenos_Aires" });
+    const fin = new Date(`${desde}T12:00:00Z`);
+    fin.setUTCDate(fin.getUTCDate() + dias);
+    const datos = {
+      mpPaymentId:    pid,
+      mpPreferenceId: pago.external_reference,
+      monto:          pago.monto,
+      estado:         "aprobado",
+      detalle:        pago.detalle,
+      desde,
+      hasta:          fin.toISOString().slice(0, 10),
+    };
+
+    if (previo) {
+      await sequelize.query(
+        `UPDATE public.software_pago
+         SET estado = :estado, monto = :monto, mp_preference_id = :pref, detalle = :detalle,
+             periodo_desde = :desde, periodo_hasta = :hasta
+         WHERE id = :id`,
+        {
+          replacements: {
+            id:      previo.id,
+            estado:  datos.estado,
+            monto:   Number(datos.monto),
+            pref:    datos.mpPreferenceId || null,
+            detalle: JSON.stringify(datos.detalle || {}),
+            desde:   datos.desde,
+            hasta:   datos.hasta,
+          },
+          type: QueryTypes.UPDATE,
+          transaction,
+        }
+      );
+    } else {
+      await registrarPago(datos, { transaction });
+    }
+
+    return extenderSuscripcion(dias, { transaction });
+  });
 }
 
 // ── Fijar fecha de vencimiento exacta ────────────────────────────────────────
@@ -201,6 +269,21 @@ export async function fijarFechaVencimiento(fecha) {
 
   console.log(`✅ Vencimiento fijado a: ${fecha}`);
   return { ok: true, nuevo_vencimiento: fecha };
+}
+
+// ── Fijar el precio mensual ──────────────────────────────────────────────────
+
+/** Cambia el precio de la suscripción (lo que se muestra y lo que cobra Mercado Pago). */
+export async function fijarPrecio(precio) {
+  const [fila] = await sequelize.query(
+    `UPDATE public.software_suscripcion
+     SET precio = :precio, actualizado_en = NOW()
+     WHERE id = (SELECT id FROM public.software_suscripcion ORDER BY id LIMIT 1)
+     RETURNING precio`,
+    { replacements: { precio }, type: QueryTypes.SELECT }
+  );
+  if (!fila) return { ok: false, codigo: "SIN_SUSCRIPCION", mensaje: "No hay suscripción configurada" };
+  return { ok: true, precio: Number(fila.precio) };
 }
 
 // ── Historial de pagos ────────────────────────────────────────────────────────

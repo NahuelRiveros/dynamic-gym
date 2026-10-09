@@ -48,7 +48,7 @@ test("el admin crea un plan desde el modal; Escape lo cierra y el foco vuelve al
 
 test("el admin ve la lista de staff (antes fallaba siempre)", async ({ page, isMobile }) => {
   await ingresar(page, USUARIOS_TEST.admin, "/admin/staffManager");
-  await expect(page.getByRole("heading", { name: "Staff", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Personal", exact: true })).toBeVisible();
 
   const lista = listado(page, isMobile);
   await expect(lista.getByText(USUARIOS_TEST.staff.email)).toBeVisible();

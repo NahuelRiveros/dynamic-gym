@@ -1,273 +1,74 @@
 import { createBrowserRouter } from "react-router-dom";
 import AppLayout from "../components/layout/app_layout.jsx";
 import ProtectedRoute from "../components/protected_route.jsx";
+import { PANTALLAS } from "./pantallas.js";
 
-
-import HomePage from "../components/home_page.jsx";
-import KioskPage from "../pages/kiosk_page.jsx";
-import LoginPage from "../pages/login_page.jsx";
-import RegisterAlumnoPage from "../pages/register_page.jsx";
-import RecaudacionCalendario from "../pages/estadisticas/recaudacion_mensual_page.jsx";
-import RecaudacionCalendarioDia from "../pages/estadisticas/recaudacion_diaria_page.jsx";
+import HomePage from "../pages/inicio/home_page.jsx";
+import LandingPublica from "../pages/inicio/landing_publica.jsx";
+import KioskPage from "../pages/kiosco/kiosk_page.jsx";
+import LoginPage from "../pages/auth/login_page.jsx";
+import RegisterAlumnoPage from "../pages/alumnos/registrar_alumno_page.jsx";
+import RecaudacionAnualPage from "../pages/recaudacion/recaudacion_anual_page.jsx";
+import RecaudacionMesPage from "../pages/recaudacion/recaudacion_mes_page.jsx";
 import AlumnosNuevosPage from "../pages/estadisticas/alumnos_nuevos.jsx";
 import VencimientosPage from "../pages/estadisticas/vencimientos_proximos.jsx";
-import HeatmapAsistenciasPage from "../pages/estadisticas/heatmap_asistencias.jsx"
-import ListaAlumnosPage from "../pages/estadisticas/lista_alumnos.jsx";
-import DetalleAlumnoPage from "../pages/estadisticas/detalle_alumno.jsx";
-import RegistrarPagoPage from "../pages/registrar_pago.jsx";
+import HeatmapAsistenciasPage from "../pages/estadisticas/heatmap_asistencias.jsx";
+import ListaAlumnosPage from "../pages/alumnos/lista_alumnos_page.jsx";
+import FichaAlumnoPage from "../pages/alumnos/ficha_alumno_page.jsx";
+import RegistrarPagoPage from "../pages/pagos/registrar_pago_page.jsx";
 import PlanesPage from "../pages/admin/planes_page.jsx";
-import StaffPage from "../pages/admin/StaffPage.jsx";
-import RecaudacionesDetallePage from "../pages/estadisticas/recaudacion_detalle_dia_page.jsx";
+import PersonalPage from "../pages/admin/personal_page.jsx";
+import RecaudacionDiaPage from "../pages/recaudacion/recaudacion_dia_page.jsx";
 import EditarPlanVigentePage from "../pages/admin/editar_plan_vigente_page.jsx";
-import ConsultaPlanPage from "../pages/consulta_plan_page.jsx";
+import ConsultaPlanPage from "../pages/consulta/consulta_plan_page.jsx";
 import SuscripcionPage from "../pages/admin/suscripcion_page.jsx";
-import PagoExitosoPage from "../pages/pago_exitoso_page.jsx";
-import PagoFallidoPage from "../pages/pago_fallido_page.jsx";
+import PagoExitosoPage from "../pages/suscripcion/pago_exitoso_page.jsx";
+import PagoFallidoPage from "../pages/suscripcion/pago_fallido_page.jsx";
 import PromocionesPage from "../pages/admin/promociones_page.jsx";
 import GestionSuscripcionPage from "../pages/super_admin/gestion_suscripcion_page.jsx";
 import AudioConfigPage from "../pages/admin/audio_config_page.jsx";
 import VentasPage from "../pages/ventas/ventas_page.jsx";
 
-export const router = createBrowserRouter([
-  {
-    path: "/",
-    element: (
-      <AppLayout>
-        <HomePage />
-      </AppLayout>
-    ),
-  },
-  {
-    path: "*",
-    element: (
-      <AppLayout>
-        <HomePage />
-      </AppLayout>
-    ),
-  },
-  {
-    path: "/kiosk",
-    element: (
-      <AppLayout>
-        <ProtectedRoute roles={["admin", "staff"]}>
-          <KioskPage />
-        </ProtectedRoute>
-      </AppLayout>
-    ),
-  },
-  {
-    path: "/login",
-    element: (
-      <AppLayout>
-        <LoginPage />
-      </AppLayout>
-    ),
-  },
-  {
-    path: "/register",
-    element: (
-      <AppLayout>
-        <ProtectedRoute roles={["admin", "staff"]}>
-          <RegisterAlumnoPage />
-        </ProtectedRoute>
-      </AppLayout>
-    ),
-  },
+// Qué componente muestra cada pantalla. La ruta y los roles salen de PANTALLAS (app/pantallas.js).
+const COMPONENTES = {
+  inicio: HomePage,
+  paginaGimnasio: LandingPublica,
+  login: LoginPage,
+  consultaPlan: ConsultaPlanPage,
+  pagoExitoso: PagoExitosoPage,
+  pagoFallido: PagoFallidoPage,
+  kiosco: KioskPage,
+  alumnos: ListaAlumnosPage,
+  detalleAlumno: FichaAlumnoPage,
+  nuevoAlumno: RegisterAlumnoPage,
+  cobrarPlan: RegistrarPagoPage,
+  corregirPlan: EditarPlanVigentePage,
+  ventas: VentasPage,
+  recaudacion: RecaudacionAnualPage,
+  recaudacionMes: RecaudacionMesPage,
+  recaudacionDia: RecaudacionDiaPage,
+  alumnosNuevos: AlumnosNuevosPage,
+  vencimientos: VencimientosPage,
+  horarios: HeatmapAsistenciasPage,
+  planes: PlanesPage,
+  personal: PersonalPage,
+  promociones: PromocionesPage,
+  volumenAvisos: AudioConfigPage,
+  suscripcion: SuscripcionPage,
+  suscripcionSistema: GestionSuscripcionPage,
+};
 
-  //ESTADISTICAS
-  {
-    path: "/estadisticas/recaudaciones-mensual",
-    element: (
-      <AppLayout>
-        <ProtectedRoute roles={["admin"]}>
-          <RecaudacionCalendario />
-        </ProtectedRoute>
-      </AppLayout>
-    ),
-  },
-  {
-    path: "/estadisticas/recaudaciones/:anio/:mes",
-    element: (
-      <AppLayout>
-        <ProtectedRoute roles={["admin"]}>
-          <RecaudacionCalendarioDia />
-        </ProtectedRoute>
-      </AppLayout>
-    ),
-  },
-    {
-    path: "/admin/estadisticas/alumnos-nuevos",
-    element: (
-      <AppLayout>
-        <ProtectedRoute roles={["admin"]}>
-          <AlumnosNuevosPage />
-        </ProtectedRoute>
-      </AppLayout>
-    ),
-  },
-  {
-    path: "/admin/estadisticas/vencimientos",
-    element: (
-      <AppLayout>
-        <ProtectedRoute roles={["admin"]}>
-          <VencimientosPage />
-        </ProtectedRoute>
-      </AppLayout>
-    ),
-  },
-  {
-    path: "/admin/estadisticas/heatmap",
-    element: (
-      <AppLayout>
-        <ProtectedRoute roles={["admin"]}>
-          <HeatmapAsistenciasPage />
-        </ProtectedRoute>
-      </AppLayout>
-    ),
-  },
-  {
-  path: "/admin/estadisticas/alumnos",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["admin", "staff"]}>
-        <ListaAlumnosPage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-    path: "/admin/estadisticas/alumnos/:id",
-    element: (
-      <AppLayout>
-        <ProtectedRoute roles={["admin", "staff"]}>
-          <DetalleAlumnoPage />
-        </ProtectedRoute>
-      </AppLayout>
-    ),
-  },
-  {
-  path: "/admin/pagos/registrar",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["admin", "staff"]}>
-        <RegistrarPagoPage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-  path: "/admin/planesViews",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["admin"]}>
-        <PlanesPage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-  path: "/admin/staffManager",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["admin"]}>
-        <StaffPage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-  path: "/estadisticas/recaudaciones/:anio/:mes/:dia/detalle",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["admin"]}>
-        <RecaudacionesDetallePage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-  path: "/admin/alumnos/editar-plan",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["admin"]}>
-        <EditarPlanVigentePage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-  path: "/consulta-plan",
-  element: (
-    <AppLayout>
-      <ConsultaPlanPage />
-    </AppLayout>
-  ),
-},
-{
-  path: "/admin/suscripcion",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["admin"]}>
-        <SuscripcionPage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-  path: "/admin/promociones",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["admin"]}>
-        <PromocionesPage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-  path: "/admin/config-audio",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["admin", "staff"]}>
-        <AudioConfigPage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-  path: "/admin/ventas",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["admin", "staff"]}>
-        <VentasPage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-  path: "/super-admin/suscripcion",
-  element: (
-    <AppLayout>
-      <ProtectedRoute roles={["super_admin"]}>
-        <GestionSuscripcionPage />
-      </ProtectedRoute>
-    </AppLayout>
-  ),
-},
-{
-  path: "/pago-exitoso",
-  element: (
-    <AppLayout>
-      <PagoExitosoPage />
-    </AppLayout>
-  ),
-},
-{
-  path: "/pago-fallido",
-  element: (
-    <AppLayout>
-      <PagoFallidoPage />
-    </AppLayout>
-  ),
-},
-  
+function ruta([id, Componente]) {
+  const { ruta: path, roles } = PANTALLAS[id];
+  const pantalla = <Componente />;
+  return {
+    path,
+    element: <AppLayout>{roles ? <ProtectedRoute roles={roles}>{pantalla}</ProtectedRoute> : pantalla}</AppLayout>,
+  };
+}
+
+export const router = createBrowserRouter([
+  ...Object.entries(COMPONENTES).map(ruta),
+  // Una dirección que no existe muestra el inicio.
+  { path: "*", element: <AppLayout><HomePage /></AppLayout> },
 ]);

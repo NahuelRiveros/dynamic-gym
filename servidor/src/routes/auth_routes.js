@@ -1,3 +1,4 @@
+import { env } from "../configuracion_servidor/env.js";
 import { Router } from "express";
 import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { loginController, meController, logoutController, resetPasswordController } from "../controllers/auth_controller.js";
@@ -11,7 +12,7 @@ export const authRouter = Router();
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: env.LOGIN_MAX_INTENTOS,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => `${ipKeyGenerator(req)}:${req.body?.usuario || req.body?.email || ""}`,

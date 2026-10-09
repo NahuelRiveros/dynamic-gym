@@ -1,36 +1,29 @@
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
 import InputField from "../form/input_field.jsx";
 import Modal from "../ui/modal.jsx";
 import BotonesModal from "../ui/botones_modal.jsx";
 import ListaErrores from "../ui/lista_errores.jsx";
 
+const esquema = z
+  .object({
+    password: z.string().trim().min(4, "La contraseña debe tener al menos 4 caracteres"),
+    confirmarPassword: z.string().trim().min(1, "Debés confirmar la contraseña"),
+  })
+  .refine((d) => d.password === d.confirmarPassword, { path: ["confirmarPassword"], message: "Las contraseñas no coinciden" });
+
 // Se monta cada vez que se abre el modal: los campos arrancan siempre vacíos.
 function FormularioPassword({ onGuardar, onClose, cargando, errorServidor }) {
-  const { register, handleSubmit, setError, formState: { errors } } = useForm({ defaultValues: { password: "", confirmarPassword: "" } });
-
-  function validar(data) {
-    const password = String(data.password ?? "").trim();
-    const confirmar = String(data.confirmarPassword ?? "").trim();
-    const errores = {};
-
-    if (!password) errores.password = "La contraseña es obligatoria";
-    else if (password.length < 4) errores.password = "La contraseña debe tener al menos 4 caracteres";
-    if (!confirmar) errores.confirmarPassword = "Debés confirmar la contraseña";
-    else if (password !== confirmar) errores.confirmarPassword = "Las contraseñas no coinciden";
-
-    for (const [campo, message] of Object.entries(errores)) setError(campo, { type: "manual", message });
-    return Object.keys(errores).length === 0;
-  }
-
-  async function submit(data) {
-    if (!validar(data)) return;
-    await onGuardar({ password: String(data.password).trim() });
-  }
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(esquema),
+    defaultValues: { password: "", confirmarPassword: "" },
+  });
 
   return (
-    <form onSubmit={handleSubmit(submit)} className="space-y-4" noValidate>
-      <InputField label="Nueva contraseña" name="password" register={register} error={errors.password?.message} placeholder="Mínimo 4 caracteres" type="password" autoComplete="new-password" />
-      <InputField label="Confirmar contraseña" name="confirmarPassword" register={register} error={errors.confirmarPassword?.message} placeholder="Repetí la contraseña" type="password" autoComplete="new-password" />
+    <form onSubmit={handleSubmit(({ password }) => onGuardar({ password }))} className="space-y-4" noValidate>
+      <InputField label="Nueva contraseña" name="password" register={register} error={errors.password?.message} placeholder="Mínimo 4 caracteres" type="password" showPasswordToggle autoComplete="new-password" />
+      <InputField label="Confirmar contraseña" name="confirmarPassword" register={register} error={errors.confirmarPassword?.message} placeholder="Repetí la contraseña" type="password" showPasswordToggle autoComplete="new-password" />
       <ListaErrores errores={errorServidor ? [errorServidor] : []} />
       <BotonesModal onCancelar={onClose} ocupado={cargando} textoConfirmar="Actualizar contraseña" />
     </form>
@@ -45,7 +38,11 @@ export default function StaffPasswordModal({ abierto, onClose, onGuardar, staffS
       abierto={abierto}
       onCerrar={onClose}
       titulo="Cambiar contraseña"
-      descripcion={nombreCompleto ? `Actualizá la contraseña de ${nombreCompleto}.` : "Actualizá la contraseña del usuario."}
+      descripcion={
+        nombreCompleto
+          ? `Actualizá la contraseña de ${nombreCompleto}. La anterior deja de funcionar.`
+          : "Actualizá la contraseña del usuario. La anterior deja de funcionar."
+      }
       ocupado={cargando}
       ancho="xl"
     >

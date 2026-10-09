@@ -4,8 +4,8 @@ import { expect } from "@playwright/test";
 export async function ingresar(page, { email, password }, destino = "/") {
   await page.goto(`/login?from=${encodeURIComponent(destino)}`);
   await page.getByLabel("Email").fill(email);
-  await page.getByLabel("Contraseña").fill(password);
-  await page.getByRole("button", { name: "Login" }).click();
+  await page.getByLabel("Contraseña", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Ingresar" }).click();
 
   await expect(page.getByText("¡Bienvenido al sistema!")).toBeVisible();
   await page.getByRole("button", { name: "Continuar ahora" }).click();

@@ -11,6 +11,7 @@ import {
   registrarEntrada,
   registrarVenta,
 } from "../api/stock_api.js";
+import { recaudacionKeys } from "./use_recaudacion.js";
 import { exigirOk } from "./consultas_utils.js";
 
 // Todo lo de stock cuelga de "stock": una venta cambia productos, historial y estadísticas a la vez.
@@ -63,6 +64,17 @@ const REGISTRAR = {
   baja: (id, { cantidad, motivo }) => registrarBaja(id, { cantidad, motivo }),
 };
 
-/** Reponer, vender o dar de baja: { tipo: "entrada" | "venta" | "baja", id, cantidad, metodo_pago, motivo }. */
-export const useMovimientoStock = () =>
-  useMutacionStock(({ tipo, id, ...datos }) => REGISTRAR[tipo](id, datos));
+/**
+ * Reponer, vender o dar de baja: { tipo: "entrada" | "venta" | "baja", id, cantidad, metodo_pago, motivo }.
+ * Una venta es plata que entra: también refresca la recaudación.
+ */
+export function useMovimientoStock() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ tipo, id, ...datos }) => REGISTRAR[tipo](id, datos),
+    onSuccess: (_r, { tipo }) => {
+      queryClient.invalidateQueries({ queryKey: stockKeys.todo });
+      if (tipo === "venta") queryClient.invalidateQueries({ queryKey: recaudacionKeys.todo });
+    },
+  });
+}

@@ -4,6 +4,7 @@ import {
   getSuperEstadoSuscripcion,
   superExtenderSuscripcion,
   superFijarFechaSuscripcion,
+  superFijarPrecioSuscripcion,
 } from "../api/suscripcion_api.js";
 import { exigirOk } from "./consultas_utils.js";
 
@@ -45,3 +46,5 @@ function useMutacionSuscripcion(mutationFn) {
 
 export const useExtenderSuscripcion = () => useMutacionSuscripcion((dias) => superExtenderSuscripcion(dias));
 export const useFijarFechaSuscripcion = () => useMutacionSuscripcion((fecha) => superFijarFechaSuscripcion(fecha));
+export const useFijarPrecioSuscripcion = () =>
+  useMutacionSuscripcion(async (precio) => exigirOk(await superFijarPrecioSuscripcion(precio), "No se pudo cambiar el precio"));
