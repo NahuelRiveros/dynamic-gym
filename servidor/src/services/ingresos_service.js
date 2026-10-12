@@ -1,13 +1,5 @@
-﻿import { QueryTypes, Op } from "sequelize";
+﻿import { QueryTypes } from "sequelize";
 import { sequelize } from "../database/sequelize.js";
-import {
-  Persona,
-  Alumno,
-  Membresia,
-  PlanTipo,
-} from "../models_v2/index.js";
-
-// import { agregarALaCola } from "./offline_queue_service.js";
 
 const ESTADO_HABILITADO  = 1;
 const ESTADO_RESTRINGIDO = 2;
@@ -31,6 +23,13 @@ function obtenerFechaHoraSistema() {
   return { fecha, hora, fechaHora: `${fecha} ${hora}` };
 }
 
+/**
+ * Ingreso por DNI en el kiosco. Antes eran ~10 consultas una detrás de otra (cada una es un viaje
+ * a Neon); ahora son 3 dentro de la transacción:
+ *   1. persona + alumno, bloqueando al alumno: dos ingresos simultáneos del mismo DNI van de a uno.
+ *   2. plan vigente + tipo de plan + "ya entró hoy", leídos DESPUÉS del bloqueo (datos frescos).
+ *   3. todo lo que se escribe (ingreso, descuento, estado) en una sola orden.
+ */
 export async function registrarIngresoPorDni({ dni }) {
   const dniNormalizado = normalizarDocumento(dni);
 
@@ -40,145 +39,131 @@ export async function registrarIngresoPorDni({ dni }) {
     return { ok: false, codigo: "VALIDACION", mensaje: "Documento inválido" };
 
   return sequelize.transaction(async (t) => {
-    const persona = await Persona.findOne({
-      where: { documento: dniNormalizado },
-      transaction: t,
-    });
-    if (!persona)
+    const [quien] = await sequelize.query(
+      `
+      SELECT p.id AS persona_id, p.nombre, p.apellido, p.documento, a.id AS alumno_id, a.estado_id
+      FROM gym_v3.persona p
+      LEFT JOIN LATERAL (
+        SELECT al.id, al.estado_id FROM gym_v3.alumno al WHERE al.persona_id = p.id LIMIT 1 FOR UPDATE
+      ) a ON TRUE
+      WHERE p.documento = :dni
+      LIMIT 1
+      `,
+      { replacements: { dni: dniNormalizado }, type: QueryTypes.SELECT, transaction: t }
+    );
+    if (!quien)
       return { ok: false, codigo: "NO_EXISTE", mensaje: "No existe una persona con ese documento" };
-
-    const alumno = await Alumno.findOne({
-      where: { persona_id: persona.id },
-      transaction: t,
-      lock: t.LOCK.UPDATE,
-    });
-    if (!alumno)
+    if (!quien.alumno_id)
       return { ok: false, codigo: "NO_ES_ALUMNO", mensaje: "La persona existe pero no es alumno" };
 
-    const planReciente = await Membresia.findOne({
-      where: {
-        alumno_id: alumno.id,
-        // fecha_fin >= hoy: el día de vencimiento es inclusive, el alumno
-        // mantiene acceso hasta el final de ese día (no hasta el día anterior).
-        fecha_fin: { [Op.gte]: hoy },
-      },
-      order: [
-        ["fecha_fin", "DESC"],
-        ["id", "DESC"],
-      ],
-      transaction: t,
-      lock: t.LOCK.UPDATE,
-    });
+    const alumnoId = quien.alumno_id;
+    const estadoActual = Number(quien.estado_id);
 
-    if (!planReciente) {
-      if (Number(alumno.estado_id) !== ESTADO_RESTRINGIDO) {
-        await alumno.update({ estado_id: ESTADO_RESTRINGIDO }, { transaction: t });
-      }
+    // fecha_fin >= hoy: el día de vencimiento es inclusive (tiene acceso hasta el final de ese día).
+    const [plan] = await sequelize.query(
+      `
+      SELECT m.id, m.fecha_inicio, m.fecha_fin, m.ingresos_disponibles, m.plan_tipo_id,
+             tp.descripcion AS tipo_desc, tp.ingresos AS tipo_ingresos,
+             EXISTS (SELECT 1 FROM gym_v3.ingreso i WHERE i.membresia_id = m.id AND i.fecha_ingreso = :hoy) AS ya_hoy
+      FROM gym_v3.membresia m
+      LEFT JOIN gym_v3.plan_tipo tp ON tp.id = m.plan_tipo_id
+      WHERE m.alumno_id = :alumno AND m.fecha_fin >= :hoy
+      ORDER BY m.fecha_fin DESC, m.id DESC
+      LIMIT 1
+      `,
+      { replacements: { alumno: alumnoId, hoy }, type: QueryTypes.SELECT, transaction: t }
+    );
+
+    const restringir = () =>
+      estadoActual === ESTADO_RESTRINGIDO
+        ? null
+        : sequelize.query(`UPDATE gym_v3.alumno SET estado_id = :e WHERE id = :id`, {
+            replacements: { e: ESTADO_RESTRINGIDO, id: alumnoId },
+            type: QueryTypes.UPDATE,
+            transaction: t,
+          });
+
+    if (!plan) {
+      await restringir();
       return {
         ok: false,
         codigo: "PLAN_VENCIDO_O_INEXISTENTE",
         mensaje: "El alumno no tiene un plan vigente",
-        alumno: { alumno_id: alumno.id, estado_id: ESTADO_RESTRINGIDO },
+        alumno: { alumno_id: alumnoId, estado_id: ESTADO_RESTRINGIDO },
       };
     }
 
-    // Cargar tipo de plan para saber si es ilimitado (ingresos = 0 en plan_tipo)
-    let tipoPlanDesc = null;
-    let esIlimitado  = false;
-    if (planReciente.plan_tipo_id) {
-      const tipoPlan = await PlanTipo.findByPk(planReciente.plan_tipo_id, { transaction: t });
-      tipoPlanDesc = tipoPlan?.descripcion ?? null;
-      esIlimitado  = Number(tipoPlan?.ingresos ?? -1) === 0;
-    }
-
-    const ingresosActuales = Number(planReciente.ingresos_disponibles ?? 0);
+    // Plan ilimitado: plan_tipo.ingresos = 0 (no se descuenta ni se restringe por ingresos).
+    const esIlimitado = plan.plan_tipo_id != null && Number(plan.tipo_ingresos ?? -1) === 0;
+    const tipoPlanDesc = plan.plan_tipo_id != null ? (plan.tipo_desc ?? null) : null;
+    const ingresosActuales = Number(plan.ingresos_disponibles ?? 0);
 
     if (!esIlimitado && ingresosActuales <= 0) {
-      if (Number(alumno.estado_id) !== ESTADO_RESTRINGIDO) {
-        await alumno.update({ estado_id: ESTADO_RESTRINGIDO }, { transaction: t });
-      }
+      await restringir();
       return {
         ok: false,
         codigo: "SIN_INGRESOS",
         mensaje: "Alumno sin ingresos disponibles",
-        alumno: { alumno_id: alumno.id, estado_id: ESTADO_RESTRINGIDO },
+        alumno: { alumno_id: alumnoId, estado_id: ESTADO_RESTRINGIDO },
         plan: {
-          fecha_id:           planReciente.id,
-          inicio:             planReciente.fecha_inicio,
-          fin:                planReciente.fecha_fin,
+          fecha_id:           plan.id,
+          inicio:             plan.fecha_inicio,
+          fin:                plan.fecha_fin,
           ingresos_restantes: 0,
         },
       };
     }
 
-    // Evitar doble check-in el mismo día
-    const [yaHoy] = await sequelize.query(
-      `SELECT id FROM gym_v3.ingreso WHERE membresia_id = :membresia_id AND fecha_ingreso = :fecha LIMIT 1`,
-      {
-        replacements: { membresia_id: planReciente.id, fecha: hoy },
-        type: QueryTypes.SELECT,
-        transaction: t,
-      }
-    );
-    if (yaHoy) {
+    if (plan.ya_hoy) {
       return {
         ok: false,
         codigo: "YA_INGRESO_HOY",
         mensaje: "El alumno ya registró su ingreso hoy",
-        alumno: { alumno_id: alumno.id, nombre: persona.nombre, apellido: persona.apellido },
+        alumno: { alumno_id: alumnoId, nombre: quien.nombre, apellido: quien.apellido },
       };
     }
 
-    const [rows] = await sequelize.query(
+    const ingresosRestantes = esIlimitado ? null : ingresosActuales - 1;
+    // Mismas reglas que antes: el ilimitado siempre queda habilitado; con ingresos, un restringido
+    // se habilita si le quedan, y el que usa el último queda restringido.
+    let estadoFinal = estadoActual;
+    if (esIlimitado) estadoFinal = ESTADO_HABILITADO;
+    else if (ingresosRestantes === 0) estadoFinal = ESTADO_RESTRINGIDO;
+    else if (estadoActual === ESTADO_RESTRINGIDO) estadoFinal = ESTADO_HABILITADO;
+
+    const [ingresoDB] = await sequelize.query(
       `
-      INSERT INTO gym_v3.ingreso (membresia_id, fecha_ingreso, hora_ingreso, creado_en)
-      VALUES (:fecha_id, :fecha, :hora, :fechaHora)
-      RETURNING id, fecha_ingreso, hora_ingreso
+      WITH nuevo AS (
+        INSERT INTO gym_v3.ingreso (membresia_id, fecha_ingreso, hora_ingreso, creado_en)
+        VALUES (:plan, :fecha, :hora, :fechaHora)
+        RETURNING fecha_ingreso, hora_ingreso
+      ),
+      descuento AS (
+        UPDATE gym_v3.membresia
+        SET ingresos_disponibles = :restantes, actualizado_en = :fechaHora
+        WHERE id = :plan AND :descontar
+      ),
+      estado AS (
+        UPDATE gym_v3.alumno SET estado_id = :estado WHERE id = :alumno AND :cambiarEstado
+      )
+      SELECT fecha_ingreso, hora_ingreso FROM nuevo
       `,
       {
-        replacements: { fecha_id: planReciente.id, fecha: hoy, hora, fechaHora },
-        type: QueryTypes.INSERT,
+        replacements: {
+          plan: plan.id,
+          fecha: hoy,
+          hora,
+          fechaHora,
+          restantes: ingresosRestantes,
+          descontar: !esIlimitado,
+          alumno: alumnoId,
+          estado: estadoFinal,
+          cambiarEstado: estadoFinal !== estadoActual,
+        },
+        type: QueryTypes.SELECT,
         transaction: t,
       }
     );
-
-    const ingresoDB      = Array.isArray(rows) ? rows[0] : rows;
-    // Planes ilimitados: no se descuenta ni se restringe por ingresos
-    const ingresosRestantes = esIlimitado ? null : ingresosActuales - 1;
-
-    if (!esIlimitado) {
-      await sequelize.query(
-        `
-        UPDATE gym_v3.membresia
-        SET ingresos_disponibles = :restantes, actualizado_en = :fechaHora
-        WHERE id = :fecha_id
-        `,
-        {
-          replacements: { restantes: ingresosRestantes, fechaHora, fecha_id: planReciente.id },
-          type: QueryTypes.UPDATE,
-          transaction: t,
-        }
-      );
-    }
-
-    let estadoFinal = Number(alumno.estado_id);
-
-    if (esIlimitado) {
-      // Plan ilimitado: siempre habilitado mientras el plan esté vigente
-      if (estadoFinal !== ESTADO_HABILITADO) {
-        await alumno.update({ estado_id: ESTADO_HABILITADO }, { transaction: t });
-        estadoFinal = ESTADO_HABILITADO;
-      }
-    } else {
-      if (estadoFinal === ESTADO_RESTRINGIDO && ingresosRestantes > 0) {
-        await alumno.update({ estado_id: ESTADO_HABILITADO }, { transaction: t });
-        estadoFinal = ESTADO_HABILITADO;
-      }
-      if (ingresosRestantes === 0) {
-        await alumno.update({ estado_id: ESTADO_RESTRINGIDO }, { transaction: t });
-        estadoFinal = ESTADO_RESTRINGIDO;
-      }
-    }
 
     return {
       ok: true,
@@ -187,19 +172,19 @@ export async function registrarIngresoPorDni({ dni }) {
         ? "Ingreso registrado"
         : "Ingreso registrado - alumno quedó restringido",
       alumno: {
-        alumno_id:  alumno.id,
-        persona_id: persona.id,
-        nombre:     persona.nombre,
-        apellido:   persona.apellido,
-        documento:  persona.documento,
+        alumno_id:  alumnoId,
+        persona_id: quien.persona_id,
+        nombre:     quien.nombre,
+        apellido:   quien.apellido,
+        documento:  quien.documento,
         estado_id:  estadoFinal,
       },
       plan: {
-        fecha_id:           planReciente.id,
-        inicio:             planReciente.fecha_inicio,
-        fin:                planReciente.fecha_fin,
+        fecha_id:           plan.id,
+        inicio:             plan.fecha_inicio,
+        fin:                plan.fecha_fin,
         tipo_plan:          tipoPlanDesc,
-        ingresos_restantes: esIlimitado ? null : ingresosRestantes,
+        ingresos_restantes: ingresosRestantes,
       },
       fecha_ingreso: ingresoDB?.fecha_ingreso ?? hoy,
       hora_ingreso:  ingresoDB?.hora_ingreso  ?? hora,

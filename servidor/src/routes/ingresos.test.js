@@ -62,3 +62,71 @@ describe("Kiosco · ingreso por DNI", () => {
     expect(r.status).toBe(401);
   });
 });
+
+// Cada caso con su propio alumno (los tests comparten la base). `estado`: 1 habilitado, 2 restringido.
+async function alumnoCon({ dni, ingresosPlan = 12, disponibles, diasPlan = 30, estado = 1 }) {
+  const [[plan]] = await sequelize.query(
+    "INSERT INTO gym_v3.plan_tipo (descripcion, dias_totales, ingresos, precio, activo) VALUES (:d, 30, :i, 0, TRUE) RETURNING id",
+    { replacements: { d: `Plan ${dni}`, i: ingresosPlan } },
+  );
+  const [[persona]] = await sequelize.query(
+    "INSERT INTO gym_v3.persona (tipo_documento_id, nombre, apellido, documento) VALUES (1, 'Test', 'Ingreso', :dni) RETURNING id",
+    { replacements: { dni } },
+  );
+  const [[alumno]] = await sequelize.query("INSERT INTO gym_v3.alumno (persona_id, estado_id) VALUES (:p, :e) RETURNING id", {
+    replacements: { p: persona.id, e: estado },
+  });
+  const inicio = diasPlan < 0 ? diasPlan - 30 : 0;
+  await sequelize.query(
+    `INSERT INTO gym_v3.membresia (alumno_id, plan_tipo_id, fecha_inicio, fecha_fin, dias_totales, ingresos_disponibles)
+     VALUES (:a, :p, CURRENT_DATE + :ini::int, CURRENT_DATE + :fin::int, 30, :disp)`,
+    { replacements: { a: alumno.id, p: plan.id, ini: inicio, fin: diasPlan, disp: disponibles } },
+  );
+  return alumno.id;
+}
+const estadoDe = async (id) => (await sequelize.query("SELECT estado_id FROM gym_v3.alumno WHERE id = :id", { replacements: { id }, type: "SELECT" }))[0].estado_id;
+
+describe("Kiosco · reglas del ingreso", () => {
+  it("con el último ingreso entra, queda en 0 y restringido", async () => {
+    const id = await alumnoCon({ dni: "51000001", disponibles: 1 });
+    const r = await ingresar("51000001");
+
+    expect(r.body).toMatchObject({ ok: true, mensaje: "Ingreso registrado - alumno quedó restringido", alumno: { estado_id: 2 }, plan: { ingresos_restantes: 0 } });
+    expect(await estadoDe(id)).toBe(2);
+  });
+
+  it("un restringido con ingresos vuelve a quedar habilitado al entrar", async () => {
+    const id = await alumnoCon({ dni: "51000002", disponibles: 5, estado: 2 });
+    const r = await ingresar("51000002");
+
+    expect(r.body).toMatchObject({ ok: true, alumno: { estado_id: 1 }, plan: { ingresos_restantes: 4 } });
+    expect(await estadoDe(id)).toBe(1);
+  });
+
+  it("un plan ilimitado entra sin descontar y con su nombre de plan", async () => {
+    await alumnoCon({ dni: "51000003", ingresosPlan: 0, disponibles: 0 });
+    const r = await ingresar("51000003");
+
+    expect(r.body).toMatchObject({ ok: true, mensaje: "Ingreso registrado", plan: { ingresos_restantes: null, tipo_plan: "Plan 51000003" } });
+  });
+
+  it("un plan vencido no entra y el alumno queda restringido", async () => {
+    const id = await alumnoCon({ dni: "51000004", disponibles: 10, diasPlan: -2 });
+    const r = await ingresar("51000004");
+
+    expect(r.body).toMatchObject({ ok: false, codigo: "PLAN_VENCIDO_O_INEXISTENTE", alumno: { estado_id: 2 } });
+    expect(await estadoDe(id)).toBe(2);
+  });
+
+  it("dos ingresos al mismo tiempo del mismo alumno: entra uno solo y descuenta uno", async () => {
+    await alumnoCon({ dni: "51000005", disponibles: 5 });
+    const respuestas = await Promise.all([ingresar("51000005"), ingresar("51000005")]);
+
+    expect(respuestas.map((r) => r.body.codigo).sort()).toEqual(["OK", "YA_INGRESO_HOY"]);
+    const [{ disp }] = await sequelize.query(
+      "SELECT m.ingresos_disponibles AS disp FROM gym_v3.membresia m JOIN gym_v3.alumno a ON a.id = m.alumno_id JOIN gym_v3.persona p ON p.id = a.persona_id WHERE p.documento = '51000005'",
+      { type: "SELECT" },
+    );
+    expect(disp).toBe(4);
+  });
+});

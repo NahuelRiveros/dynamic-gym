@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { kioskIngreso } from "../../api/kiosk_api.js";
 import { useCumples } from "../../hook/use_alumnos.js";
+import { useServidorDespierto } from "../../hook/use_servidor_despierto.js";
 import KioskResultModal from "../../components/modal/kiosk_result_modal.jsx";
 import KioskErrorModal from "../../components/modal/kiosk_error_modal.jsx";
 import KioskLogModal from "../../components/modal/kiosk_log_modal.jsx";
@@ -54,6 +55,7 @@ export default function KioskPage() {
 
   // Cumpleaños: un extra. Si fallan no se muestra nada y el kiosco sigue registrando ingresos.
   const { data: datosCumples } = useCumples(3);
+  useServidorDespierto();
   const cumples = { hoy: datosCumples?.hoy || [], proximos: datosCumples?.proximos || [] };
 
   // Activa el log con 5 clicks rápidos sobre el branding del pie
