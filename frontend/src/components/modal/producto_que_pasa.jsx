@@ -48,7 +48,7 @@ export default function ProductoQuePasa({ aviso, minimo, stockInicial, stockActu
         <Linea icono={Info} color="text-blue-500">
           {unidades > 0
             ? `Se crea con ${unidades} unidad${unidades === 1 ? "" : "es"}, registradas como reposición en el historial. Ya se puede vender.`
-            : "Se crea con 0 unidades. Para poder venderlo, cargá unidades con Reponer en la lista."}
+            : "Se crea con 0 unidades: aparece en Vender como \"Sin stock\". Para poder venderlo, cargá unidades con Reponer."}
         </Linea>
       ) : (
         <Linea icono={Info} color="text-blue-500">

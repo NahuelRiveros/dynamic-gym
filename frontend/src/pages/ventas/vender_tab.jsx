@@ -21,7 +21,9 @@ export default function VenderTab({ productos, cargando }) {
   const [movimiento, setMovimiento] = useState(null); // { tipo, producto }
   const registrar = useMovimientoStock();
 
-  const disponibles = productos.filter((p) => p.activo && p.stock_actual > 0);
+  // Se listan todos los activos (también los creados sin stock) para poder reponerlos desde acá;
+  // sin unidades no se pueden vender.
+  const disponibles = productos.filter((p) => p.activo);
 
   function abrirMovimiento(tipo, producto) { registrar.reset(); setMovimiento({ tipo, producto }); }
   function cerrarMovimiento() { setMovimiento(null); }
@@ -64,11 +66,15 @@ export default function VenderTab({ productos, cargando }) {
       sortable: true,
       align: "center",
       headerClassName: "text-center",
-      render: (row) => (
+      render: (row) => (row.stock_actual > 0 ? (
         <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
           {row.stock_actual}
         </span>
-      ),
+      ) : (
+        <span className="inline-flex items-center rounded-full border border-red-200 bg-red-50 px-2.5 py-0.5 text-[11px] font-bold text-red-600">
+          Sin stock
+        </span>
+      )),
     },
   ];
 
@@ -78,6 +84,7 @@ export default function VenderTab({ productos, cargando }) {
       label: "Vender",
       icon: <ShoppingCart size={12} />,
       variant: "primary",
+      disabled: (row) => row.stock_actual <= 0,
       onClick: (row) => abrirMovimiento("venta", row),
     },
     {
@@ -98,7 +105,7 @@ export default function VenderTab({ productos, cargando }) {
         loading={cargando}
         searchable
         searchPlaceholder="Buscar producto…"
-        emptyMessage='No hay productos para vender. Solo aparecen los productos activos con unidades en stock: un admin las carga desde "Productos" → "Reponer".'
+        emptyMessage='No hay productos activos. Un admin los crea desde "Productos".'
         actions={actions}
         actionsLabel="Acciones"
         pageSize={15}
