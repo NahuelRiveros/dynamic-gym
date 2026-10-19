@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Clock, Instagram, MapPin } from "lucide-react";
-import { images } from "../../assets/index.js";
-import { GIMNASIO } from "../../config/gimnasio.js";
+import { images } from "../../../assets/index.js";
+import { GIMNASIO } from "../../../config/gimnasio.js";
 
 const LINKS = [
   { label: "Inicio", to: "/" },

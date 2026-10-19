@@ -1,8 +1,8 @@
 import { LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "../../auth/auth_context.jsx";
-import { nombreDeRol } from "../../auth/permisos.js";
-import { cn } from "../../lib/cn.js";
+import { useAuth } from "../../../auth/auth_context.jsx";
+import { nombreDeRol } from "../../../auth/permisos.js";
+import { cn } from "../../../lib/cn.js";
 
 function iniciales(nombre) {
   return nombre
@@ -36,7 +36,7 @@ export default function TarjetaUsuario({ oscuro = false, compacta = false, onSal
       </span>
       <div className={cn("min-w-0 flex-1", compacta && "sr-only")}>
         <p className={cn("truncate text-sm font-semibold", oscuro ? "text-white" : "text-slate-900")}>{nombre}</p>
-        <p className={cn("truncate text-xs", oscuro ? "text-slate-400" : "text-slate-500")}>{nombreDeRol(usuario)}</p>
+        <p className={cn("truncate text-xs", oscuro ? "text-slate-300" : "text-slate-500")}>{nombreDeRol(usuario)}</p>
       </div>
       <button
         type="button"

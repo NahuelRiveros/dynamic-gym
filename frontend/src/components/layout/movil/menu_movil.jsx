@@ -2,9 +2,9 @@ import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { X } from "lucide-react";
-import { estaActiva } from "../../auth/permisos.js";
-import { cn } from "../../lib/cn.js";
-import TarjetaUsuario from "./tarjeta_usuario.jsx";
+import { estaActiva } from "../../../auth/permisos.js";
+import { cn } from "../../../lib/cn.js";
+import TarjetaUsuario from "../panel/tarjeta_usuario.jsx";
 
 /**
  * Menú completo del celular: una hoja que sube desde abajo, al alcance del pulgar. Es un <dialog>

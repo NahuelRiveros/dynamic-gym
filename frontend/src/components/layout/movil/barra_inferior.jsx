@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { LayoutGrid } from "lucide-react";
-import { estaActiva } from "../../auth/permisos.js";
-import { cn } from "../../lib/cn.js";
+import { estaActiva } from "../../../auth/permisos.js";
+import { cn } from "../../../lib/cn.js";
 import MenuMovil from "./menu_movil.jsx";
 
 const claseBoton = (activa) =>

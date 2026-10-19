@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { renderizar } from "../../test/renderizar.jsx";
+import { renderizar } from "../../../test/renderizar.jsx";
 import Footer from "./footer.jsx";
 
 describe("Footer público", () => {

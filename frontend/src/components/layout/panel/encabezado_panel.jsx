@@ -1,4 +1,4 @@
-import Marca from "./marca.jsx";
+import Marca from "../marca.jsx";
 
 /** Arriba del contenido: dónde se está (grupo del menú + nombre de la pantalla). */
 export default function EncabezadoPanel({ grupo = null, titulo = "Dynamic Gym" }) {

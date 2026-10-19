@@ -1,7 +1,7 @@
 import { NavLink } from "react-router-dom";
 import { LogIn } from "lucide-react";
-import { cn } from "../../lib/cn.js";
-import Marca from "./marca.jsx";
+import { cn } from "../../../lib/cn.js";
+import Marca from "../marca.jsx";
 
 const claseLink = ({ isActive }) =>
   cn(
