@@ -7,6 +7,10 @@ export function validarProductoBody(body) {
     : Number(body.categoria_id);
   const precio_venta = Number(body.precio_venta);
   const stock_minimo = Number(body.stock_minimo);
+  // Solo se usa al crear: las unidades que ya hay. Vacío = 0 (se cargan después con Reponer).
+  const stock_inicial = body.stock_inicial === undefined || body.stock_inicial === null || body.stock_inicial === ""
+    ? 0
+    : Number(body.stock_inicial);
 
   if (!nombre) {
     errores.push("El nombre es obligatorio");
@@ -26,6 +30,10 @@ export function validarProductoBody(body) {
     errores.push("El stock mínimo debe ser un número entero mayor o igual a 0");
   }
 
+  if (!Number.isInteger(stock_inicial) || stock_inicial < 0) {
+    errores.push("El stock inicial debe ser un número entero mayor o igual a 0");
+  }
+
   return {
     esValido: errores.length === 0,
     errores,
@@ -34,6 +42,7 @@ export function validarProductoBody(body) {
       categoria_id,
       precio_venta,
       stock_minimo,
+      stock_inicial,
     },
   };
 }

@@ -18,13 +18,29 @@ export async function obtenerProductoPorId(id) {
   return Producto.findByPk(id, { include: includeCategoria });
 }
 
-export async function crearProducto(data) {
-  return Producto.create({
-    nombre:       data.nombre,
-    categoria_id: data.categoria_id || null,
-    precio_venta: data.precio_venta,
-    stock_minimo: data.stock_minimo,
-    activo:       true,
+// El stock inicial entra como una reposición más (misma transacción): así el historial explica
+// de dónde salieron esas unidades, igual que si se hubieran cargado después con Reponer.
+export async function crearProducto({ nombre, categoria_id, precio_venta, stock_minimo, stock_inicial = 0, usuario_id }) {
+  return sequelize.transaction(async (t) => {
+    const producto = await Producto.create({
+      nombre,
+      categoria_id: categoria_id || null,
+      precio_venta,
+      stock_minimo,
+      stock_actual: stock_inicial,
+      activo:       true,
+    }, { transaction: t });
+
+    if (stock_inicial > 0) {
+      await MovimientoStock.create({
+        producto_id: producto.id,
+        tipo: "entrada",
+        cantidad: stock_inicial,
+        registrado_por_id: Number(usuario_id),
+      }, { transaction: t });
+    }
+
+    return producto;
   });
 }
 

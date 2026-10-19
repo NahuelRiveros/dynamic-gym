@@ -105,10 +105,10 @@ export default function ProductosTab({ productos, categorias, cargando }) {
             <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
               bajo ? "bg-red-50 text-red-700 border-red-200" : "bg-slate-50 text-slate-600 border-slate-200"
             }`}>
-              {row.stock_actual} {bajo && "· bajo"}
+              {row.stock_actual} {bajo && (row.stock_actual === 0 ? "· agotado" : "· bajo")}
             </span>
             <span className="text-[10px] text-slate-500">
-              {row.stock_minimo > 0 ? `aviso con menos de ${row.stock_minimo}` : "sin aviso"}
+              {row.stock_minimo === 0 ? "sin aviso" : row.stock_minimo === 1 ? "aviso al agotarse" : `aviso con menos de ${row.stock_minimo}`}
             </span>
           </span>
         );

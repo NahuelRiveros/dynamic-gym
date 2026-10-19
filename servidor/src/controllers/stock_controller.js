@@ -55,7 +55,7 @@ export async function crearProductoController(req, res) {
     return res.status(400).json({ ok: false, mensaje: "Datos inválidos", errores: validacion.errores });
   }
 
-  const producto = await crearProducto(validacion.valores);
+  const producto = await crearProducto({ ...validacion.valores, usuario_id: req.user.usuario_id });
   return res.status(201).json({ ok: true, mensaje: "Producto creado correctamente", data: producto });
 }
 

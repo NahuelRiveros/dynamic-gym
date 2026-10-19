@@ -48,6 +48,34 @@ describe("Stock y ventas", () => {
     expect((await con(tokenAdmin)(request(app).post(`/api/stock/${productoId}/baja`)).send({ cantidad: 1, motivo: "Vencido" })).status).toBe(200);
   });
 
+  it("al crear con stock inicial, las unidades quedan cargadas y en el historial como reposición", async () => {
+    const r = await con(tokenAdmin)(request(app).post("/api/stock")).send({ nombre: "Toalla", precio_venta: 6000, stock_minimo: 1, stock_inicial: 12 });
+    expect(r.status).toBe(201);
+    expect(r.body.data.stock_actual).toBe(12);
+
+    const historial = await con(tokenAdmin)(request(app).get(`/api/stock/${r.body.data.id}/movimientos`));
+    expect(historial.body.data).toHaveLength(1);
+    expect(historial.body.data[0]).toMatchObject({ tipo: "entrada", cantidad: 12, usuario: `${USUARIOS_TEST.admin.nombre} ${USUARIOS_TEST.admin.apellido}` });
+  });
+
+  it("sin stock inicial el producto arranca en 0 y sin historial; uno inválido no crea nada", async () => {
+    const sinStock = await con(tokenAdmin)(request(app).post("/api/stock")).send({ nombre: "Barra de cereal", precio_venta: 800, stock_minimo: 0 });
+    expect(sinStock.body.data.stock_actual).toBe(0);
+    const historial = await con(tokenAdmin)(request(app).get(`/api/stock/${sinStock.body.data.id}/movimientos`));
+    expect(historial.body.data).toHaveLength(0);
+
+    const invalido = await con(tokenAdmin)(request(app).post("/api/stock")).send({ nombre: "Guantes", precio_venta: 9000, stock_minimo: 0, stock_inicial: -3 });
+    expect(invalido.status).toBe(400);
+    expect(invalido.body.errores).toContain("El stock inicial debe ser un número entero mayor o igual a 0");
+  });
+
+  it("editar un producto no cambia sus unidades aunque mande stock_inicial", async () => {
+    const antes = await con(tokenAdmin)(request(app).get(`/api/stock/${productoId}`));
+    const r = await con(tokenAdmin)(request(app).put(`/api/stock/${productoId}`)).send({ nombre: "Agua 500 ml", categoria_id: 1, precio_venta: 800, stock_minimo: 5, stock_inicial: 500 });
+    expect(r.status).toBe(200);
+    expect(r.body.data.stock_actual).toBe(antes.body.data.stock_actual);
+  });
+
   it("un id que no es número responde 400; uno que no existe, 404", async () => {
     expect((await con(tokenStaff)(request(app).get("/api/stock/abc"))).status).toBe(400);
     expect((await con(tokenStaff)(request(app).post("/api/stock/999/entrada")).send({ cantidad: 1 })).status).toBe(404);
