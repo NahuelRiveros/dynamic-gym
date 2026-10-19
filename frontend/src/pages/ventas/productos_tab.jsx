@@ -3,6 +3,7 @@ import ProductoFormModal from "../../components/modal/producto_form_modal";
 import MovimientoStockModal from "../../components/modal/movimiento_stock_modal";
 import HistorialStockModal from "../../components/modal/historial_stock_modal";
 import DataGrid from "../../components/ui/data_grid/data_grid.jsx";
+import Ayuda from "../../components/ui/ayuda.jsx";
 import ConfirmDialog from "../../components/ui/confirm_dialog.jsx";
 import { mensajeDeError } from "../../hook/consultas_utils.js";
 import { useCambiarEstadoProducto, useGuardarProducto, useMovimientoStock } from "../../hook/use_stock.js";
@@ -100,10 +101,15 @@ export default function ProductosTab({ productos, categorias, cargando }) {
       render: (row) => {
         const bajo = row.stock_actual < row.stock_minimo;
         return (
-          <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
-            bajo ? "bg-red-50 text-red-700 border-red-200" : "bg-slate-50 text-slate-600 border-slate-200"
-          }`}>
-            {row.stock_actual} {bajo && "· bajo"}
+          <span className="inline-flex flex-col items-center gap-0.5">
+            <span className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-bold ${
+              bajo ? "bg-red-50 text-red-700 border-red-200" : "bg-slate-50 text-slate-600 border-slate-200"
+            }`}>
+              {row.stock_actual} {bajo && "· bajo"}
+            </span>
+            <span className="text-[10px] text-slate-500">
+              {row.stock_minimo > 0 ? `aviso con menos de ${row.stock_minimo}` : "sin aviso"}
+            </span>
           </span>
         );
       },
@@ -178,10 +184,20 @@ export default function ProductosTab({ productos, categorias, cargando }) {
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 mb-4">
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
         <StatCard label="Total productos" value={String(totalProductos)} highlight />
-        <StatCard label="Con stock bajo" value={String(conStockBajo)} alert={conStockBajo > 0} />
-        <StatCard label="Valorización de stock" value={formatearPrecio(valorizacion)} />
+        <StatCard
+          label="Con stock bajo"
+          value={String(conStockBajo)}
+          alert={conStockBajo > 0}
+          ayuda="Productos con menos unidades que su stock mínimo: hay que reponerlos. Los productos sin aviso no se cuentan acá."
+        />
+        <StatCard
+          label="Valorización de stock"
+          value={formatearPrecio(valorizacion)}
+          ayuda="Unidades en stock × precio de venta de cada producto: lo que entraría si se vendiera todo hoy."
+          className="col-span-2 sm:col-span-1"
+        />
       </div>
 
       <DataGrid
@@ -191,7 +207,7 @@ export default function ProductosTab({ productos, categorias, cargando }) {
         loading={cargando}
         searchable
         searchPlaceholder="Buscar producto…"
-        emptyMessage="No hay productos cargados."
+        emptyMessage='No hay productos cargados. Empezá con "Nuevo producto".'
         actions={actions}
         actionsLabel="Acciones"
         pageSize={15}
@@ -242,16 +258,18 @@ export default function ProductosTab({ productos, categorias, cargando }) {
   );
 }
 
-function StatCard({ label, value, highlight, alert }) {
+function StatCard({ label, value, highlight = false, alert = false, ayuda = null, className = "" }) {
   return (
     <div className={[
-      "rounded-2xl border px-4 py-3.5 shadow-sm",
+      "min-w-0 rounded-2xl border px-4 py-3.5 shadow-sm",
+      className,
       highlight ? "border-blue-200 bg-linear-to-br from-blue-600 to-blue-500 shadow-blue-500/20"
         : alert  ? "border-red-200 bg-red-50"
         : "border-slate-200 bg-white",
     ].join(" ")}>
-      <div className={`text-[11px] font-bold uppercase tracking-wider ${highlight ? "text-blue-100" : alert ? "text-red-600" : "text-slate-500"}`}>
+      <div className={`flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider ${highlight ? "text-blue-100" : alert ? "text-red-600" : "text-slate-500"}`}>
         {label}
+        {ayuda && <Ayuda texto={ayuda} etiqueta={`Ayuda: ${label}`} />}
       </div>
       <p className={`mt-1.5 text-2xl font-extrabold leading-tight ${highlight ? "text-white" : alert ? "text-red-700" : "text-slate-900"}`}>
         {value}

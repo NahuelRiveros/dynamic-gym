@@ -98,7 +98,7 @@ export default function VenderTab({ productos, cargando }) {
         loading={cargando}
         searchable
         searchPlaceholder="Buscar producto…"
-        emptyMessage="No hay productos disponibles para vender."
+        emptyMessage='No hay productos para vender. Solo aparecen los productos activos con unidades en stock: un admin las carga desde "Productos" → "Reponer".'
         actions={actions}
         actionsLabel="Acciones"
         pageSize={15}

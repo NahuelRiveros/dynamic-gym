@@ -1,3 +1,5 @@
+import Ayuda from "../ui/ayuda.jsx";
+
 const BASE = "mt-1 rounded-xl border px-3 py-2 outline-none transition duration-200";
 const STATE = {
   enabled:  "border-gray-300 bg-white text-gray-900 hover:border-blue-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/25",
@@ -26,6 +28,7 @@ export default function SelectField({
   id,
   showLabel = true,
   helperText,
+  ayuda,
   fullWidth = true,
   showPlaceholderOption = true,
   ...rest
@@ -50,12 +53,15 @@ export default function SelectField({
   return (
     <div className={["group", wrapperClassName].join(" ")}>
       {label && showLabel && (
-        <label
-          htmlFor={selectId}
-          className={["block text-sm font-semibold text-gray-700", labelClassName].join(" ")}
-        >
-          {label}
-        </label>
+        <div className="flex items-center gap-1">
+          <label
+            htmlFor={selectId}
+            className={["block text-sm font-semibold text-gray-700", labelClassName].join(" ")}
+          >
+            {label}
+          </label>
+          {ayuda && <Ayuda texto={ayuda} etiqueta={`Ayuda: ${label}`} />}
+        </div>
       )}
 
       <select

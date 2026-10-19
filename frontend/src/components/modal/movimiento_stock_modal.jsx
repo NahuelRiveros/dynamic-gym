@@ -14,6 +14,11 @@ const METODOS_PAGO = [
 ];
 
 const TITULOS = { entrada: "Reponer stock", venta: "Vender producto", baja: "Dar de baja" };
+const QUE_HACE = {
+  entrada: "Suma unidades al stock. Usalo cuando llega mercadería.",
+  venta: "Descuenta las unidades y registra la venta con el precio actual. Aparece en las estadísticas de ventas.",
+  baja: "Descuenta unidades sin cobrar (rotura, vencimiento, consumo interno). Queda en el historial con el motivo.",
+};
 const ETIQUETAS_BOTON = { entrada: "Reponer", venta: "Vender", baja: "Dar de baja" };
 
 // Se monta cada vez que se abre el modal: arranca siempre en 1 unidad, efectivo y sin motivo.
@@ -37,9 +42,11 @@ function FormularioMovimiento({ tipo, producto, onConfirmar, onClose, cargando, 
 
   return (
     <form onSubmit={submit} className="space-y-4" noValidate>
+      <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">{QUE_HACE[tipo]}</p>
+
       <label className="block text-sm font-medium text-slate-700">
-        <span className="mb-1 block">Cantidad {tipo !== "entrada" && `(disponible: ${producto.stock_actual})`}</span>
-        <input type="number" value={cantidad} onChange={(e) => setCantidad(e.target.value)} className={CAMPO} min="1" />
+        <span className="mb-1 block">Cantidad {tipo !== "entrada" ? `(disponible: ${producto.stock_actual})` : `(hoy hay ${producto.stock_actual})`}</span>
+        <input type="number" value={cantidad} onChange={(e) => setCantidad(e.target.value)} className={CAMPO} min="1" placeholder="Ej: 1" />
       </label>
 
       {tipo === "venta" && (

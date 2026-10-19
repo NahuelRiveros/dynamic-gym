@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Eye, EyeOff } from "lucide-react";
+import Ayuda from "../ui/ayuda.jsx";
 
 const PRESET_RULES = {
   numeric:      { pattern: { value: /^[0-9]+$/, message: "Solo se permiten números" } },
@@ -46,6 +47,7 @@ export default function InputField({
   warning,
   success,
   helperText,
+  ayuda,
   type = "text",
   placeholder = "",
   value,
@@ -127,13 +129,16 @@ export default function InputField({
   return (
     <div className={["group", fullWidth ? "w-full" : "", wrapperClassName].join(" ")}>
       {label && !hideLabel && (
-        <label
-          htmlFor={inputId}
-          className={["block text-sm font-semibold text-gray-700", labelClassName].join(" ")}
-        >
-          {label}
-          {required && <span className="ml-1 text-red-500">*</span>}
-        </label>
+        <div className="flex items-center gap-1">
+          <label
+            htmlFor={inputId}
+            className={["block text-sm font-semibold text-gray-700", labelClassName].join(" ")}
+          >
+            {label}
+            {required && <span className="ml-1 text-red-500">*</span>}
+          </label>
+          {ayuda && <Ayuda texto={ayuda} etiqueta={`Ayuda: ${label}`} />}
+        </div>
       )}
 
       <div className="relative mt-1 flex items-center">
