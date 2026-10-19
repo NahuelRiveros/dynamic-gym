@@ -63,7 +63,7 @@ export default function ProductosTab({ productos, categorias, cargando }) {
   }
 
   const totalProductos = productos.length;
-  const conStockBajo = productos.filter((p) => p.stock_actual < p.stock_minimo).length;
+  const conStockBajo = productos.filter((p) => p.controla_stock !== false && p.stock_actual < p.stock_minimo).length;
   const valorizacion = productos.reduce((acc, p) => acc + Number(p.precio_venta) * p.stock_actual, 0);
 
   const columns = [
@@ -99,6 +99,8 @@ export default function ProductosTab({ productos, categorias, cargando }) {
       align: "center",
       headerClassName: "text-center",
       render: (row) => {
+        // Sin control de stock (nunca se repuso): no hay unidades que mostrar ni aviso de reponer.
+        if (row.controla_stock === false) return <span className="text-[11px] text-slate-400">Sin control de stock</span>;
         const bajo = row.stock_actual < row.stock_minimo;
         return (
           <span className="inline-flex flex-col items-center gap-0.5">

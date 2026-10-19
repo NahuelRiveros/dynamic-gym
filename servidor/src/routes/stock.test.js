@@ -93,4 +93,33 @@ describe("Stock y ventas", () => {
     const otroAnio = await con(tokenAdmin)(request(app).get("/api/stock/estadisticas/productos-mas-vendidos").query({ anio: anio - 1 }));
     expect(otroAnio.body.items).toEqual([]);
   });
+
+  it("sin reposiciones no lleva control de stock: se vende siempre y las unidades quedan en 0", async () => {
+    const { body } = await con(tokenAdmin)(request(app).post("/api/stock")).send({ nombre: "Gatorade", precio_venta: 2500, stock_minimo: 1 });
+    expect(body.data.controla_stock).toBe(false);
+
+    const venta = await con(tokenStaff)(request(app).post(`/api/stock/${body.data.id}/venta`)).send({ cantidad: 4, metodo_pago: "efectivo" });
+    expect(venta.status).toBe(200);
+    expect(venta.body.data.stock_actual).toBe(0);
+
+    const historial = await con(tokenAdmin)(request(app).get(`/api/stock/${body.data.id}/movimientos`));
+    expect(historial.body.data[0]).toMatchObject({ tipo: "venta", cantidad: 4 });
+
+    const baja = await con(tokenAdmin)(request(app).post(`/api/stock/${body.data.id}/baja`)).send({ cantidad: 1, motivo: "Vencido" });
+    expect(baja.body.codigo).toBe("STOCK_INSUFICIENTE");
+  });
+
+  it("con una reposición pasa a llevar control: agotado no se vende", async () => {
+    const { body } = await con(tokenAdmin)(request(app).post("/api/stock")).send({ nombre: "Proteína", precio_venta: 30000, stock_minimo: 0, stock_inicial: 1 });
+    expect(body.data.controla_stock).toBe(true);
+    await con(tokenStaff)(request(app).post(`/api/stock/${body.data.id}/venta`)).send({ cantidad: 1, metodo_pago: "efectivo" });
+
+    const agotado = await con(tokenStaff)(request(app).post(`/api/stock/${body.data.id}/venta`)).send({ cantidad: 1, metodo_pago: "efectivo" });
+    expect(agotado.status).toBe(409);
+
+    const lista = await con(tokenStaff)(request(app).get("/api/stock"));
+    const enLista = (id) => lista.body.data.find((p) => p.id === id);
+    expect(enLista(body.data.id)).toMatchObject({ controla_stock: true, stock_actual: 0 });
+    expect(enLista(productoId).controla_stock).toBe(true);
+  });
 });

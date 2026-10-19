@@ -3,19 +3,37 @@ import { Producto, MovimientoStock, CategoriaProducto, Usuario, Persona } from "
 
 const includeCategoria = [{ model: CategoriaProducto, as: "categoria", attributes: ["id", "descripcion"] }];
 
+// La base no guarda si un producto lleva control de stock: se deduce del historial. Lleva control
+// si alguna vez tuvo una reposición (el stock inicial al crearlo también lo es). Uno sin control
+// se vende siempre, sin contar unidades.
+const SQL_TIENE_REPOSICION = `EXISTS (
+  SELECT 1 FROM movimiento_stock m WHERE m.producto_id = "Producto"."id" AND m.tipo = 'entrada'
+)`;
+const atributosProducto = { include: [[sequelize.literal(SQL_TIENE_REPOSICION), "controla_stock"]] };
+
+async function tieneReposicion(producto_id, transaction) {
+  const reposicion = await MovimientoStock.findOne({
+    where: { producto_id, tipo: "entrada" },
+    attributes: ["id"],
+    transaction,
+  });
+  return Boolean(reposicion);
+}
+
 export async function listarProductos({ incluirInactivos = true } = {}) {
   const where = {};
   if (!incluirInactivos) where.activo = true;
 
   return Producto.findAll({
     where,
+    attributes: atributosProducto,
     include: includeCategoria,
     order: [["nombre", "ASC"]],
   });
 }
 
 export async function obtenerProductoPorId(id) {
-  return Producto.findByPk(id, { include: includeCategoria });
+  return Producto.findByPk(id, { attributes: atributosProducto, include: includeCategoria });
 }
 
 // El stock inicial entra como una reposición más (misma transacción): así el historial explica
@@ -40,6 +58,7 @@ export async function crearProducto({ nombre, categoria_id, precio_venta, stock_
       }, { transaction: t });
     }
 
+    producto.setDataValue("controla_stock", stock_inicial > 0);
     return producto;
   });
 }
@@ -88,15 +107,16 @@ async function registrarMovimiento({ producto_id, tipo, cantidad, usuario_id, mo
 
     if (tipo === "entrada") {
       await producto.update({ stock_actual: producto.stock_actual + cant }, { transaction: t });
-    } else {
-      if (producto.stock_actual < cant)
-        return {
-          ok: false,
-          codigo: "STOCK_INSUFICIENTE",
-          mensaje: `Stock insuficiente: quedan ${producto.stock_actual} unidad(es)`,
-        };
+    } else if (producto.stock_actual >= cant) {
       await producto.update({ stock_actual: producto.stock_actual - cant }, { transaction: t });
+    } else if (tipo === "baja" || await tieneReposicion(producto.id, t)) {
+      return {
+        ok: false,
+        codigo: "STOCK_INSUFICIENTE",
+        mensaje: `Stock insuficiente: quedan ${producto.stock_actual} unidad(es)`,
+      };
     }
+    // Venta de un producto sin control de stock: se registra (cuenta en la recaudación) y las unidades quedan en 0.
 
     const movimiento = await MovimientoStock.create({
       producto_id: producto.id,

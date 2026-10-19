@@ -27,13 +27,15 @@ function FormularioMovimiento({ tipo, producto, onConfirmar, onClose, cargando, 
   const [metodoPago, setMetodoPago] = useState("EFECTIVO");
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState("");
+  // Un producto sin control de stock se vende sin tope de unidades.
+  const sinControl = producto.controla_stock === false;
 
   async function submit(e) {
     e.preventDefault();
 
     const cant = Number(cantidad);
     if (!Number.isInteger(cant) || cant <= 0) return setError("La cantidad debe ser un entero mayor a 0");
-    if (tipo !== "entrada" && cant > producto.stock_actual) return setError(`Solo quedan ${producto.stock_actual} unidad(es) en stock`);
+    if (tipo !== "entrada" && !(tipo === "venta" && sinControl) && cant > producto.stock_actual) return setError(`Solo quedan ${producto.stock_actual} unidad(es) en stock`);
     if (tipo === "baja" && !motivo.trim()) return setError("El motivo es obligatorio para dar de baja");
 
     setError("");
@@ -45,7 +47,9 @@ function FormularioMovimiento({ tipo, producto, onConfirmar, onClose, cargando, 
       <p className="rounded-xl bg-slate-50 px-3 py-2 text-sm text-slate-600">{QUE_HACE[tipo]}</p>
 
       <label className="block text-sm font-medium text-slate-700">
-        <span className="mb-1 block">Cantidad {tipo !== "entrada" ? `(disponible: ${producto.stock_actual})` : `(hoy hay ${producto.stock_actual})`}</span>
+        <span className="mb-1 block">
+          Cantidad {tipo === "entrada" ? `(hoy hay ${producto.stock_actual})` : sinControl && tipo === "venta" ? "(sin control de stock)" : `(disponible: ${producto.stock_actual})`}
+        </span>
         <input type="number" value={cantidad} onChange={(e) => setCantidad(e.target.value)} className={CAMPO} min="1" placeholder="Ej: 1" />
       </label>
 

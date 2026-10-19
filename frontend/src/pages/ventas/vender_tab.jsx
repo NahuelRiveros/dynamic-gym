@@ -21,9 +21,10 @@ export default function VenderTab({ productos, cargando }) {
   const [movimiento, setMovimiento] = useState(null); // { tipo, producto }
   const registrar = useMovimientoStock();
 
-  // Se listan todos los activos (también los creados sin stock) para poder reponerlos desde acá;
-  // sin unidades no se pueden vender.
+  // Los que no llevan control de stock (nunca se repusieron) se venden siempre; los que sí,
+  // solo con unidades.
   const disponibles = productos.filter((p) => p.activo);
+  const sinControl = (p) => p.controla_stock === false;
 
   function abrirMovimiento(tipo, producto) { registrar.reset(); setMovimiento({ tipo, producto }); }
   function cerrarMovimiento() { setMovimiento(null); }
@@ -66,7 +67,9 @@ export default function VenderTab({ productos, cargando }) {
       sortable: true,
       align: "center",
       headerClassName: "text-center",
-      render: (row) => (row.stock_actual > 0 ? (
+      render: (row) => (sinControl(row) ? (
+        <span className="text-[11px] text-slate-400">Sin control</span>
+      ) : row.stock_actual > 0 ? (
         <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2.5 py-0.5 text-[11px] font-bold text-slate-600">
           {row.stock_actual}
         </span>
@@ -84,7 +87,7 @@ export default function VenderTab({ productos, cargando }) {
       label: "Vender",
       icon: <ShoppingCart size={12} />,
       variant: "primary",
-      disabled: (row) => row.stock_actual <= 0,
+      disabled: (row) => !sinControl(row) && row.stock_actual <= 0,
       onClick: (row) => abrirMovimiento("venta", row),
     },
     {
@@ -92,6 +95,7 @@ export default function VenderTab({ productos, cargando }) {
       label: "Reponer",
       icon: <PackagePlus size={12} />,
       variant: "success",
+      show: (row) => !sinControl(row),
       onClick: (row) => abrirMovimiento("entrada", row),
     },
   ];

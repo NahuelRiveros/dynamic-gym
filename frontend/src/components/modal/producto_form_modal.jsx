@@ -164,7 +164,7 @@ function FormularioProducto({ productoEditar, categorias, onGuardar, onClose, ca
         )}
       </fieldset>
 
-      <ProductoQuePasa aviso={aviso} minimo={minimo} stockInicial={stockInicial} stockActual={esEdicion ? productoEditar.stock_actual ?? 0 : null} />
+      <ProductoQuePasa aviso={aviso} minimo={minimo} stockInicial={stockInicial} stockActual={esEdicion ? productoEditar.stock_actual ?? 0 : null} controlaStock={productoEditar?.controla_stock !== false} />
 
       <ListaErrores errores={errorServidor ? [errorServidor] : []} />
       <BotonesModal onCancelar={onClose} ocupado={cargando} textoConfirmar={esEdicion ? "Guardar cambios" : "Crear producto"} />

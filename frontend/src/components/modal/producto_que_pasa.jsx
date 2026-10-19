@@ -18,11 +18,13 @@ function Linea({ icono: Icono, color, children }) {
  * Explica, mientras se completa el formulario, qué va a pasar con el producto: cuándo avisa y
  * con cuántas unidades queda. Mismo cálculo que la lista: "bajo" es stock < stock mínimo.
  */
-export default function ProductoQuePasa({ aviso, minimo, stockInicial, stockActual = null }) {
+export default function ProductoQuePasa({ aviso, minimo, stockInicial, stockActual = null, controlaStock = true }) {
   const n = entero(minimo);
   const unidades = stockActual ?? entero(stockInicial) ?? 0;
   const umbral = aviso === "agotado" ? 1 : aviso === "pocas" ? n : 0;
-  const arrancaBajo = umbral > 0 && unidades < umbral;
+  // Sin unidades al crear (o sin control al editar) no se cuenta el stock: no hay nada que avisar.
+  const sinControl = stockActual === null ? unidades === 0 : !controlaStock;
+  const arrancaBajo = !sinControl && umbral > 0 && unidades < umbral;
 
   return (
     <div aria-live="polite" className="space-y-2 rounded-xl border border-blue-100 bg-blue-50/60 p-3 text-sm text-slate-700">
@@ -48,11 +50,11 @@ export default function ProductoQuePasa({ aviso, minimo, stockInicial, stockActu
         <Linea icono={Info} color="text-blue-500">
           {unidades > 0
             ? `Se crea con ${unidades} unidad${unidades === 1 ? "" : "es"}, registradas como reposición en el historial. Ya se puede vender.`
-            : "Se crea con 0 unidades: aparece en Vender como \"Sin stock\". Para poder venderlo, cargá unidades con Reponer."}
+            : "Se crea sin control de stock: se puede vender siempre y no se cuentan unidades. Si después querés contarlas, usá Reponer en Productos."}
         </Linea>
       ) : (
         <Linea icono={Info} color="text-blue-500">
-          Hoy hay {stockActual} unidad{stockActual === 1 ? "" : "es"}. Guardar no las cambia: para eso usá Reponer o Dar de baja en la lista.
+          {sinControl ? "No lleva control de stock: se vende siempre. Para empezar a contar unidades, usá Reponer en la lista." : <>Hoy hay {stockActual} unidad{stockActual === 1 ? "" : "es"}. Guardar no las cambia: para eso usá Reponer o Dar de baja en la lista.</>}
         </Linea>
       )}
 

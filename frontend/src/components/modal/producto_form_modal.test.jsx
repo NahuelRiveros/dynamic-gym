@@ -17,7 +17,7 @@ describe("Formulario de producto", () => {
 
     expect(screen.getByRole("radio", { name: "No avisar" })).toBeChecked();
     expect(screen.getByText(/nunca va a mostrar el aviso de reponer/)).toBeInTheDocument();
-    expect(screen.getByText(/se crea con 0 unidades/i)).toBeInTheDocument();
+    expect(screen.getByText(/se crea sin control de stock/i)).toBeInTheDocument();
 
     await usuario.type(screen.getByLabelText("Nombre"), "  Agua 500 ml ");
     await usuario.selectOptions(screen.getByLabelText("Categoría (opcional)"), "3");
