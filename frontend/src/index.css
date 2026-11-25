@@ -1,37 +1,18 @@
 @import "tailwindcss";
 
+/* ── Colores del local (sitio público): pared, piso de goma, máquinas cobalto ──
+   `static`: se emiten siempre, porque también los usa pages/inicio/inicio.css. */
+@theme static {
+  --color-pared: #edf0f3;
+  --color-goma: #15181d;
+  --color-cobalto: #1230d2;
+  --color-cobalto-hondo: #0b2099;
+  --color-acero: #a9b2bb;
+}
+
 /* ── Dynamic Gym: fuentes (definidas en index.html via <link>, aquí solo asignamos) ── */
 .dg-display    { font-family: 'Barlow Condensed', sans-serif; }
 .dg-body-font  { font-family: 'DM Sans', sans-serif; }
-
-/* ── Animaciones home ─────────────────────────────────────────────────────── */
-@keyframes dg-fade-up {
-  from { opacity: 0; transform: translateY(32px); }
-  to   { opacity: 1; transform: translateY(0);    }
-}
-@keyframes dg-shimmer {
-  from { background-position: -200% center; }
-  to   { background-position:  200% center; }
-}
-
-.dg-a1 { animation: dg-fade-up .8s .05s cubic-bezier(.22,1,.36,1) both; }
-.dg-a2 { animation: dg-fade-up .8s .22s cubic-bezier(.22,1,.36,1) both; }
-.dg-a3 { animation: dg-fade-up .8s .40s cubic-bezier(.22,1,.36,1) both; }
-.dg-a4 { animation: dg-fade-up .8s .58s cubic-bezier(.22,1,.36,1) both; }
-
-.dg-shimmer-text {
-  background: linear-gradient(90deg, #fff 0%, #7dd3fc 40%, #fff 60%, #7dd3fc 100%);
-  background-size: 200% auto;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: dg-shimmer 4s linear infinite;
-}
-
-/* Quien pidió menos movimiento en su teléfono no ve las animaciones del inicio. */
-@media (prefers-reduced-motion: reduce) {
-  .dg-a1, .dg-a2, .dg-a3, .dg-a4, .dg-shimmer-text { animation: none; }
-}
 
 /* ── Barra lateral del panel: desplazamiento fino y oscuro ───────────────────
    Casi invisible en reposo (no distrae) y más marcada al pasar el mouse, para que

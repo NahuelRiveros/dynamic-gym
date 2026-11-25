@@ -1,5 +1,5 @@
 import { screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderizar } from "../../test/renderizar.jsx";
 import { sesionComo } from "../../test/servidor_mock.js";
 import HomePage from "./home_page.jsx";
@@ -12,10 +12,36 @@ describe("Inicio", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: /Rompé/ })).toBeInTheDocument();
     expect(screen.getAllByRole("link", { name: /Cómo llegar/ })[0]).toHaveAttribute("href", expect.stringContaining("maps"));
-    expect(screen.getByRole("link", { name: /Consultá tu plan/ })).toHaveAttribute("href", "/consulta-plan");
+    expect(screen.getAllByRole("link", { name: "Consultá tu plan" })[0]).toHaveAttribute("href", "/consulta-plan");
     // Sin números inventados ni descripciones que solo se ven con el mouse.
     expect(screen.queryByText("200+")).not.toBeInTheDocument();
     expect(screen.getByText(/Entrenadores con formación profesional/)).toBeVisible();
+  });
+
+  it("muestra los horarios de la semana, con el domingo cerrado", async () => {
+    renderizar(<LandingPublica />, { ruta: "/gimnasio" });
+
+    const horarios = within(await screen.findByRole("region", { name: "Horarios" }));
+    expect(horarios.getByText("Lunes a viernes").nextElementSibling).toHaveTextContent("7 a 23 h");
+    expect(horarios.getByText("Sábados").nextElementSibling).toHaveTextContent("9 a 15 h");
+    expect(horarios.getByText("Domingos").nextElementSibling).toHaveTextContent("Cerrado");
+  });
+
+  it("la barra es decorativa: los discos llevan el motivo, sin kilos, y el lector de pantalla no los lee", () => {
+    renderizar(<LandingPublica />, { ruta: "/gimnasio" });
+
+    expect(screen.getAllByText("PROFESORES")[0].closest("[aria-hidden='true']")).not.toBeNull();
+    expect(screen.queryByText(/[0-9]+ ?KG/i)).not.toBeInTheDocument();
+    expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(3);
+  });
+
+  it("si el dispositivo pide menos movimiento, se ve todo quieto y sin escenas fijas", () => {
+    vi.stubGlobal("matchMedia", (consulta) => ({ matches: consulta.includes("reduce"), addEventListener() {}, removeEventListener() {} }));
+    const { container } = renderizar(<LandingPublica />, { ruta: "/gimnasio" });
+    vi.unstubAllGlobals();
+
+    expect(container.querySelector(".ini")).not.toHaveClass("ini-anim");
+    expect(screen.getByRole("heading", { level: 1, name: /Rompé/ })).toBeInTheDocument();
   });
 
   it("el staff ve el saludo y solo sus tareas de Recepción", async () => {
